@@ -195,6 +195,66 @@ class BlocksTest < ActionView::TestCase
     assert_equal %w[w w-image phone-aspect-original], html.at_css("[data-block-id=b]")["class"].split
   end
 
+  # A section of one column holding a heading, with a picture and a style.
+  def pictured(id, picture, style = { "base" => {} })
+    block(id, "section", picture.nil? ? {} : { "picture" => picture }, style: style, children: [ block("#{id}-c", "column", children: [ block("#{id}-h", "heading", { "level" => 2, "text" => "Strength" }) ]) ])
+  end
+
+  test "a section's picture is an img it holds before its columns, decorative, with the library's size; the first of the document loads at once, the others as they near the view" do
+    document = { "schemaVersion" => 1, "title" => "Pictures", "sections" => [
+      pictured("first", { "mediaId" => "gym" }, { "base" => { "veil" => "dark", "veilStrength" => "strong", "focus" => "top" }, "tablet" => { "veil" => "light" }, "phone" => { "focus" => "bottom-right" } }),
+      pictured("second", { "mediaId" => "rowers" }, { "base" => { "background" => "soft" } })
+    ] }
+    html = html_of(document)
+
+    first = html.at_css("section[data-block-id=first]")
+    assert_equal %w[picture div], first.element_children.map(&:name), "the picture first, then the row of columns"
+    picture = first.at_css("> picture.sw-picture > img")
+    assert_equal [ "/media/gym.png", "800", "600", "", "eager", "async" ], attributes(picture, "src", "width", "height", "alt", "loading", "decoding")
+    assert_equal [ "dark", "light", "strong", "top", "bottom-right" ], attributes(first, "data-veil", "data-tablet-veil", "data-veil-strength", "data-focus", "data-phone-focus")
+    assert_equal "base.focus=top;base.veil=dark;base.veilStrength=strong;tablet.veil=light;phone.focus=bottom-right", first["data-style"]
+    assert_equal "lazy", html.at_css("section[data-block-id=second] > picture > img")["loading"]
+    assert_equal %w[sec bg-soft], html.at_css("section[data-block-id=second]")["class"].split
+  end
+
+  test "a section draws no picture, and no veil, for an item the library no longer has, a picture of another site's address or one that is no object; nor a value the schema does not list, and no picture where it never had one" do
+    document = { "schemaVersion" => 1, "title" => "No pictures", "sections" => [
+      pictured("gone", { "mediaId" => "gone" }, { "base" => { "veil" => "dark", "focus" => "top" } }),
+      pictured("address", { "url" => "https://images.example.org/gym.jpg" }, { "base" => { "veil" => "dark" } }),
+      pictured("word", "gym", { "base" => { "veil" => "light" } }),
+      pictured("number", { "mediaId" => 42 }),
+      pictured("none", nil, { "base" => { "veil" => "dark", "veilStrength" => "strong" } }),
+      pictured("traps", { "mediaId" => "gym" }, { "base" => { "veil" => "blur", "veilStrength" => 0.6, "focus" => "20% 30%" }, "phone" => { "veil" => "<b>" } })
+    ] }
+    html = html_of(document)
+
+    %w[gone address word number none].each do |id|
+      section = html.at_css("section[data-block-id=#{id}]")
+      assert_nil section.at_css("picture, img"), id
+      assert_empty section.attributes.keys.grep(/\Adata-(?:tablet-|phone-)?(?:veil|focus)/), id
+    end
+    # A setting the schema lists, kept with no picture, is still the stored style.
+    assert_equal "base.veil=dark;base.veilStrength=strong", html.at_css("section[data-block-id=none]")["data-style"]
+    traps = html.at_css("section[data-block-id=traps]")
+    assert traps.at_css("> picture > img"), "the picture itself is drawn"
+    assert_empty traps.attributes.keys.grep(/\Adata-(?:tablet-|phone-)?(?:veil|focus)/)
+    assert_nil traps["data-style"]
+  end
+
+  test "every block says how it comes into view, on every device it says one, and a motion the schema does not list says nothing" do
+    heading = block("h", "heading", { "level" => 2, "text" => "Into view" }, style: { "base" => { "motion" => "rise" }, "tablet" => { "motion" => "none" }, "phone" => { "motion" => "zoom" } })
+    traps = block("t", "heading", { "level" => 2, "text" => "Spins" }, style: { "base" => { "motion" => "spin" }, "tablet" => { "motion" => "rise 2s" }, "phone" => { "motion" => nil } })
+    html = html_of(page(heading, traps, *every_widget.map { |widget| widget.merge("style" => { "base" => { "motion" => "fade" } }) },
+                        section_style: { "base" => { "motion" => "zoom" } }, column_style: { "base" => {}, "tablet" => { "motion" => "rise" } }))
+
+    assert_equal %w[rise none zoom], attributes(html.at_css("[data-block-id=h]"), "data-motion", "data-tablet-motion", "data-phone-motion")
+    assert_equal "base.motion=rise;tablet.motion=none;phone.motion=zoom", html.at_css("[data-block-id=h]")["data-style"]
+    assert_empty html.at_css("[data-block-id=t]").attributes.keys.grep(/motion/)
+    assert_equal "zoom", html.at_css("[data-block-id=s1]")["data-motion"]
+    assert_equal [ nil, "rise" ], attributes(html.at_css("[data-block-id=c1]"), "data-motion", "data-tablet-motion")
+    every_widget.each { |widget| assert_equal "fade", html.at_css("[data-block-id=#{widget['id']}]")["data-motion"], widget["type"] }
+  end
+
   test "a block hidden on one device carries the class that hides it there only" do
     html = html_of(page(block("x", "divider", {}, style: { "base" => { "visibility" => "hidden" }, "tablet" => { "visibility" => "visible" } })))
 

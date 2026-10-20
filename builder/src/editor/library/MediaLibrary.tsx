@@ -40,8 +40,10 @@ export type LibraryPurpose =
   // beside: the yellow line of that place, which the window stands above or
   // under and never over (../place-dialog.ts). libraryOnly: an image of the
   // library and no other (an entry's, ../collections/), so no address of
-  // another site is asked for.
-  | { kind: "pick"; confirm: string; multiple: boolean; onPick: (images: ImageRef[]) => CommandError | null; where?: ReactNode; beside?: string; libraryOnly?: boolean }
+  // another site is asked for. decorative: a picture the page draws as
+  // decorative whatever it shows (a section's, behind its words), so no
+  // alt text is asked for placing it, and it is handed over decorative.
+  | { kind: "pick"; confirm: string; multiple: boolean; onPick: (images: ImageRef[]) => CommandError | null; where?: ReactNode; beside?: string; libraryOnly?: boolean; decorative?: boolean }
   // Looking after the library: nothing is placed.
   | { kind: "manage" };
 
@@ -74,6 +76,8 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
   const id = useId();
   const picking = purpose.kind === "pick";
   const multiple = purpose.kind === "pick" && purpose.multiple;
+  // A picture drawn as decorative: placing it asks for no alt text.
+  const decor = purpose.kind === "pick" && purpose.decorative === true;
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -121,7 +125,7 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
 
   const itemOf = (imageId: string | null): MediaItem | undefined => (imageId === null ? undefined : media.get(imageId));
   const altOf = (imageId: string): string => alts.get(imageId) ?? media.get(imageId)?.alt ?? "";
-  const ready = (imageId: string) => decorative.has(imageId) || hasAlt(altOf(imageId));
+  const ready = (imageId: string) => decor || decorative.has(imageId) || hasAlt(altOf(imageId));
 
   // An image deleted, here or in another tab, is no longer chosen.
   const live = chosen.filter((imageId) => media.has(imageId));
@@ -291,7 +295,7 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
       return;
     }
     const refs: ImageRef[] = live.length > 0
-      ? live.map((imageId) => (decorative.has(imageId) ? { mediaId: imageId, decorative: true } : { mediaId: imageId, alt: altOf(imageId).trim() }))
+      ? live.map((imageId) => (decor || decorative.has(imageId) ? { mediaId: imageId, decorative: true } : { mediaId: imageId, alt: altOf(imageId).trim() }))
       : [addressDecorative ? { url: address.trim(), decorative: true } : { url: address.trim(), alt: addressAlt.trim() }];
     // The alt text written here is also the library's, from now on.
     for (const imageId of live) if (!decorative.has(imageId)) saveAlt(imageId);
@@ -420,6 +424,7 @@ export function MediaLibrary({ purpose, onClose }: { purpose: LibraryPurpose; on
               item={shownItem}
               now={clock.now()}
               picking={picking}
+              decor={decor}
               chosen={live.includes(shownItem.id)}
               alt={altOf(shownItem.id)}
               decorative={decorative.has(shownItem.id)}
@@ -549,6 +554,8 @@ interface DetailsProps {
   item: MediaItem;
   now: number;
   picking: boolean;
+  // Picking a picture drawn as decorative: its alt text is not asked for.
+  decor: boolean;
   chosen: boolean;
   alt: string;
   decorative: boolean;
@@ -564,14 +571,17 @@ interface DetailsProps {
   onDelete: () => void;
 }
 
-function Details({ id, item, now, picking, chosen, alt, decorative, altSave, service, deleting, deleteSaid, onAlt, onAltDone, onDecorative, onAskDelete, onKeep, onDelete }: DetailsProps) {
-  // Placing this image needs its alt text, or the decorative mark.
-  const needed = picking && chosen && !decorative && !hasAlt(alt);
+function Details({ id, item, now, picking, decor, chosen, alt, decorative, altSave, service, deleting, deleteSaid, onAlt, onAltDone, onDecorative, onAskDelete, onKeep, onDelete }: DetailsProps) {
+  // Placing this image needs its alt text, or the decorative mark; a
+  // picture drawn as decorative needs neither.
+  const asks = picking && !decor;
+  const needed = asks && chosen && !decorative && !hasAlt(alt);
   const saveWords = altSave?.phase === "saving" ? "Saving…" : altSave?.phase === "saved" ? "Saved in the library." : null;
   const errors = [needed ? ALT_NEEDED : null, altSave?.phase === "failed" ? altSave.message : null].filter((e): e is string => e !== null);
   // Choosing, the field is the design's, with no line under it but the
-  // alt text kept; looking after the library, it says what the text is for.
-  const words = picking ? null : "Proposed whenever the image is placed. Images already on pages keep their own.";
+  // alt text kept; looking after the library, it says what the text is for;
+  // choosing a picture drawn as decorative, that it needs none there.
+  const words = decor ? "Behind a section the picture is decorative: it needs no alt text there. The library keeps this one for other places." : picking ? null : "Proposed whenever the image is placed. Images already on pages keep their own.";
   const hint = words !== null || saveWords !== null ? <>{words}{words !== null && saveWords !== null ? " " : null}{saveWords && <span className="md-saved">{saveWords}</span>}</> : null;
   return (
     <>
@@ -579,7 +589,7 @@ function Details({ id, item, now, picking, chosen, alt, decorative, altSave, ser
       <p className="md-name">{item.filename}</p>
       <p className="md-meta">{metaLine(item, now)}</p>
       <div className={`field${errors.length > 0 ? " field-error" : ""}`}>
-        <label className="label" htmlFor={`${id}-alt`}>Alt text{picking && <> <span className="req">required</span></>}</label>
+        <label className="label" htmlFor={`${id}-alt`}>Alt text{asks && <> <span className="req">required</span></>}</label>
         <textarea
           id={`${id}-alt`}
           className="input"
@@ -587,7 +597,7 @@ function Details({ id, item, now, picking, chosen, alt, decorative, altSave, ser
           placeholder="What does the image show?"
           value={alt}
           readOnly={!service && !picking}
-          aria-required={picking && !decorative ? true : undefined}
+          aria-required={asks && !decorative ? true : undefined}
           aria-invalid={errors.length > 0 ? true : undefined}
           aria-describedby={describedBy(`${id}-alt`, hint, errors)}
           onChange={(e) => onAlt(e.target.value)}
@@ -603,7 +613,7 @@ function Details({ id, item, now, picking, chosen, alt, decorative, altSave, ser
         {hint && <p className="hint" id={`${id}-alt-hint`}>{hint}</p>}
         <ErrorList id={`${id}-alt-error`} errors={errors} />
       </div>
-      {picking && (
+      {asks && (
         <label className="check">
           <input type="checkbox" checked={decorative} onChange={(e) => onDecorative(e.target.checked)} />
           <span>This image is decorative. Screen readers skip it and no alt text is needed.</span>

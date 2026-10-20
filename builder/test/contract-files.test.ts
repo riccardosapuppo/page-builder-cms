@@ -14,7 +14,7 @@ test("the real goldens are current: six fixtures or more, each with its golden, 
   const files = readContractFiles(repoRoot);
   expect(files.problems).toEqual([]);
   expect(files.fixtures).toEqual([
-    "collections.json", "edge.json", "empty.json", "free-colors.json", "free-type.json", "large-500.json",
+    "collections.json", "edge.json", "empty.json", "free-colors.json", "free-type.json", "large-500.json", "motion.json", "section-picture.json",
     "shop-no-price.json", "shop-off.json", "shop-other-collection.json", "shop-out-of-stock.json", "shop-page.json", "shop-sample.json", "shop.json",
     "site-own.json", "template.json", "traps-form.json", "traps-media.json", "traps-site.json", "traps-structure.json", "traps-text.json",
   ]);
@@ -79,7 +79,7 @@ describe("a planted fault makes the goldens unusable", () => {
   test("no manifest, and too few fixtures", () => {
     const root = copyOfContract();
     unlinkSync(join(root, "contract", "rendered", "manifest.json"));
-    for (const name of ["collections", "edge", "empty", "free-colors", "free-type", "site-own", "template", "traps-form", "shop", "shop-off", "shop-out-of-stock", "shop-no-price", "shop-other-collection", "shop-page", "shop-sample"]) {
+    for (const name of ["collections", "edge", "empty", "free-colors", "free-type", "motion", "section-picture", "site-own", "template", "traps-form", "shop", "shop-off", "shop-out-of-stock", "shop-no-price", "shop-other-collection", "shop-page", "shop-sample"]) {
       unlinkSync(join(root, "contract", "fixtures", `${name}.json`));
       unlinkSync(join(root, "contract", "rendered", `${name}.html`));
     }

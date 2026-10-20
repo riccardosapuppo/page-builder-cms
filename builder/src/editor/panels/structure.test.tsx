@@ -15,7 +15,7 @@ import { BlockPanel } from "./EditPanel.tsx";
 test("a section's columns and their widths change by the column commands", () => {
   const kit = editorKit({ document: page(), selection: "hero" });
   kit.render(<BlockPanel id="hero" />);
-  expect(groupNames()).toEqual(["Columns", "Background", "Spacing", "Shown on", "Name and link", "Advanced"]);
+  expect(groupNames()).toEqual(["Columns", "Background", "Spacing", "Motion", "Shown on", "Name and link", "Advanced"]);
   expect(screen.getByRole("radio", { name: "2:1" }).getAttribute("aria-checked")).toBe("true");
 
   fireEvent.click(screen.getByRole("radio", { name: "3:2" }));

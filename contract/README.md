@@ -101,8 +101,19 @@ the server writes for them. The editor's half is
     with every setting of every widget it may draw as, and a Collection
     list of the entry's own collection beside them, which leaves the
     entry out.
-  - `edge.json`: the smallest values, every icon, an empty section, a block
-    with no props and no style, spaces at both ends of a text.
+  - `section-picture.json`: a library picture behind a section, the first
+    section's loaded at once and every other's lazily, its veil, strength
+    and focus on every device beside a background; and what draws no
+    picture: an item the library no longer has, another site's address, a
+    picture that is no object or names no string, values the schema does
+    not list, a veil with no picture, a picture on a column.
+  - `motion.json`: each motion on every device, on sections, columns and
+    widgets, `none` written out; and the values the renderers refuse (an
+    unknown motion, an animation written out, markup, a number, true and
+    null), each no attribute and not in `data-style`.
+  - `edge.json`: the smallest values, every icon (the site's eight and
+    Lucide's forty), an empty section, a block with no props and no style,
+    spaces at both ends of a text.
   - `empty.json`: a page with no sections.
   - `large-500.json`: a page of exactly 500 blocks, written by
     `node tools/gen-contract-500.ts` from the repository root (seeded, so
@@ -174,8 +185,16 @@ valid, and a test says so.
   Free type is carried by `data-font-size`, `data-font-weight`,
   `data-letter-spacing`, `data-line-height` and `data-font-stretch`, and
   their `tablet-` and `phone-` forms, as free colours are by `data-bg`.
-  The classes the style becomes (`size-display phone-size-heading-1`) are
-  for the CSS; the comparison reads `data-style`.
+  A section's picture writes its veil, strength and focus as `data-veil`,
+  `data-veil-strength` and `data-focus` (and their device forms), only on
+  a section that draws its picture; any block writes its motion as
+  `data-motion`, `data-tablet-motion` and `data-phone-motion`. The classes
+  the style becomes (`size-display phone-size-heading-1`) are for the CSS;
+  the comparison reads `data-style`.
+- A section's picture is `<picture class="sw-picture">` holding an `<img>`
+  with an empty alt, its width and height, `decoding="async"`, and
+  `loading="eager"` for the first section of a page (or of a header) and
+  `lazy` for any other, before the section's columns.
 - Addresses go through RenderPolicy (`cms/app/models/render_policy.rb`):
   an address it refuses is dropped and the text around it kept. A video or
   map address is built from the provider and id, or the coordinates; no

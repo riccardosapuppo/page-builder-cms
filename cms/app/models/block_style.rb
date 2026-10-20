@@ -15,7 +15,9 @@
 # names (the schema's freeColor, "#1d4e6f") is no class: it is a data
 # attribute (free_color_data), which the stylesheet of the page's free
 # colours reads (FreeColors); so is free type (free_type_data), which the
-# stylesheet of the page's free type reads (FreeType). data-style repeats
+# stylesheet of the page's free type reads (FreeType); and so are a
+# section's picture's veil, strength and focus (picture_data) and every
+# block's motion (motion_data), which site.css draws. data-style repeats
 # the stored style,
 # canonically, for the contract between this renderer and the editor's: it
 # compares settings that would otherwise exist only as classes and CSS.
@@ -50,8 +52,17 @@ module BlockStyle
     "align" => "alignToken",
     "verticalAlign" => "verticalAlignToken",
     "visibility" => "visibilityToken",
-    "aspect" => "aspectToken"
+    "aspect" => "aspectToken",
+    "veil" => "veilToken",
+    "veilStrength" => "veilStrengthToken",
+    "focus" => "focusToken",
+    "motion" => "motionToken"
   }.freeze
+
+  # The keys a section's picture reads, each carried by a data attribute
+  # of its own (picture_data): its veil, the veil's strength, and the point
+  # of it kept in view. No class: site.css draws the attributes.
+  PICTURE_FAMILY = { "veil" => "veil", "veilStrength" => "veil-strength", "focus" => "focus" }.freeze
 
   DEFS = JSON.parse(File.read(Rails.application.config.x.schema_dir.join("block-document.schema.json"), encoding: "UTF-8")).fetch("$defs")
 
@@ -133,6 +144,30 @@ module BlockStyle
         text = free_type(style, device, key)
         data[device == "base" ? FreeType::FAMILY.fetch(key) : "#{device}-#{FreeType::FAMILY.fetch(key)}"] = text if text
       end
+    end
+  end
+
+  # A section's picture's settings as data attributes, named by the key's
+  # family and the device's prefix as a free colour's are ({ "veil" =>
+  # "dark", "tablet-veil-strength" => "strong", "phone-focus" => "top" }):
+  # only values the schema lists. The partial writes them only while the
+  # section draws its picture.
+  def picture_data(style)
+    PICTURE_FAMILY.each_with_object({}) do |(key, family), data|
+      DEVICES.each do |device|
+        token = value(style, device, key)
+        data[device == "base" ? family : "#{device}-#{family}"] = token if token
+      end
+    end
+  end
+
+  # How a block comes into view, on every device it says one, as data
+  # attributes ({ "motion" => "rise", "phone-motion" => "none" }), which
+  # site.css plays: every block's root carries them (BlocksHelper#block_root).
+  def motion_data(style)
+    DEVICES.each_with_object({}) do |device, data|
+      token = value(style, device, "motion")
+      data[device == "base" ? "motion" : "#{device}-motion"] = token if token
     end
   end
 

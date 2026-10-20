@@ -6,13 +6,14 @@
 // (each with the prefix of where it is drawn, OwnClassPrefix), then its
 // anchor as its id, then data-block-id, data-block-type and
 // data-style (the stored style, canonically, which the contract compares),
-// then the data its block type adds. A value that is null or undefined
-// writes no attribute, as Rails leaves out a nil.
+// how it comes into view (data-motion and its devices', ./style.ts,
+// motionData), then the data its block type adds. A value that is null or
+// undefined writes no attribute, as Rails leaves out a nil.
 import { createElement, useContext, type ReactNode } from "react";
 import { isObject } from "../document/json.ts";
 import { OwnClassPrefix, type Decoration, type RawBlock } from "./context.ts";
 import { anchor, siteClasses } from "./policy.ts";
-import { dataStyle } from "./style.ts";
+import { dataStyle, motionData } from "./style.ts";
 
 export function blockProps(block: RawBlock): Record<string, unknown> {
   return isObject(block.props) ? block.props : {};
@@ -68,6 +69,7 @@ export function BlockRoot({ as = "div", block, classes, data = {}, attributes = 
     "block-id": idText(block.id),
     "block-type": block.type,
     style: dataStyle(block.style),
+    ...motionData(block.style),
     ...data,
   };
   for (const [name, value] of Object.entries(allData)) if (value !== null && value !== undefined) own[`data-${name}`] = value;

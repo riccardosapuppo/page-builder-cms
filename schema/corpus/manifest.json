@@ -1139,6 +1139,18 @@
     "keyword": "pattern",
     "layer": "schema"
   },
+  "invalid/iconbox-icon-lucide-not-in-set.json": {
+    "rule": "the set holds forty of Lucide's icons, not all of them",
+    "pointer": "/sections/1/children/0/children/0/props/icon",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/iconbox-icon-lucide-prefixed.json": {
+    "rule": "a Lucide icon is named as the set names it, with no prefix",
+    "pointer": "/sections/1/children/0/children/0/props/icon",
+    "keyword": "enum",
+    "layer": "schema"
+  },
   "invalid/iconbox-icon-markup.json": {
     "rule": "an icon is a name, never markup",
     "pointer": "/sections/1/children/0/children/0/props/icon",
@@ -2003,6 +2015,60 @@
     "keyword": "uniqueAnchor",
     "layer": "rules"
   },
+  "invalid/section-picture-alt.json": {
+    "rule": "a section's picture is decorative: it holds no alt text, its words say what matters",
+    "pointer": "/sections/0/props/picture/alt",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/section-picture-in-style.json": {
+    "rule": "the picture is one for every device, a prop as an image's source is, not a style per device",
+    "pointer": "/sections/0/style/tablet/picture",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/section-picture-media-id-number.json": {
+    "rule": "a media id is a string",
+    "pointer": "/sections/0/props/picture/mediaId",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/section-picture-media-id-space.json": {
+    "rule": "a media id is letters, digits, _ and -",
+    "pointer": "/sections/0/props/picture/mediaId",
+    "keyword": "pattern",
+    "layer": "schema"
+  },
+  "invalid/section-picture-no-media-id.json": {
+    "rule": "a section's picture names a library item",
+    "pointer": "/sections/0/props/picture",
+    "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/section-picture-null.json": {
+    "rule": "no picture is the key's absence, not null",
+    "pointer": "/sections/0/props/picture",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/section-picture-on-column.json": {
+    "rule": "only a section has a picture",
+    "pointer": "/sections/0/children/0/props/picture",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/section-picture-string.json": {
+    "rule": "a picture is an object holding its media id, never the id alone",
+    "pointer": "/sections/0/props/picture",
+    "keyword": "type",
+    "layer": "schema"
+  },
+  "invalid/section-picture-url.json": {
+    "rule": "a section's picture is the library's: no address of another site",
+    "pointer": "/sections/0/props/picture/url",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
   "invalid/section-stack-boolean.json": {
     "rule": "where to stack is a name, not true or false",
     "pointer": "/sections/9/props/stack",
@@ -2237,6 +2303,24 @@
     "keyword": "minProperties",
     "layer": "schema"
   },
+  "invalid/style-focus-declaration.json": {
+    "rule": "a focus holds no CSS",
+    "pointer": "/sections/0/style/base/focus",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-focus-on-image.json": {
+    "rule": "an image is cropped by its shape; the focus is a section's picture's",
+    "pointer": "/sections/0/children/1/children/0/style/base/focus",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/style-focus-position.json": {
+    "rule": "a focus is one of nine points, never a position written out",
+    "pointer": "/sections/0/style/base/focus",
+    "keyword": "enum",
+    "layer": "schema"
+  },
   "invalid/style-key-not-for-type.json": {
     "rule": "a divider has no text size",
     "pointer": "/sections/8/children/0/children/0/style/base/textSize",
@@ -2247,6 +2331,30 @@
     "rule": "base is required",
     "pointer": "/sections/0/children/0/children/0/style",
     "keyword": "required",
+    "layer": "schema"
+  },
+  "invalid/style-motion-animation.json": {
+    "rule": "a motion is a name, never an animation written out",
+    "pointer": "/sections/0/children/0/children/0/style/base/motion",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-motion-boolean.json": {
+    "rule": "a motion is a name, not on or off",
+    "pointer": "/sections/0/children/0/children/0/style/phone/motion",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-motion-null.json": {
+    "rule": "no motion is the key's absence or none, never null",
+    "pointer": "/sections/0/children/0/style/base/motion",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-motion-unknown.json": {
+    "rule": "a block comes into view by none, rise, fade or zoom",
+    "pointer": "/sections/0/children/0/children/0/style/base/motion",
+    "keyword": "enum",
     "layer": "schema"
   },
   "invalid/style-null-value.json": {
@@ -2306,6 +2414,42 @@
   "invalid/style-unknown-token.json": {
     "rule": "values are token names",
     "pointer": "/sections/0/children/0/style/base/spaceInside",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-veil-free-color.json": {
+    "rule": "a veil is a name, never a colour of its own",
+    "pointer": "/sections/0/style/phone/veil",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-veil-on-column.json": {
+    "rule": "only a section's picture has a veil",
+    "pointer": "/sections/0/children/0/style/base/veil",
+    "keyword": "additionalProperties",
+    "layer": "schema"
+  },
+  "invalid/style-veil-slot.json": {
+    "rule": "a veil in the site's colour is the Text tone's: no other slot",
+    "pointer": "/sections/0/style/base/veil",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-veil-strength-number.json": {
+    "rule": "a veil's strength is light, medium or strong, never an opacity",
+    "pointer": "/sections/0/style/base/veilStrength",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-veil-strength-unknown.json": {
+    "rule": "a veil's strength is one of three",
+    "pointer": "/sections/0/style/base/veilStrength",
+    "keyword": "enum",
+    "layer": "schema"
+  },
+  "invalid/style-veil-unknown.json": {
+    "rule": "a veil is none, dark, light or the Text tone's",
+    "pointer": "/sections/0/style/base/veil",
     "keyword": "enum",
     "layer": "schema"
   },
@@ -2607,7 +2751,7 @@
     "rule": "every column-width preset, each on a section with as many columns as it has parts, fit ones included"
   },
   "valid/every-icon-and-provider.json": {
-    "rule": "every icon name, both video providers, map extremes"
+    "rule": "every icon name, the site's eight and Lucide's forty, both video providers, map extremes"
   },
   "valid/fields.json": {
     "rule": "the entry's title and a field by its key, a text drawn as a heading of every level and as a paragraph; every setting a field drawn as a heading, a text, an image or a button takes, free type included, on every device; a key of 64 characters"
@@ -2654,6 +2798,9 @@
   "valid/minimal.json": {
     "rule": "the smallest document: no description, no sections"
   },
+  "valid/motion-every-block.json": {
+    "rule": "how every type of block comes into view: none, rise, fade and zoom, each on every device, a section and a column too"
+  },
   "valid/nesting-at-limit.json": {
     "rule": "rich text with 12 nested lists: exactly 64 levels of JSON nesting, the most the rules allow"
   },
@@ -2671,6 +2818,9 @@
   },
   "valid/section-anchors-apart-from-ids.json": {
     "rule": "an anchor may be another block's id, since only anchors become ids on the page; sections without one never clash"
+  },
+  "valid/section-picture-every-setting.json": {
+    "rule": "a section's picture of the library under every veil at every strength, kept in view at every point, on every device; a picture with no veil; a veil, a strength and a focus kept on a section with no picture, read again by the next"
   },
   "valid/section-space-every-step.json": {
     "rule": "every value of spaceAbove and spaceBelow, spacing steps and section steps, in base and in both overrides"

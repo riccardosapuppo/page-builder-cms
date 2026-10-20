@@ -42,23 +42,27 @@ async function write(media: Array<{ id: string; alt: string }>, stopAt?: number)
   return { result: await writing, page: () => store };
 }
 
-test("with the library's first image: every section of the sample goes in, nothing left out", async () => {
+test("with the library's first image: every section of the sample goes in, nothing left out, the image behind its opening and two sections coming into view", async () => {
   const { result, page } = await write([{ id: "m1", alt: "Swimmers at the slipway" }]);
   expect(result).toMatchObject({ phase: "done", title: "Open day", notes: [], error: null });
   const doc = page()!.getState().document;
   expect(doc.sections.map((s) => s.props.label)).toEqual(["Opening", "The morning", "Questions", "Book"]);
-  expect(doc.sections[0]!.props.columnWidths).toBe("3:2");
-  expect(doc.sections[0]!.children[1]!.children[0]!.props).toEqual({ mediaId: "m1", alt: "Swimmers at the slipway" });
+  expect(doc.sections[0]!.props).toEqual({ label: "Opening", picture: { mediaId: "m1" } });
+  expect(doc.sections[0]!.style.base).toEqual({ background: "text", veil: "dark", veilStrength: "strong" });
+  expect(doc.sections[0]!.children).toHaveLength(1);
+  expect(doc.sections.map((s) => s.style.base.motion ?? null)).toEqual([null, "rise", "fade", null]);
   // How to book, in three steps, before the form.
   const book = doc.sections[3]!.children[0]!.children;
   expect(book.map((block) => block.type)).toEqual(["heading", "steps", "form"]);
   expect((book[1]!.props as { items: Array<{ title: string }> }).items.map((step) => step.title)).toEqual(["Fill in the form", "Hear back from us", "Come to the slipway"]);
 });
 
-test("with an empty library: one column to open with, still nothing left out", async () => {
+test("with an empty library: no picture to open with, a soft band instead, still nothing left out", async () => {
   const { result, page } = await write([]);
   expect(result.notes).toEqual([]);
-  expect(page()!.getState().document.sections[0]!.children).toHaveLength(1);
+  const opening = page()!.getState().document.sections[0]!;
+  expect(opening.props).toEqual({ label: "Opening" });
+  expect(opening.style.base).toEqual({ background: "soft" });
 });
 
 test("stopped as it streams: what came stays, nothing more", async () => {

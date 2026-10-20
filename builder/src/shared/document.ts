@@ -85,8 +85,33 @@ export type VisibilityToken = (typeof VISIBILITY_TOKENS)[number];
 export const TYPEFACE_TOKENS = ["body", "heading"] as const;
 export type TypefaceToken = (typeof TYPEFACE_TOKENS)[number];
 
-export const ICON_NAMES = ["sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info"] as const;
+// The site's eight icons, then forty of Lucide's under their Lucide names
+// (schema/icons.svg).
+export const SITE_OWN_ICONS = ["sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info"] as const;
+export const ICON_NAMES = [
+  ...SITE_OWN_ICONS,
+  "accessibility", "activity", "award", "baby", "bike", "book-open", "briefcase", "building-2", "calendar-days", "camera",
+  "circle-check", "dumbbell", "flame", "gift", "graduation-cap", "heart-pulse", "house", "leaf", "lightbulb", "mail",
+  "moon", "music", "palette", "phone", "rocket", "scissors", "shield-check", "shopping-bag", "square-parking", "star",
+  "sun", "target", "ticket", "timer", "trophy", "user-round", "users", "utensils", "wifi", "zap",
+] as const;
 export type IconName = (typeof ICON_NAMES)[number];
+
+// A section's picture (SectionPicture): the veil over it, how much of it
+// the veil hides, and the point of it kept in view where the section's box
+// crops it. Read only while the section draws a picture.
+export const VEIL_TOKENS = ["none", "dark", "light", "text"] as const;
+export type VeilToken = (typeof VEIL_TOKENS)[number];
+export const VEIL_STRENGTH_TOKENS = ["light", "medium", "strong"] as const;
+export type VeilStrengthToken = (typeof VEIL_STRENGTH_TOKENS)[number];
+export const FOCUS_TOKENS = ["center", "top", "bottom", "left", "right", "top-left", "top-right", "bottom-left", "bottom-right"] as const;
+export type FocusToken = (typeof FOCUS_TOKENS)[number];
+
+// How a block comes into view as the page scrolls to it: drawn by the
+// stylesheet alone, where the browser can and the visitor has not asked
+// for less motion.
+export const MOTION_TOKENS = ["none", "rise", "fade", "zoom"] as const;
+export type MotionToken = (typeof MOTION_TOKENS)[number];
 
 export const VIDEO_PROVIDERS = ["youtube", "vimeo"] as const;
 export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
@@ -117,6 +142,10 @@ export interface StyleTokens {
   aspect?: AspectToken;
   // A slot, or a free colour of the block's own (./free-colors.ts).
   background?: BackgroundToken | FreeColor;
+  // A section's picture's veil, its strength, and the point kept in view.
+  veil?: VeilToken;
+  veilStrength?: VeilStrengthToken;
+  focus?: FocusToken;
   color?: PaletteSlot | FreeColor;
   textSize?: TypeStep;
   typeface?: TypefaceToken;
@@ -129,11 +158,12 @@ export interface StyleTokens {
   letterWidth?: number;
   align?: AlignToken;
   verticalAlign?: VerticalAlignToken;
+  motion?: MotionToken;
   visibility?: VisibilityToken;
 }
 export const STYLE_TOKEN_KEYS = [
-  "spaceInside", "spaceBetween", "spaceAbove", "spaceBelow", "aspect", "background",
-  "color", "textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "align", "verticalAlign", "visibility",
+  "spaceInside", "spaceBetween", "spaceAbove", "spaceBelow", "aspect", "background", "veil", "veilStrength", "focus",
+  "color", "textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "align", "verticalAlign", "motion", "visibility",
 ] as const satisfies readonly (keyof StyleTokens)[];
 
 // The settings that take a token: every one but free type's.
@@ -149,47 +179,53 @@ export const STYLE_TOKENS = {
   spaceBelow: SECTION_SPACE_TOKENS,
   aspect: ASPECT_TOKENS,
   background: BACKGROUND_TOKENS,
+  veil: VEIL_TOKENS,
+  veilStrength: VEIL_STRENGTH_TOKENS,
+  focus: FOCUS_TOKENS,
   color: PALETTE_SLOTS,
   textSize: TYPE_STEPS,
   typeface: TYPEFACE_TOKENS,
   align: ALIGN_TOKENS,
   verticalAlign: VERTICAL_ALIGN_TOKENS,
+  motion: MOTION_TOKENS,
   visibility: VISIBILITY_TOKENS,
 } as const satisfies { readonly [K in TokenStyleKey]-?: readonly NonNullable<StyleTokens[K]>[] };
 
-const TEXT_STYLE = ["textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "color", "align", "visibility"] as const;
-const LINE_STYLE = ["color", "visibility"] as const;
-const PLAIN_STYLE = ["visibility"] as const;
-const NAV_STYLE = ["color", "align", "visibility"] as const;
+// Every block type takes motion; a section takes its picture's veil, its
+// strength and its focus too.
+const TEXT_STYLE = ["textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "color", "align", "motion", "visibility"] as const;
+const LINE_STYLE = ["color", "motion", "visibility"] as const;
+const PLAIN_STYLE = ["motion", "visibility"] as const;
+const NAV_STYLE = ["color", "align", "motion", "visibility"] as const;
 
 export const STYLE_KEYS_BY_TYPE = {
-  section: ["background", "spaceAbove", "spaceBelow", "spaceBetween", "visibility"],
-  column: ["background", "spaceInside", "spaceBetween", "textSize", "color", "align", "verticalAlign", "visibility"],
+  section: ["background", "veil", "veilStrength", "focus", "spaceAbove", "spaceBelow", "spaceBetween", "motion", "visibility"],
+  column: ["background", "spaceInside", "spaceBetween", "textSize", "color", "align", "verticalAlign", "motion", "visibility"],
   heading: TEXT_STYLE,
   text: TEXT_STYLE,
   quote: TEXT_STYLE,
-  image: ["aspect", "visibility"],
-  button: ["background", "color", "align", "visibility"],
+  image: ["aspect", "motion", "visibility"],
+  button: ["background", "color", "align", "motion", "visibility"],
   divider: LINE_STYLE,
   accordion: LINE_STYLE,
   spacer: PLAIN_STYLE,
   video: PLAIN_STYLE,
   map: PLAIN_STYLE,
   form: PLAIN_STYLE,
-  gallery: ["spaceBetween", "visibility"],
-  iconbox: ["color", "align", "visibility"],
-  stats: ["color", "align", "visibility"],
-  steps: ["color", "visibility"],
-  pricing: ["color", "visibility"],
-  collectionList: ["color", "visibility"],
+  gallery: ["spaceBetween", "motion", "visibility"],
+  iconbox: ["color", "align", "motion", "visibility"],
+  stats: ["color", "align", "motion", "visibility"],
+  steps: ["color", "motion", "visibility"],
+  pricing: ["color", "motion", "visibility"],
+  collectionList: ["color", "motion", "visibility"],
   logo: NAV_STYLE,
   menu: NAV_STYLE,
   // What every widget a field draws as takes: a heading's and a text's,
   // an image's crop, a button's colours. The panel offers those of the one
   // it draws as (../widgets/field/), and the renderers read only those.
-  field: ["textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "color", "align", "aspect", "background", "visibility"],
+  field: ["textSize", "typeface", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "color", "align", "aspect", "background", "motion", "visibility"],
   // A button's: its button is one (../widgets/addToCart/).
-  addToCart: ["background", "color", "align", "visibility"],
+  addToCart: ["background", "color", "align", "motion", "visibility"],
 } as const satisfies Record<BlockType, readonly (keyof StyleTokens)[]>;
 
 export type StyleKeyOf<T extends BlockType> = (typeof STYLE_KEYS_BY_TYPE)[T][number];
@@ -293,11 +329,19 @@ export interface BlockAttributes {
 export type ImageProps = ImageRef & BlockAttributes;
 export const IMAGE_PROPS_KEYS = [...IMAGE_REF_KEYS, "className", "anchor"] as const;
 
+// A picture of the library behind a section, covering it: one for every
+// device, as an image's source is; decorative, its words saying what
+// matters. Its veil, the veil's strength and the point kept in view are
+// the section's style (veil, veilStrength, focus).
+export interface SectionPicture {
+  mediaId: string;
+}
 export interface SectionProps extends BlockAttributes {
   // Shown only in the editor: the navigator and the history.
   label?: string;
   columnWidths?: ColumnWidthsToken;
   stack?: StackToken;
+  picture?: SectionPicture;
 }
 export interface HeadingProps extends BlockAttributes {
   level: HeadingLevel;
@@ -549,7 +593,7 @@ type KeyTable<T> = { readonly [K in keyof T]-?: K extends RequiredKeys<T> ? "req
 const OWN = { className: "optional", anchor: "optional" } as const satisfies KeyTable<BlockAttributes>;
 
 export const PROP_KEYS = {
-  section: { label: "optional", anchor: "optional", className: "optional", columnWidths: "optional", stack: "optional" },
+  section: { label: "optional", anchor: "optional", className: "optional", columnWidths: "optional", stack: "optional", picture: "optional" },
   column: OWN,
   heading: { level: "required", text: "required", href: "optional", ...OWN },
   text: { doc: "required", ...OWN },
@@ -576,6 +620,7 @@ export const PROP_KEYS = {
   addToCart: { label: "required", quantity: "required", ...OWN },
 } as const satisfies { [T in Exclude<BlockType, "image">]: KeyTable<PropsOf<T>> };
 
+export const SECTION_PICTURE_KEYS = { mediaId: "required" } as const satisfies KeyTable<SectionPicture>;
 export const LIST_ORDER_KEYS = { by: "required", direction: "required" } as const satisfies KeyTable<ListOrder>;
 export const LIST_FILTER_KEYS = { field: "required", value: "required" } as const satisfies KeyTable<ListFilter>;
 

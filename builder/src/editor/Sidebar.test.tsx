@@ -54,7 +54,7 @@ test("while a block is dragged its settings wait: what moves and where from, its
   expect(within(panel()).getByText("Settings wait while you move the block. Drop it, or press Esc.")).toBeTruthy();
   // Its groups, closed, each with its value, none a key or a field.
   const groups = [...panel().querySelectorAll(".grp")].map((group) => [group.querySelector(".grp-name")?.textContent, group.querySelector(".grp-sum-words")?.textContent]);
-  expect(groups).toEqual([["Button", "Join"], ["Colors", "Buoy, theme text"], ["Alignment", "Left"], ["Shown on", "Every device"], ["Advanced", "No class or anchor"]]);
+  expect(groups).toEqual([["Button", "Join"], ["Colors", "Buoy, theme text"], ["Alignment", "Left"], ["Motion", "None"], ["Shown on", "Every device"], ["Advanced", "No class or anchor"]]);
   expect(within(panel()).queryAllByRole("textbox")).toHaveLength(0);
   expect(within(panel()).queryAllByRole("button")).toHaveLength(0);
   expect(panel().querySelectorAll("[aria-expanded]")).toHaveLength(0);

@@ -10,7 +10,7 @@ import { BlockPanel } from "../../editor/panels/EditPanel.tsx";
 test("the divider's one setting is its first group, Line color, which sets it", () => {
   const kit = editorKit({ document: widgetPage(), selection: "divider" });
   kit.render(<BlockPanel id="divider" />);
-  expect(groupNames()).toEqual(["Line color", "Shown on", "Advanced"]);
+  expect(groupNames()).toEqual(["Line color", "Motion", "Shown on", "Advanced"]);
   expect(screen.getByRole("button", { name: "Line color" }).getAttribute("aria-expanded")).toBe("true");
   fireEvent.click(screen.getByRole("radio", { name: "Muted, Slate" }));
   expect(kit.block("divider")?.style).toEqual({ base: { color: "muted" } });

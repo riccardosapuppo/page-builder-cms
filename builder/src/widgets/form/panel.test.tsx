@@ -23,7 +23,7 @@ function change(label: string, value: string) {
 test("a new form asks for a name, an email address and a message, in two groups", () => {
   const kit = editorKit({ document: widgetPage(), selection: "form" });
   kit.render(<BlockPanel id="form" />);
-  expect(groupNames()).toEqual(["Fields", "Button and message", "Shown on", "Advanced"]);
+  expect(groupNames()).toEqual(["Fields", "Button and message", "Motion", "Shown on", "Advanced"]);
   expect(fields(kit).map((field) => [field.name, field.kind, field.required])).toEqual([["name", "text", true], ["email", "email", true], ["message", "textarea", false]]);
   expect((screen.getByLabelText("Field 1 label") as HTMLInputElement).value).toBe("Name");
   expect((screen.getByRole("switch", { name: "Field 1 must be filled in" }) as HTMLInputElement).checked).toBe(true);

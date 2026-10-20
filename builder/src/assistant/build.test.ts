@@ -337,6 +337,90 @@ test("what is not a plan's section is left out and said", () => {
   ]);
 });
 
+// A section's picture as a model writes it.
+const picture = (mediaId: string, more: Record<string, unknown> = {}) => ({ source: "library", mediaId, veil: "dark", strength: "medium", focus: "center", ...more });
+const words = { kind: "heading", level: 2, text: "Strength", display: false };
+
+test("a section's picture is the library's, under the plan's veil; the theme's own strength and focus are not written; and the store takes it", () => {
+  const { doc, builder, refused } = fill([
+    section("Opening", [column([{ kind: "heading", level: 1, text: "Train with us", display: true }])], { background: "text", picture: picture("m-pier", { veil: "dark", strength: "strong", focus: "top-right" }) }),
+    section("Middle", [column([words])], { picture: picture("m-buoy") }),
+    section("Light", [column([words])], { picture: picture("m-pier", { veil: "light", focus: "bottom" }) }),
+  ]);
+  expect(refused).toEqual([]);
+  expect(builder.notes).toEqual([]);
+  const [opening, middle, light] = doc.sections as [SectionBlock, SectionBlock, SectionBlock];
+  expect(opening.props).toEqual({ label: "Opening", picture: { mediaId: "m-pier" } });
+  expect(opening.style).toEqual({ base: { background: "text", veil: "dark", veilStrength: "strong", focus: "top-right" } });
+  expect(middle.style).toEqual({ base: { veil: "dark" } });
+  expect(light.style).toEqual({ base: { veil: "light", focus: "bottom" } });
+});
+
+test("a picture the library has not, or a source the plan has not, is none; a picture's veil and focus not of the plan are its own", () => {
+  const { doc, builder } = fill([
+    section("Gone", [column([words])], { picture: picture("m-not-there") }),
+    section("Made", [column([words])], { picture: { source: "made", prompt: "A gym at dawn", alt: "A gym" } }),
+    section("Word", [column([words])], { picture: "m-pier" }),
+    section("Odd", [column([words])], { picture: picture("m-pier", { veil: "none", strength: "light", focus: "20% 30%" }) }),
+  ]);
+  expect(doc.sections.map((s) => s.props.picture ?? null)).toEqual([null, null, null, { mediaId: "m-pier" }]);
+  expect(doc.sections.map((s) => s.style.base)).toEqual([{}, {}, {}, { veil: "dark" }]);
+  expect(builder.notes).toEqual(["Left out the picture of the section “Gone”: it is not in the site's library."]);
+});
+
+test("the words over a picture read through its veil, as the panel measures them: a veil too weak is made strong, and one that cannot be is made dark, said", () => {
+  // The theme's ink as the text veil: 3.8 to 1 at medium, 7.9 strong.
+  const { doc, builder } = fill([section("Ink", [column([words])], { picture: picture("m-pier", { veil: "text" }) })]);
+  expect(doc.sections[0]!.style.base).toEqual({ veil: "text", veilStrength: "strong" });
+  expect(builder.notes).toEqual(["Made the veil over the picture of the section “Ink” strong: its words would not read through a medium one."]);
+  // A site whose text is a pale grey: its text colour's veil reads at no strength.
+  const pale = fill([section("Pale", [column([words])], { picture: picture("m-pier", { veil: "text" }) })], { ...FACTS, ink: { text: "#bbbbbb", background: "#ffffff" } });
+  expect(pale.doc.sections[0]!.style.base).toEqual({ veil: "dark", veilStrength: "strong" });
+  expect(pale.builder.notes).toEqual(["Made the veil over the picture of the section “Pale” dark and strong: its words would not read through the text colour's one."]);
+});
+
+test("a section comes into view by its plan's motion, none written as nothing; a plan with neither picture nor motion builds as it did", () => {
+  const { doc } = fill([
+    section("Rises", [column([words])], { motion: "rise" }),
+    section("Still", [column([words])], { motion: "none" }),
+    section("Spins", [column([words])], { motion: "spin" }),
+    section("Old", [column([words])]),
+  ]);
+  expect(doc.sections.map((s) => s.style.base)).toEqual([{ motion: "rise" }, {}, {}, {}]);
+});
+
+test("a heading's section and the points it announces share one band: the points' section takes no space above, and only there", () => {
+  const point = (title: string) => column([{ kind: "iconbox", icon: "timer", title, text: "One sentence." }]);
+  const announce = (label: string, more: Record<string, unknown> = {}) => section(label, [column([{ kind: "heading", level: 2, text: label, display: false }, { kind: "text", paragraphs: ["Three reasons."] }], "center")], more);
+  const { doc, refused } = fill([
+    announce("Why"),
+    section("Points", [point("One"), point("Two"), point("Three")]),
+    // Another band after them, then points on another background than the heading's.
+    section("More points", [point("Four"), point("Five")], { background: "soft" }),
+    announce("Soft heading", { background: "soft" }),
+    section("Unlike", [point("Six"), point("Seven")], { background: "muted" }),
+    // A picture behind either, and a section of one column, keep their space.
+    announce("Pictured", { picture: picture("m-pier") }),
+    section("After a picture", [point("Eight"), point("Nine")]),
+    announce("Plain"),
+    section("One column", [point("Ten")]),
+  ]);
+  expect(refused).toEqual([]);
+  expect(doc.sections.map((s) => [s.props.label, s.style.base.spaceAbove ?? null])).toEqual([
+    ["Why", null], ["Points", "none"], ["More points", null], ["Soft heading", null], ["Unlike", null],
+    ["Pictured", null], ["After a picture", null], ["Plain", null], ["One column", null],
+  ]);
+});
+
+test("an icon box takes any icon of the site's set, Lucide's forty among them, and an icon it has not is the i", () => {
+  const { doc } = fill([section("Points", [
+    column([{ kind: "iconbox", icon: "dumbbell", title: "Strength", text: "Free weights." }]),
+    column([{ kind: "iconbox", icon: "heart-pulse", title: "Cardio", text: "Rowers and bikes." }]),
+    column([{ kind: "iconbox", icon: "kettlebell", title: "Classes", text: "Every day." }]),
+  ])]);
+  expect(doc.sections[0]!.children.map((c) => (c.children[0]!.props as { icon: string }).icon)).toEqual(["dumbbell", "heart-pulse", "info"]);
+});
+
 test("the plan's head: a title and a description cut to the page's lengths, or nothing", () => {
   const builder = new PlanBuilder(FACTS);
   expect(builder.title("Open day")).toBe("Open day");

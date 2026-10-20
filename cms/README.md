@@ -493,9 +493,37 @@ no warnings, the same morning).
   provider and id, or coordinates.
 - **Library images** are served through Active Storage's proxy route, on
   the page's own origin, with their width, height and alt text.
+- **A section's picture** (its `picture`, a library image's `mediaId`) is
+  an image the section holds before its content: `<picture
+  class="sw-picture">` around an `<img>` with an empty alt, since it only
+  decorates, its width and height, fetched at once for the page's first
+  section and lazily for any other (`render_blocks`' `first`). `site.css`
+  stretches it over the section and covers it (`object-fit: cover`), at
+  the point its `focus` keeps (the centre unless a side or a corner is
+  set), and lays the veil over it: `none`, `dark`, `light` or `text`, the
+  site's text colour, at a `veilStrength` of light, medium or strong (0.4,
+  0.6, 0.8). The section's words take the colours a dark band gives them
+  over a dark or text veil, a light band's over a light one. The veil,
+  strength and focus are `data-veil`, `data-veil-strength` and
+  `data-focus` (with their `tablet-` and `phone-` forms), written only on
+  a section that has its picture, never an inline style. A picture counts
+  as a use of its image, as an image block's does.
+- **Motion without script.** Any section, column or widget may carry a
+  `motion` (`rise`, `fade`, `zoom`; `none` undoes it on a device), written
+  as `data-motion` and its device forms. `site.css` plays it as the page
+  scrolls the block into view, with a scroll-driven animation
+  (`animation-timeline: view()`), only inside `@supports` for it and
+  `@media (prefers-reduced-motion: no-preference)`: a browser without
+  them, or a visitor who asked for less motion, gets the block as it
+  stands, never hidden. Buttons and the cards of icon boxes, pricing
+  plans and Collection lists lift a little under a pointer, under the
+  same media rule.
 - **Icon box icons** are drawn inline from `../schema/icons.svg`, rebuilt
   element by element with tag helpers; loading refuses anything but plain
-  shapes.
+  shapes. The set is the site's own eight, drawn for it on a 40 grid with
+  a shape in the accent, and forty of Lucide's on Lucide's 24 grid, kept
+  as Lucide draws them, under its ISC licence
+  (`../schema/LICENSE-Lucide.txt`).
 - **The header and footer** are the site's parts
   ([app/models/site_parts.rb](app/models/site_parts.rb)): documents made of
   sections, columns and blocks as a page is, kept as pages of their own
@@ -867,7 +895,9 @@ as they age, two weeks by default, or as the cache fills, 256 MB in
   block's holds what it draws of the entry, a price in the shop's
   currency included, and an Add to cart block's what it draws: a change
   of the currency redraws the prices and what holds them, and reads the
-  rest back.
+  rest back. A page's first section is keyed as the first too, since its
+  picture is fetched at once there and lazily anywhere else: a section
+  that becomes a page's first, or stops being it, is drawn again.
 
 An **entry's page** is cached the same way: its ETag and its whole page
 keyed on the entry as it went live (a digest of its published title,

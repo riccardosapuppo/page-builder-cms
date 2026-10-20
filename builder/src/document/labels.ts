@@ -106,6 +106,9 @@ export const STYLE_KEY_NAMES: Readonly<Record<keyof StyleTokens, string>> = {
   spaceBelow: "Space below",
   aspect: "Crop",
   background: "Background",
+  veil: "Veil",
+  veilStrength: "Veil strength",
+  focus: "Focus",
   color: "Color",
   textSize: "Text size",
   typeface: "Typeface",
@@ -116,6 +119,7 @@ export const STYLE_KEY_NAMES: Readonly<Record<keyof StyleTokens, string>> = {
   letterWidth: "Letter width",
   align: "Alignment",
   verticalAlign: "Vertical alignment",
+  motion: "Motion",
   visibility: "Visibility",
 };
 
@@ -129,7 +133,10 @@ const TOKEN_NAMES: Readonly<Record<string, string>> = {
   heading: "Headings",
   left: "Left", center: "Center", right: "Right",
   top: "Top", middle: "Middle", bottom: "Bottom",
+  "top-left": "Top left", "top-right": "Top right", "bottom-left": "Bottom left", "bottom-right": "Bottom right",
   visible: "Visible", hidden: "Hidden",
+  dark: "Dark", light: "Light", medium: "Medium", strong: "Strong",
+  rise: "Rise", fade: "Fade", zoom: "Zoom",
 };
 
 // A token as the style panel shows it: "L", "Heading 1", "16:9".
@@ -157,6 +164,8 @@ export function freeTypeWords(key: FreeTypeKey, text: string): string {
 // name ("Heading 1"), a value of free type in its words ("6 vw"), stored
 // (800) or as the page writes it ("800").
 export function settingWords(key: keyof StyleTokens, value: string | number): string {
+  // A veil in the site's Text tone is its colour, not words.
+  if (key === "veil" && value === "text") return "Text color";
   if (!isFreeTypeKey(key)) return tokenName(String(value));
   const text = freeTypeText(key, key !== "fontSize" && typeof value === "string" ? Number(value) : value);
   return text === null ? String(value) : freeTypeWords(key, text);
@@ -173,7 +182,7 @@ export function onDevice(device: Device): string {
 // "Changed Button text in Join". A key without a name here is told by the
 // widget's own name ("Changed Quote in Members' words").
 export const FIELD_NAMES: Readonly<Partial<Record<BlockType, Readonly<Record<string, string>>>>> = {
-  section: { label: "Section label", anchor: "Anchor id", stack: "Stacking" },
+  section: { label: "Section label", anchor: "Anchor id", stack: "Stacking", picture: "Picture" },
   heading: { level: "Heading level", href: "Heading link" },
   button: { label: "Button text", href: "Button link" },
   image: { alt: "Alt text", decorative: "Alt text" },

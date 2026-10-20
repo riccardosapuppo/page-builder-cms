@@ -31,25 +31,45 @@
 //   button, a plan's too, is drawn in the accent colour, a form's send key
 //   in the primary one (site.css, .sw-btn and .sw-btn-primary); such a
 //   section takes the soft background instead, and the note says so.
+// - A section's picture is one of the library's, by id, as an image is,
+//   under the veil the plan gives it, held to the contrast a colour is
+//   held to: where its words would not read through the veil at its
+//   strength over the worst of pictures (../shared/veil.ts), the veil is
+//   made strong, and failing that dark, and the note says so. Its motion
+//   is a token of the page's.
+// - A heading's section and the points it announces after it, side by side
+//   on the same band with no picture behind either, read as one band: the
+//   points' section takes no space above, so the theme's one gap stands
+//   between the two, not two.
 import {
   COLUMN_WIDTHS_BY_COUNT, type ColumnBlock, type ColumnWidthsToken, type FormField, type HeadingLevel, type ImageProps, type PageDocument, type Paragraph,
-  type PricingPlan, type RichTextBlock, type SectionBlock, type WidgetBlock,
+  type PricingPlan, type RichTextBlock, type SectionBlock, type SectionPicture, type StylePart, type WidgetBlock,
 } from "../shared/document.ts";
 import { allBlocks } from "../document/tree.ts";
+import { slotTone } from "../shared/site-tokens.ts";
 import { isLine } from "../shared/validate.ts";
+import { veilContrast, type SiteInk } from "../shared/veil.ts";
 import { checkLink } from "../editor/rich/link-check.ts";
 import type { MediaItem } from "../storage/adapter.ts";
-import { readSection, type PlanBlock, type PlanColumn, type PlanOffer, type PlanSection } from "./plan.ts";
+import { readSection, type PlanBlock, type PlanColumn, type PlanOffer, type PlanPicture, type PlanSection, type PlanStrength, type PlanVeil } from "./plan.ts";
 
 export interface SiteFacts {
-  // The site's library: an image block names one of these.
+  // The site's library: an image block names one of these, and so does a
+  // section's picture.
   media: readonly Pick<MediaItem, "id" | "alt">[];
   // The site's pages, by path ("/", "/winter-series").
   paths: readonly string[];
   // The person's own words, where an address of another site, an email or
   // a phone number must be written for a button to lead there.
   brief: string;
+  // The site's Text and Background tones, the words' colours over a veil;
+  // absent, the theme's own.
+  ink?: SiteInk;
 }
+
+// The contrast the words over a veiled picture must have at its worst, as
+// body text must (WCAG's AA, as the panel's check says it).
+const READABLE = 4.5;
 
 // A button whose section never came: a button block, or a plan's button,
 // with the plan's place in its pricing block and its name.
@@ -101,6 +121,10 @@ export class PlanBuilder {
   private readonly links: Array<{ id: string; anchor: string; label: string }> = [];
   private headings = { first: true, last: 0 };
   private forms = 0;
+  // The section put before this one: its background, whether a picture is
+  // behind it, and whether it announces what follows (one column that
+  // opens with a heading).
+  private previous: { background: string; picture: boolean; announces: boolean } | null = null;
   private readonly facts: SiteFacts;
 
   constructor(facts: SiteFacts) {
@@ -142,8 +166,57 @@ export class PlanBuilder {
     const widths = plan.widths === "equal" ? null : plan.widths;
     if (widths !== null && (COLUMN_WIDTHS_BY_COUNT[columns.length as 1 | 2 | 3 | 4] as readonly string[]).includes(widths)) props.columnWidths = widths as ColumnWidthsToken;
     const background = this.behindKeys(plan, columns);
-    const style: SectionBlock["style"] = { base: background === "none" ? {} : { background } };
-    return { id, type: "section", props, children: columns, style };
+    const picture = this.picture(plan, plan.picture);
+    // Points side by side after the heading's section that announces them,
+    // on its band, with no picture behind either, read as one band with
+    // it: they take no space above, the theme's one gap between the two.
+    const before = this.previous;
+    const announced = before !== null && before.announces && before.background === background && !before.picture && picture === null && columns.length >= 2;
+    const base: StylePart<"section"> = { ...(announced ? { spaceAbove: "none" } : {}), ...(background === "none" ? {} : { background }) };
+    if (picture !== null) {
+      props.picture = picture.props;
+      Object.assign(base, picture.style);
+    }
+    if (plan.motion !== "none") base.motion = plan.motion;
+    this.previous = { background, picture: picture !== null, announces: columns.length === 1 && columns[0]!.children[0]?.type === "heading" };
+    return { id, type: "section", props, children: columns, style: { base } };
+  }
+
+  // A section's picture as the page's: its props and the style it brings,
+  // or null for none. Where it comes from decides how it is found: the
+  // library's by id. (A picture made for the page, a later step, is one
+  // more source here.)
+  private picture(plan: PlanSection, asked: PlanPicture): { props: SectionPicture; style: StylePart<"section"> } | null {
+    switch (asked.source) {
+      case "none":
+        return null;
+      case "library": {
+        const item = this.facts.media.find((media) => media.id === asked.mediaId);
+        if (!item) {
+          this.notes.push(`Left out the picture of ${this.called(plan)}: it is not in the site's library.`);
+          return null;
+        }
+        const { veil, strength } = this.readable(plan, asked.veil, asked.strength);
+        // The theme's own strength and focus are not written.
+        return {
+          props: { mediaId: item.id },
+          style: { veil, ...(strength === "medium" ? {} : { veilStrength: strength }), ...(asked.focus === "center" ? {} : { focus: asked.focus }) },
+        };
+      }
+    }
+  }
+
+  // A veil the words read through at its worst, as the panel measures it:
+  // the plan's, else strong, else dark and strong, said.
+  private readable(plan: PlanSection, veil: PlanVeil, strength: PlanStrength): { veil: PlanVeil; strength: PlanStrength } {
+    const site = this.facts.ink ?? { text: slotTone("text").hex, background: slotTone("background").hex };
+    if (veilContrast(veil, strength, site).ratio >= READABLE) return { veil, strength };
+    if (veilContrast(veil, "strong", site).ratio >= READABLE) {
+      this.notes.push(`Made the veil over the picture of ${this.called(plan)} strong: its words would not read through a ${strength} one.`);
+      return { veil, strength: "strong" };
+    }
+    this.notes.push(`Made the veil over the picture of ${this.called(plan)} dark and strong: its words would not read through the ${veil === "text" ? "text colour's" : veil} one.`);
+    return { veil: "dark", strength: "strong" };
   }
 
   // The buttons on the page that lead to a section of this plan the page

@@ -15,9 +15,12 @@
 module BlocksHelper
   WIDGET_TYPES = %w[heading text image button divider spacer gallery video map iconbox quote accordion stats steps pricing collectionList form logo menu field addToCart].freeze
 
-  def render_document(document, media:, content: SiteContent::NONE, cached: false, answers: nil)
+  # eager_first: the first section the document draws loads its picture at
+  # once, as one at the top of the window does (a page's, a header's); a
+  # footer's waits, as every other section's does, until it nears the view.
+  def render_document(document, media:, content: SiteContent::NONE, cached: false, answers: nil, eager_first: true)
     sections = document.is_a?(Hash) ? document["sections"] : nil
-    render_blocks(sections, allow: %w[section], media: media, content: content, cached: cached, answers: answers)
+    render_blocks(sections, allow: %w[section], media: media, content: content, cached: cached, answers: answers, first: eager_first)
   end
 
   # The blocks of one level (a page's sections, a section's columns, a
@@ -37,19 +40,26 @@ module BlocksHelper
   # gets its own as the partial's answer, with the values kept and each
   # refusal by its field. Such a page is never cached, since a fragment
   # holds what every visitor sees.
-  def render_blocks(blocks, allow:, media:, content: SiteContent::NONE, cached: false, answers: nil)
+  #
+  # first: whether the first block drawn is the first of its document, the
+  # one whose picture loads at once (a section's, _section); its partial is
+  # given it as `first`, and its fragment's key says so, since the same
+  # subtree draws otherwise anywhere else on the page.
+  def render_blocks(blocks, allow:, media:, content: SiteContent::NONE, cached: false, answers: nil, first: false)
     raise ArgumentError, "a page drawn with a visitor's answers is never cached" if cached && answers
 
     blocks = Array(blocks).select { |block| block.is_a?(Hash) && allow.include?(block["type"]) }
+    leading = first ? blocks.first : nil
     if cached
       # One table of digests for each content a render draws with: a part
       # around an entry's page is drawn without its entry.
       @block_keys ||= {}.compare_by_identity
       keys = @block_keys[content] ||= PageCache::BlockKeys.new(content: content)
-      render(partial: "blocks/block", collection: blocks, as: :block, locals: { media: media, content: content }, cached: ->(block) { keys.call(block) }) || "".html_safe
+      render(partial: "blocks/block", collection: blocks, as: :block, locals: { media: media, content: content, first: leading },
+             cached: ->(block) { block.equal?(leading) ? [ *keys.call(block), "first" ] : keys.call(block) }) || "".html_safe
     else
       safe_join(blocks.map do |block|
-        locals = { block: block, media: media, content: content }
+        locals = { block: block, media: media, content: content, first: leading }
         locals.merge!(answers: answers, answer: answers[block["id"]]) if answers
         render(partial: "blocks/#{block['type']}", locals: locals)
       end)
@@ -59,7 +69,9 @@ module BlocksHelper
   # The attributes of a block's root element: its classes, the block's
   # classes of the site's own last, then its anchor as its id, then
   # data-block-id, data-block-type and data-style (the stored style, for the
-  # contract with the editor's renderer), then any data the partial adds.
+  # contract with the editor's renderer), how it comes into view
+  # (data-motion and its devices', BlockStyle.motion_data), then any data the
+  # partial adds.
   def block_root(block, classes, data: {}, **attributes)
     props = block_props(block)
     {
@@ -70,6 +82,7 @@ module BlocksHelper
         block_id: block["id"].to_s,
         block_type: block["type"],
         style: BlockStyle.data_attribute(block["style"]),
+        **BlockStyle.motion_data(block["style"]),
         **data
       }.compact
     }
@@ -126,6 +139,18 @@ module BlocksHelper
     return nil unless src
 
     tag.img(src: src, width: width, height: height, alt: block_image_alt(item), loading: "lazy", decoding: "async", **attributes)
+  end
+
+  # The picture behind a section (its props' picture, a library item by its
+  # mediaId), as [src, width, height], or nil when there is none to draw:
+  # no picture, one that names no library item, or an item media does not
+  # know (deleted from the library).
+  def section_picture(props, media)
+    picture = props["picture"]
+    return nil unless picture.is_a?(Hash) && picture["mediaId"].is_a?(String)
+
+    image = media.call(picture["mediaId"])
+    image && [ image.src, image.width, image.height ]
   end
 
   # An icon of schema/icons.svg, drawn inline and rebuilt with tag helpers.

@@ -3,9 +3,11 @@
 // schema allows, and a file breaking any rule stops the build, each rule
 // shown with a fault planted in a copy of the file.
 // @vitest-environment node
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { ICON_NAMES } from "../src/shared/document.ts";
+import { ICON_NAMES, SITE_OWN_ICONS } from "../src/shared/document.ts";
+import { schemaDir } from "./paths.ts";
 import { iconsFile, readIcons, siteIconsSource } from "./site-icons.ts";
 
 const real = readFileSync(iconsFile, "utf8");
@@ -13,13 +15,31 @@ const real = readFileSync(iconsFile, "utf8");
 test("the sprite gives one icon for every name of the schema's enum, each with its viewBox and shapes", () => {
   const icons = readIcons(real);
   expect(Object.keys(icons).sort()).toEqual([...ICON_NAMES].sort());
-  for (const [name, icon] of Object.entries(icons)) {
+  // The site's own eight, on their 40 grid, each with a shape in the accent.
+  for (const name of SITE_OWN_ICONS) {
+    const icon = icons[name]!;
     expect(icon.viewBox, name).toBe("0 0 40 40");
     expect(icon.shapes.length, name).toBeGreaterThan(1);
     expect(icon.shapes.some(([, attributes]) => attributes.class === "fill"), `${name}: a shape in the accent`).toBe(true);
   }
+  // Lucide's forty, on Lucide's 24 grid, outlines only, as Lucide draws them.
+  const lucide = ICON_NAMES.filter((name) => !(SITE_OWN_ICONS as readonly string[]).includes(name));
+  expect(lucide).toHaveLength(40);
+  for (const name of lucide) {
+    const icon = icons[name]!;
+    expect(icon.viewBox, name).toBe("0 0 24 24");
+    expect(icon.shapes.length, name).toBeGreaterThan(0);
+    expect(icon.shapes.some(([, attributes]) => "class" in attributes), `${name}: no shape of its own colour`).toBe(false);
+  }
   // The comments of the file are not part of any icon.
   expect(JSON.stringify(icons)).not.toContain("drawing language");
+});
+
+test("Lucide's licence stands beside the sprite", () => {
+  const licence = join(schemaDir, "LICENSE-Lucide.txt");
+  expect(existsSync(licence)).toBe(true);
+  expect(readFileSync(licence, "utf8")).toMatch(/^ISC License\n\nCopyright \(c\) for portions of Lucide/);
+  expect(real).toContain("lucide-static 0.460.0");
 });
 
 test("the module the bundle imports is the sprite as data, and no markup", () => {

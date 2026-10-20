@@ -11,7 +11,7 @@ import { validateDocument } from "../shared/validate.ts";
 import { clipboardText, copyBlock, readClipboard } from "./clipboard.ts";
 import {
   invertCommand, makeDelete, makeDuplicate, makeInsert, makeInsertItems, makeInsertSection, makeInsertUploadedImage, makeMove,
-  makeMoveItem, makePaste, makeRemoveItem, makeSetColumnCount, makeSetColumnWidths, makeSetItem, makeSetPage, makeSetProps,
+  makeMoveItem, makePaste, makeRemoveItem, makeSetColumnCount, makeSetColumnWidths, makeSetItem, makeSetPage, makeSetPicture, makeSetProps,
   makeSetStack, makeSetStyle, pasteTarget, REMOVE, type Command, type Made,
 } from "./commands.ts";
 import { applyCommand, type Applied } from "./reducer.ts";
@@ -398,6 +398,43 @@ describe("columns", () => {
     // Columns left to stack: the stacking stays; the widths of two go.
     const three = apply(stacked, makeSetColumnCount(stacked, "hero", 3, counter("x")));
     expect(block(three.document, "hero").props).toEqual({ label: "Hero", stack: "never" });
+  });
+});
+
+describe("a section's picture", () => {
+  test("a first picture comes with a dark veil, in one step, on a section that names none; replaced and taken out, the veil stays", () => {
+    const doc = page();
+    const set = apply(doc, makeSetPicture(doc, "hero", "gym1"));
+    expect(block(set.document, "hero").props).toMatchObject({ label: "Hero", columnWidths: "2:1", picture: { mediaId: "gym1" } });
+    // The picture after the section's own keys, as the schema lists them.
+    expect(Object.keys(block(set.document, "hero").props)).toEqual(["label", "columnWidths", "picture"]);
+    expect(block(set.document, "hero").style).toEqual({ base: { spaceAbove: "section-l", veil: "dark" } });
+    expect(set.command).toMatchObject({ kind: "props", label: "Set a picture behind Hero", subject: { id: "hero" } });
+
+    const replaced = apply(set.document, makeSetPicture(set.document, "hero", "gym2"));
+    expect(block(replaced.document, "hero").props).toMatchObject({ picture: { mediaId: "gym2" } });
+    expect(block(replaced.document, "hero").style).toEqual({ base: { spaceAbove: "section-l", veil: "dark" } });
+    expect(replaced.command.label).toBe("Replaced the picture of Hero");
+
+    const removed = apply(replaced.document, makeSetPicture(replaced.document, "hero", null));
+    expect(block(removed.document, "hero").props).not.toHaveProperty("picture");
+    expect(block(removed.document, "hero").style).toEqual({ base: { spaceAbove: "section-l", veil: "dark" } });
+    expect(removed.command.label).toBe("Removed the picture of Hero");
+    // A picture again: the veil the section keeps is the one it has.
+    const again = apply(removed.document, makeSetPicture(removed.document, "hero", "gym1"));
+    expect(block(again.document, "hero").style).toEqual({ base: { spaceAbove: "section-l", veil: "dark" } });
+  });
+
+  test("a veil of the section's own, on any device, is left as it is", () => {
+    const doc = apply(page(), makeSetStyle(page(), "join", "phone", { veil: "none" })).document;
+    const set = apply(doc, makeSetPicture(doc, "join", "gym1"));
+    expect(block(set.document, "join").style).toEqual({ base: {}, phone: { veil: "none" } });
+  });
+
+  test("only a section has one, and taking out none changes nothing", () => {
+    const doc = page();
+    expect(makeSetPicture(doc, "c1", "gym1")).toMatchObject({ ok: false, error: { reason: "unknown" } });
+    expect(makeSetPicture(doc, "hero", null)).toMatchObject({ ok: false, error: { reason: "nothing" } });
   });
 });
 

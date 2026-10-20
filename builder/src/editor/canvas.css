@@ -223,6 +223,11 @@
 @media (prefers-reduced-motion: reduce) {
   .clamp, .canvas .site .clamp > :is(button, .clamp-head), .canvas .site .ins, .invite .ins, .canvas .site .ins-empty { transition: none; }
 }
+/* The page itself stands still while it is edited: a block stays where it
+   is put. A block's motion (site.css, data-motion) and a card's or a
+   button's lift play in Preview and on the published page, never here. */
+.canvas .site :is([data-motion], [data-tablet-motion], [data-phone-motion]) { animation: none; }
+.canvas .site :is(.sw-btn, .sw-iconbox, .sw-plan, .sw-entry) { translate: none !important; transition: none; }
 
 /* ---------- 7. A finger ---------- */
 /* Where the pointer is coarse the toolbar's keys are 44 square, the

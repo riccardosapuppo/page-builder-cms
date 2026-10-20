@@ -93,9 +93,9 @@ test("the Field panel lists the title and the collection's fields, says what eac
   expect(screen.getByText("The day, written as 15 October 2026.")).toBeTruthy();
   expect(screen.queryByRole("radio", { name: "H2" })).toBeNull();
   // A day draws as a text: the text's own groups, not a heading's.
-  expect([...window.document.querySelectorAll(".grp .grp-name")].map((name) => name.textContent)).toEqual(["Field", "Size and color", "Type", "Alignment", "Shown on", "Advanced"]);
+  expect([...window.document.querySelectorAll(".grp .grp-name")].map((name) => name.textContent)).toEqual(["Field", "Size and color", "Type", "Alignment", "Motion", "Shown on", "Advanced"]);
   fireEvent.change(select, { target: { value: "picture" } });
-  expect([...window.document.querySelectorAll(".grp .grp-name")].map((name) => name.textContent)).toEqual(["Field", "Shape", "Shown on", "Advanced"]);
+  expect([...window.document.querySelectorAll(".grp .grp-name")].map((name) => name.textContent)).toEqual(["Field", "Shape", "Motion", "Shown on", "Advanced"]);
 });
 
 test("the Collection list panel chooses the collection, its order and what it keeps, says how many drafts it leaves out, and leads to them", () => {

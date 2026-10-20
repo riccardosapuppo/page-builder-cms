@@ -1,0 +1,303 @@
+{
+  "schemaVersion": 1,
+  "title": "Pictures",
+  "sections": [
+    {
+      "id": "pic-none",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": "bay-none"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-none-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "pic-none-h",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Under the none veil"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "text",
+          "veil": "none",
+          "veilStrength": "light",
+          "focus": "center"
+        },
+        "tablet": {
+          "veil": "dark",
+          "veilStrength": "strong",
+          "focus": "right"
+        },
+        "phone": {
+          "veilStrength": "light",
+          "focus": "bottom-right"
+        }
+      }
+    },
+    {
+      "id": "pic-dark",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": "bay-dark"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-dark-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "pic-dark-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Under the dark veil"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "text",
+          "veil": "dark",
+          "veilStrength": "medium",
+          "focus": "top"
+        },
+        "tablet": {
+          "veil": "light",
+          "veilStrength": "strong",
+          "focus": "top-left"
+        },
+        "phone": {
+          "veilStrength": "light",
+          "focus": "bottom-right"
+        }
+      }
+    },
+    {
+      "id": "pic-light",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": "bay-light"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-light-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "pic-light-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Under the light veil"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "text",
+          "veil": "light",
+          "veilStrength": "strong",
+          "focus": "bottom"
+        },
+        "tablet": {
+          "veil": "text",
+          "veilStrength": "strong",
+          "focus": "top-right"
+        },
+        "phone": {
+          "veilStrength": "light",
+          "focus": "bottom-right"
+        }
+      }
+    },
+    {
+      "id": "pic-text",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": "bay-text"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-text-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "pic-text-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Under the text veil"
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "background": "text",
+          "veil": "text",
+          "veilStrength": "medium",
+          "focus": "left"
+        },
+        "tablet": {
+          "veil": "none",
+          "veilStrength": "strong",
+          "focus": "bottom-left"
+        },
+        "phone": {
+          "veilStrength": "light",
+          "focus": "bottom-right"
+        }
+      }
+    },
+    {
+      "id": "pic-plain",
+      "type": "section",
+      "props": {
+        "label": "Plain picture",
+        "picture": {
+          "mediaId": "bay-plain"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-plain-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "pic-plain-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "A picture with no veil."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {}
+      }
+    },
+    {
+      "id": "pic-kept",
+      "type": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "pic-kept-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "pic-kept-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "A veil kept with no picture."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "veil": "dark",
+          "veilStrength": "strong",
+          "focus": "top"
+        }
+      }
+    }
+  ]
+}

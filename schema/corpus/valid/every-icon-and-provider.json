@@ -117,6 +117,536 @@
               }
             },
             {
+              "id": "ic-accessibility",
+              "type": "iconbox",
+              "props": {
+                "icon": "accessibility",
+                "title": "accessibility",
+                "text": "The accessibility icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-activity",
+              "type": "iconbox",
+              "props": {
+                "icon": "activity",
+                "title": "activity",
+                "text": "The activity icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-award",
+              "type": "iconbox",
+              "props": {
+                "icon": "award",
+                "title": "award",
+                "text": "The award icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-baby",
+              "type": "iconbox",
+              "props": {
+                "icon": "baby",
+                "title": "baby",
+                "text": "The baby icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-bike",
+              "type": "iconbox",
+              "props": {
+                "icon": "bike",
+                "title": "bike",
+                "text": "The bike icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-book-open",
+              "type": "iconbox",
+              "props": {
+                "icon": "book-open",
+                "title": "book-open",
+                "text": "The book-open icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-briefcase",
+              "type": "iconbox",
+              "props": {
+                "icon": "briefcase",
+                "title": "briefcase",
+                "text": "The briefcase icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-building-2",
+              "type": "iconbox",
+              "props": {
+                "icon": "building-2",
+                "title": "building-2",
+                "text": "The building-2 icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-calendar-days",
+              "type": "iconbox",
+              "props": {
+                "icon": "calendar-days",
+                "title": "calendar-days",
+                "text": "The calendar-days icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-camera",
+              "type": "iconbox",
+              "props": {
+                "icon": "camera",
+                "title": "camera",
+                "text": "The camera icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-circle-check",
+              "type": "iconbox",
+              "props": {
+                "icon": "circle-check",
+                "title": "circle-check",
+                "text": "The circle-check icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-dumbbell",
+              "type": "iconbox",
+              "props": {
+                "icon": "dumbbell",
+                "title": "dumbbell",
+                "text": "The dumbbell icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-flame",
+              "type": "iconbox",
+              "props": {
+                "icon": "flame",
+                "title": "flame",
+                "text": "The flame icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-gift",
+              "type": "iconbox",
+              "props": {
+                "icon": "gift",
+                "title": "gift",
+                "text": "The gift icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-graduation-cap",
+              "type": "iconbox",
+              "props": {
+                "icon": "graduation-cap",
+                "title": "graduation-cap",
+                "text": "The graduation-cap icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-heart-pulse",
+              "type": "iconbox",
+              "props": {
+                "icon": "heart-pulse",
+                "title": "heart-pulse",
+                "text": "The heart-pulse icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-house",
+              "type": "iconbox",
+              "props": {
+                "icon": "house",
+                "title": "house",
+                "text": "The house icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-leaf",
+              "type": "iconbox",
+              "props": {
+                "icon": "leaf",
+                "title": "leaf",
+                "text": "The leaf icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-lightbulb",
+              "type": "iconbox",
+              "props": {
+                "icon": "lightbulb",
+                "title": "lightbulb",
+                "text": "The lightbulb icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-mail",
+              "type": "iconbox",
+              "props": {
+                "icon": "mail",
+                "title": "mail",
+                "text": "The mail icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-moon",
+              "type": "iconbox",
+              "props": {
+                "icon": "moon",
+                "title": "moon",
+                "text": "The moon icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-music",
+              "type": "iconbox",
+              "props": {
+                "icon": "music",
+                "title": "music",
+                "text": "The music icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-palette",
+              "type": "iconbox",
+              "props": {
+                "icon": "palette",
+                "title": "palette",
+                "text": "The palette icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-phone",
+              "type": "iconbox",
+              "props": {
+                "icon": "phone",
+                "title": "phone",
+                "text": "The phone icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-rocket",
+              "type": "iconbox",
+              "props": {
+                "icon": "rocket",
+                "title": "rocket",
+                "text": "The rocket icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-scissors",
+              "type": "iconbox",
+              "props": {
+                "icon": "scissors",
+                "title": "scissors",
+                "text": "The scissors icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-shield-check",
+              "type": "iconbox",
+              "props": {
+                "icon": "shield-check",
+                "title": "shield-check",
+                "text": "The shield-check icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-shopping-bag",
+              "type": "iconbox",
+              "props": {
+                "icon": "shopping-bag",
+                "title": "shopping-bag",
+                "text": "The shopping-bag icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-square-parking",
+              "type": "iconbox",
+              "props": {
+                "icon": "square-parking",
+                "title": "square-parking",
+                "text": "The square-parking icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-star",
+              "type": "iconbox",
+              "props": {
+                "icon": "star",
+                "title": "star",
+                "text": "The star icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-sun",
+              "type": "iconbox",
+              "props": {
+                "icon": "sun",
+                "title": "sun",
+                "text": "The sun icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-target",
+              "type": "iconbox",
+              "props": {
+                "icon": "target",
+                "title": "target",
+                "text": "The target icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-ticket",
+              "type": "iconbox",
+              "props": {
+                "icon": "ticket",
+                "title": "ticket",
+                "text": "The ticket icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-timer",
+              "type": "iconbox",
+              "props": {
+                "icon": "timer",
+                "title": "timer",
+                "text": "The timer icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-trophy",
+              "type": "iconbox",
+              "props": {
+                "icon": "trophy",
+                "title": "trophy",
+                "text": "The trophy icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-user-round",
+              "type": "iconbox",
+              "props": {
+                "icon": "user-round",
+                "title": "user-round",
+                "text": "The user-round icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-users",
+              "type": "iconbox",
+              "props": {
+                "icon": "users",
+                "title": "users",
+                "text": "The users icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-utensils",
+              "type": "iconbox",
+              "props": {
+                "icon": "utensils",
+                "title": "utensils",
+                "text": "The utensils icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-wifi",
+              "type": "iconbox",
+              "props": {
+                "icon": "wifi",
+                "title": "wifi",
+                "text": "The wifi icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            },
+            {
+              "id": "ic-zap",
+              "type": "iconbox",
+              "props": {
+                "icon": "zap",
+                "title": "zap",
+                "text": "The zap icon."
+              },
+              "children": [],
+              "style": {
+                "base": {}
+              }
+            }
+          ],
+          "style": {
+            "base": {}
+          }
+        },
+        {
+          "id": "ic-2",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
               "id": "ic-youtube",
               "type": "video",
               "props": {

@@ -141,6 +141,26 @@ class Api::MediaTest < ActionDispatch::IntegrationTest
     assert MediaItem.exists?(public_id: id)
   end
 
+  test "a section's picture is a use of its image, as an image block's is: one the library does not have is refused at it, and deleting one a page uses is a 409 naming the page" do
+    upload(png_bytes)
+    id = json["id"]
+    page = create_page
+    pictured = ->(media_id) { page_document.tap { |document| document["sections"][0].merge!("props" => { "picture" => { "mediaId" => media_id } }, "style" => { "base" => { "veil" => "dark" } }) } }
+
+    save_draft page, revision: 0, document: pictured.call("gone")
+    assert_response :unprocessable_content
+    assert_equal [ [ "/document/sections/0/props/picture/mediaId", "mediaExists" ] ], error_pointers
+
+    save_draft page, revision: 0, document: pictured.call(id)
+    assert_response :ok
+    api :delete, "/api/media/#{id}"
+
+    assert_response :conflict
+    assert_equal "media_in_use", json["error"]
+    assert_equal [ { "id" => page.id, "title" => "Winter series", "slug" => "winter" } ], json.dig("usedBy", "pages")
+    assert MediaItem.exists?(public_id: id)
+  end
+
   test "an image nobody uses any more is deleted with its file" do
     upload(png_bytes)
     id = json["id"]

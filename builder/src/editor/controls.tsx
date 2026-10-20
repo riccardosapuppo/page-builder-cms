@@ -585,7 +585,7 @@ function useRadioKeys<T extends string | number>(choices: readonly Choice<T>[], 
   return { refs, onKeyDown, tabStop };
 }
 
-type RadioLook = "seg" | "seg-icons" | "swatches" | "steps" | "choices";
+type RadioLook = "seg" | "seg-icons" | "swatches" | "steps" | "choices" | "icon-grid" | "focus-grid";
 
 interface RadioGroupProps<T extends string | number> {
   choices: readonly Choice<T>[];
@@ -683,17 +683,20 @@ interface RadioFieldProps<T extends string | number> extends ScopeProps {
   rules?: FieldRules;
   // Said small above the choices (a colour's "Site colours").
   lead?: string;
+  // Drawn above the choices, in the field (an icon's search).
+  before?: ReactNode;
   // Drawn under the choices, in the field, before its notes and errors (a
   // colour's palette and picker).
   extra?: ReactNode;
 }
 
-export function RadioField<T extends string | number>({ label, choices, value, inUse, onChange, blockId, field, issues, required = false, hint, scope, scopeDevice, scopeTitle, note, look = "seg", rules, lead, extra }: RadioFieldProps<T>) {
+export function RadioField<T extends string | number>({ label, choices, value, inUse, onChange, blockId, field, issues, required = false, hint, scope, scopeDevice, scopeTitle, note, look = "seg", rules, lead, before, extra }: RadioFieldProps<T>) {
   const id = useId();
   const { errors, choose } = useChoice(onChange, blockId, field, rules, issues);
   return (
     <FieldFrame id={id} label={required ? <>{label} <span className="req">required</span></> : label} labelFor={false} hint={hint} scope={scope} scopeDevice={scopeDevice} scopeTitle={scopeTitle} note={note} errors={errors}>
       {lead && <p className="field-lead">{lead}</p>}
+      {before}
       <RadioGroup choices={choices} value={value} inUse={inUse} choose={choose} look={look} labelledBy={`${id}-label`} describedBy={describedBy(id, hint, errors, note)} invalid={errors.length > 0} required={required} />
       {extra}
     </FieldFrame>

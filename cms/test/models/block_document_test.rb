@@ -88,6 +88,16 @@ class BlockDocumentTest < ActiveSupport::TestCase
     assert_equal [ [ "", "type" ] ], errors.map { |e| [ e.pointer, e.keyword ] }
   end
 
+  test "media_refs finds a section's picture too, in the order of the pointers" do
+    document = page_document(widgets: [ image_block("i1", "aaa") ])
+    document["sections"][0]["props"] = { "picture" => { "mediaId" => "pic" } }
+
+    assert_equal [
+      [ "/sections/0/children/0/children/0/props/mediaId", "aaa" ],
+      [ "/sections/0/props/picture/mediaId", "pic" ]
+    ], BlockDocument.media_refs(document)
+  end
+
   test "media_refs finds every library image, in image blocks and in galleries" do
     gallery = {
       "id" => "g1", "type" => "gallery", "style" => { "base" => {} }, "children" => [],

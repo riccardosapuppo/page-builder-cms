@@ -8,6 +8,7 @@ require "test_helper"
 class PageCacheTest < ActionDispatch::IntegrationTest
   include PageCacheStore
   include ReleaseFolder
+  include StoredFiles
 
   CACHE_CONTROL = %w[max-age=0 must-revalidate public].freeze
 
@@ -382,6 +383,24 @@ class PageCacheTest < ActionDispatch::IntegrationTest
 
     assert_equal 0, found(calls)
     assert_equal 1 + 2 + 4 + 12, written(calls)
+  end
+
+  # A section's picture loads at once in the first section of a page, and as
+  # it nears the view anywhere else: the same section, moved, is drawn again.
+  test "a section with a picture is drawn again when it becomes the first of its page, or stops being it" do
+    item = MediaItem.create!(file: uploaded_blob(png_bytes(width: 3, height: 2)), width: 3, height: 2)
+    pictured = ->(id) { { "id" => id, "type" => "section", "props" => { "picture" => { "mediaId" => item.public_id } }, "style" => { "base" => { "veil" => "dark" } }, "children" => [ column_block("#{id}c", [ text_block("#{id}w", "Words of #{id}") ]) ] } }
+    document = ->(*ids) { { "schemaVersion" => 1, "title" => "Pictures", "sections" => ids.map { |id| pictured.call(id) } } }
+    page = published(document: document.call("a", "b"))
+    with_page_cache { get "/tides" }
+    assert_equal [ %w[a eager], %w[b lazy] ], css_select("main section").map { |section| [ section["data-block-id"], section.at_css("img")["loading"] ] }
+
+    publish(page, document.call("b", "a"))
+    calls = with_page_cache { get "/tides" }
+
+    assert_equal [ %w[b eager], %w[a lazy] ], css_select("main section").map { |section| [ section["data-block-id"], section.at_css("img")["loading"] ] }
+    assert_equal drawn_directly(document.call("b", "a")), main_of(response.body)
+    assert_equal 2, found(calls), "each section drawn again, around its column read from the cache"
   end
 
   test "the blocks of one page are reused by another that has the same ones" do

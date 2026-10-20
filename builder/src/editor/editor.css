@@ -661,6 +661,17 @@ textarea.input { resize: vertical; }
 .choices button[aria-checked="true"] { background: var(--graphite); color: var(--white); box-shadow: none; }
 .choices .sw-icon { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .choices .sw-icon .fill { fill: currentColor; stroke: none; opacity: .35; }
+/* The icon box's forty-eight icons (../widgets/iconbox/panel.tsx): a
+   search above a grid of keys, six to a row, each the icon alone, its name
+   its label and its tip. */
+.icon-find { margin-bottom: 8px; }
+.icon-find-input { width: 100%; }
+.icon-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.icon-grid button { display: grid; place-items: center; aspect-ratio: 1; border-radius: var(--r-control); background: var(--key); color: var(--graphite); box-shadow: inset 0 -1px 0 rgb(27 31 36 / .14); }
+.icon-grid button:hover { background: var(--alloy); }
+.icon-grid button[aria-checked="true"] { background: var(--graphite); color: var(--white); box-shadow: none; }
+.icon-grid .sw-icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.icon-grid .sw-icon .fill { fill: currentColor; stroke: none; opacity: .35; }
 
 .toggle { display: flex; align-items: center; gap: 10px; min-height: 34px; cursor: pointer; }
 .toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -671,6 +682,22 @@ textarea.input { resize: vertical; }
 .toggle input:focus-visible + .toggle-ui { outline: 2px solid var(--graphite); outline-offset: 2px; }
 
 .thumb-wide { display: block; width: 100%; aspect-ratio: 8 / 3; object-fit: cover; border-radius: var(--r-field); margin-bottom: 8px; background: var(--key); }
+/* A section's picture (panels/picture.tsx): Choose or Replace, and Remove
+   beside it; the point kept in view, nine keys in a square, each a frame
+   with a dot where its point stands. */
+.pic-keys { display: flex; flex-wrap: wrap; gap: 6px; }
+.pic-keys .btn { flex: 1 1 auto; justify-content: center; }
+.focus-grid { display: grid; grid-template-columns: repeat(3, 36px); gap: 4px; }
+.focus-grid button { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-control); background: var(--key); color: var(--graphite); box-shadow: inset 0 -1px 0 rgb(27 31 36 / .14); }
+.focus-grid button:hover { background: var(--alloy); }
+.focus-grid button[aria-checked="true"] { background: var(--graphite); color: var(--white); box-shadow: none; }
+.focus-pic { width: 20px; height: 20px; }
+.focus-pic rect { fill: none; stroke: currentColor; stroke-width: 1.5; opacity: .55; }
+.focus-pic circle { fill: currentColor; }
+@media (pointer: coarse) {
+  .focus-grid { grid-template-columns: repeat(3, 44px); }
+  .focus-grid button { width: 44px; height: 44px; }
+}
 
 /* Lists of items in a panel: a gallery's images, an accordion's questions. */
 .items { list-style: none; padding: 0; display: grid; gap: 8px; }
@@ -996,6 +1023,24 @@ li[aria-selected="true"] > .t-row > .i:not(.t-chev) { color: var(--mark-ink); }
   .canvas .site :is(.sec, .col).phone-bg-soft { --sec-bg: var(--sw-soft); }
   .canvas .site :is(.sec, .col).phone-bg-muted { --sec-bg: var(--sw-muted); }
 }
+/* A section drawing a picture under a veil (site.css): its columns stand
+   on the veil's colour, the band its words read on, since the picture
+   cannot be drawn under each: near-black under a dark veil, near-white
+   under a light one, the Text tone under its own; over the section's own
+   background on every device, as the veil is. With no veil, the band. */
+.canvas .site .sec[data-veil="dark"] { --sec-bg: #262626; }
+.canvas .site .sec[data-veil="light"] { --sec-bg: #F2F2F2; }
+.canvas .site .sec[data-veil="text"] { --sec-bg: var(--sw-text); }
+@container site (560px <= width < 800px) {
+  .canvas .site .sec[data-tablet-veil="dark"] { --sec-bg: #262626; }
+  .canvas .site .sec[data-tablet-veil="light"] { --sec-bg: #F2F2F2; }
+  .canvas .site .sec[data-tablet-veil="text"] { --sec-bg: var(--sw-text); }
+}
+@container site (width < 560px) {
+  .canvas .site .sec[data-phone-veil="dark"] { --sec-bg: #262626; }
+  .canvas .site .sec[data-phone-veil="light"] { --sec-bg: #F2F2F2; }
+  .canvas .site .sec[data-phone-veil="text"] { --sec-bg: var(--sw-text); }
+}
 .canvas-drag-widget .site .col { z-index: 2; background-color: var(--sec-bg); }
 .canvas-drag-widget .site .w { z-index: 3; }
 .ov-veil { inset: 0; z-index: 1; background: var(--shut); }
@@ -1298,10 +1343,13 @@ kbd.kc { min-width: 20px; height: 20px; padding: 0 5px; border-width: 1px 1px 2p
 }
 /* While the person types with a finger on a phone's window (a field, a
    text on the page), the keyboard takes the window's foot: the bar gives
-   it its room, and a sheet stands on the keyboard. */
+   it its room, and a sheet stands on the keyboard. The editor's root says
+   so (data-typing, layout-mode.ts's markTyping), and keeps saying it until
+   a tap that took the focus away has landed: the sheet stays under the
+   finger between the press and the release. */
 @media (pointer: coarse) {
-  .app[data-layout="narrow"]:has(:is(input:not([type=checkbox], [type=radio], [type=button], [type=submit], [type=reset], [type=range], [type=color], [type=file]), textarea, [contenteditable="true"]):focus) { --sheet-foot: 0px; }
-  .app[data-layout="narrow"]:has(:is(input:not([type=checkbox], [type=radio], [type=button], [type=submit], [type=reset], [type=range], [type=color], [type=file]), textarea, [contenteditable="true"]):focus) .phonebar { display: none; }
+  .app[data-layout="narrow"][data-typing] { --sheet-foot: 0px; }
+  .app[data-layout="narrow"][data-typing] .phonebar { display: none; }
 }
 /* While a key of Insert is dragged on a phone's window, its sheet gives way
    to the page it covers: unseen and out of the finger's way, but there, as

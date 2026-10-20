@@ -54,8 +54,13 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
 
   await block(page, "heading-0").click();
   await clean(page, "a heading selected, its first group open, the others closed with their values");
-  for (const name of ["Size and color", "Type", "Alignment", "Shown on", "Advanced"]) await openGroup(page, name);
+  for (const name of ["Size and color", "Type", "Alignment", "Motion", "Shown on", "Advanced"]) await openGroup(page, name);
   await clean(page, "every group of the heading open");
+  // An icon box's forty-eight icons, and their search.
+  await block(page, "iconbox-0").click();
+  await expect(page.getByRole("searchbox", { name: "Find an icon" })).toBeVisible();
+  await clean(page, "an icon box selected, its icons in a grid with their search");
+  await block(page, "heading-0").click();
   // Its toolbar's block menu; the "+" on its edge, its yellow line and the
   // picker beside it; the seam's "+" below its section, and its picker.
   await page.getByRole("button", { name: "Heading: block menu" }).click();
@@ -122,9 +127,11 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }])
   await device(page, "Desktop").click();
   // The section's own row: the middle of its item is a row inside it.
   await page.locator('.tree [data-row-id="first"] > .t-row').click();
+  await openGroup(page, "Background");
+  await openGroup(page, "Motion");
   await openGroup(page, "Shown on");
   await openGroup(page, "Name and link");
-  await clean(page, "a section's Shown on and Name and link");
+  await clean(page, "a section's Background with its picture's key, Motion, Shown on and Name and link");
   await drawer(page, "Insert");
   await clean(page, "the Insert drawer");
   await page.getByRole("complementary", { name: "Insert" }).getByRole("tab", { name: "Sections" }).click();

@@ -102,3 +102,39 @@ function subscribeFine(changed: () => void): () => void {
 // the window. With a finger, the editor never focuses one for the person
 // (a drawer's search, a picker's): it is a tap away when they want it.
 export const TYPING = "input:not([type=checkbox], [type=radio], [type=button], [type=submit], [type=reset], [type=range], [type=color], [type=file]), textarea, [contenteditable='true']";
+
+// While a field that takes typing has the focus, the editor's root says so
+// (data-typing): on a phone's window, with a finger, the keyboard takes the
+// window's foot, so the bar gives it its room and a sheet stands on the
+// keyboard (editor.css). The mark comes the moment such a field takes the
+// focus, and goes only a task after the focus has left them all: a tap's
+// press moves the focus, and its release and its click follow in the same
+// task, so the sheet under the finger stays where it is until the tap has
+// landed. (Drawn from the focus alone, the sheet moved down by the bar's
+// height between the press and the release, and the first tap on a
+// sheet's key, the brief's field focused, missed the key.)
+export function markTyping(root: HTMLElement, schedule: (then: () => void) => void = (then) => window.setTimeout(then, 0)): () => void {
+  let waiting = false;
+  const typingNow = () => document.activeElement instanceof Element && document.activeElement.matches(TYPING);
+  const later = () => {
+    if (waiting) return;
+    waiting = true;
+    schedule(() => {
+      waiting = false;
+      if (!root.isConnected) return;
+      root.toggleAttribute("data-typing", typingNow());
+    });
+  };
+  const focusIn = () => {
+    if (typingNow()) root.toggleAttribute("data-typing", true);
+    else later();
+  };
+  root.toggleAttribute("data-typing", typingNow());
+  document.addEventListener("focusin", focusIn);
+  document.addEventListener("focusout", later);
+  return () => {
+    document.removeEventListener("focusin", focusIn);
+    document.removeEventListener("focusout", later);
+    root.removeAttribute("data-typing");
+  };
+}

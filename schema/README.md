@@ -11,12 +11,16 @@ schema of a collection and its entries.
   engines (see [Collections](#collections), below).
 - [`tokens.json`](tokens.json): the design tokens taken from the approved
   mock in `design/`. The style settings of a block are names from this file.
-- [`icons.svg`](icons.svg): the eight icons an icon box may name, one
-  symbol per name of the schema's `icon` enum. Sunrise, buoys and cup are
-  the design's; calendar, clock, pin, globe and info are drawn in the same
-  language (a 40-unit grid, round strokes, one shape in the accent). The
-  server draws them inline on the published page, and the editor reuses
-  the file.
+- [`icons.svg`](icons.svg): the forty-eight icons an icon box may name,
+  one symbol per name of the schema's `icon` enum. The site's own eight
+  come first: sunrise, buoys and cup are the design's; calendar, clock,
+  pin, globe and info are drawn in the same language (a 40-unit grid,
+  round strokes, one shape in the accent). Forty of Lucide's follow, under
+  their Lucide names (`dumbbell`, `heart-pulse`, `user-round`), from
+  lucide-static 0.460.0 and kept as Lucide draws them (a 24-unit grid,
+  outlines in the text's colour), under the ISC licence in
+  [`LICENSE-Lucide.txt`](LICENSE-Lucide.txt). The server draws them inline
+  on the published page, and the editor reuses the file.
 - [`header-metrics.json`](header-metrics.json): the width of each letter
   of a menu's links in the site's typeface, what the fallback fonts of the
   machine that measured draw the letters of Greek, Cyrillic, Hebrew,
@@ -158,6 +162,16 @@ schema of a collection and its entries.
 - **Images** come from the media library (`{mediaId, alt}`) or from another
   site (`{url, alt}`), never both. Alt text is required unless the image is
   marked `"decorative": true`, and then it has none.
+- **A section may have a picture behind it**, `picture: {mediaId}`, a
+  library image and nothing else: no address of another site, no alt
+  text, since it only decorates (the words on it carry the meaning). It is
+  one picture on every device, as an image block's source is; how it is
+  drawn is style, per device: its `veil`, the `veilStrength` of it, and
+  the `focus`, the point of the picture kept in view (below). A column
+  takes none.
+- **Any block may come into view with a motion**, the style key `motion`
+  (below), which the published page plays as the page scrolls, without
+  script.
 - **Rich text** is the editor's own JSON, cut down to paragraphs, line
   breaks, bullet and numbered lists, and bold, italic and link marks. A
   run of text carries each mark at most once: two links on one run would
@@ -189,8 +203,12 @@ schema of a collection and its entries.
 | `letterSpacing` (the same) | -0.1 to 0.5, in em, two decimals at most (`decimals`) | |
 | `lineHeight` (the same) | 0.8 to 3, a multiple of the size, two decimals at most | |
 | `letterWidth` (the same) | 62.5 to 125, a percentage of the face's width axis, two decimals at most | Archivo's axis (62% to 125%); the body's face has none, and draws one width |
+| `veil` (sections only) | `none` `dark` `light` `text`: what lies over the section's picture, black, white or the site's Text slot; absent, none; read only while the section has its picture | `site.css` |
+| `veilStrength` (sections only) | `light` `medium` `strong`: how much of the veil, 0.4, 0.6 or 0.8; absent, medium | `site.css` |
+| `focus` (sections only) | `center` `top` `bottom` `left` `right` `top-left` `top-right` `bottom-left` `bottom-right`: the point of the picture kept in view where the section crops it; absent, the centre | `site.css` |
 | `align` | `left` `center` `right` | |
 | `verticalAlign` | `top` `middle` `bottom` | |
+| `motion` (every block) | `none` `rise` `fade` `zoom`: how the block comes into view as the page scrolls to it; absent, none, and `none` undoes it on a device. Never played for a visitor who asked for less motion, nor where the browser cannot tie it to the scroll | `site.css` |
 | `visibility` | `visible` `hidden` | |
 
 A block names a palette **slot**, never a tone: the site owner chooses the
@@ -403,29 +421,39 @@ pointer; ajv adds an `if` error at every block whose branch failed, which
 is dropped; and ajv reports `required` once per missing key where
 json_schemer reports the object once, so the errors are compared as sets.
 
-The run of 15 October 2026, with free type (Windows 10, Node 24.19.0,
-Ruby 3.4.11). The two sets that differ are the free colours' (14 October):
-where a background or a colour is neither a slot nor a free colour, ajv
-also reports the `anyOf` that holds both at the value, beside the `enum`
-both report.
+The run of 20 October 2026, with section pictures and motion (Windows 10,
+Node 24.19.0, Ruby 3.4.11). The five sets that differ are the free
+colours' (14 October) and a Collection list filter's value's (15
+October): where a value is none of the choices an `anyOf` holds (a slot
+or a free colour; a filter's true, false or option), ajv also reports
+the `anyOf` at the value, beside what both report.
 
 ```
-corpus:  ../corpus: 413 files (34 valid, 379 invalid, 0 upgrade); the manifest lists 413
-ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 413 results in 1.3 s
-json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 413 results in 22.9 s
+corpus:  ../corpus: 495 files (40 valid, 455 invalid, 0 upgrade); the manifest lists 495
+ajv:          ajv 8.20.0, JSON.parse, node v24.19.0; 495 results in 1.7 s
+json_schemer: json_schemer 2.5.0, json 3.0.2, ruby 3.4.11, bundle cms/Gemfile, regexp resolver ecma; 495 results in 33.5 s
 rules:   on; Ruby normalisation: on
-verdicts compared: 413; disagreements: 0; against the folder: 0; exceptions: 0
-expected {pointer, keyword} reported: ajv 379/379, json_schemer 379/379
-identical {pointer, keyword} sets: 377/379 invalid files (refused by the rules: 44/44; by the schema: 333/335)
-errors on the invalid files: ajv 1330, json_schemer 412; normalised: 915 ajv "if" errors dropped, 44 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 17, json_schemer 16
+verdicts compared: 495; disagreements: 0; against the folder: 0; exceptions: 0
+expected {pointer, keyword} reported: ajv 455/455, json_schemer 455/455
+identical {pointer, keyword} sets: 450/455 invalid files (refused by the rules: 44/44; by the schema: 406/411)
+errors on the invalid files: ajv 1598, json_schemer 494; normalised: 1098 ajv "if" errors dropped, 62 ajv additionalProperties pointers extended, repeated {pointer, keyword} merged: ajv 20, json_schemer 19
+  DIFFERENT SET invalid/list-filter-value-blank.json
+      only ajv:          /sections/7/children/0/children/1/props/filter/value anyOf
+      only json_schemer: -
+  DIFFERENT SET invalid/list-filter-value-number.json
+      only ajv:          /sections/7/children/0/children/1/props/filter/value anyOf
+      only json_schemer: -
+  DIFFERENT SET invalid/list-filter-value-too-long.json
+      only ajv:          /sections/7/children/0/children/1/props/filter/value anyOf
+      only json_schemer: -
   DIFFERENT SET invalid/style-null-value.json
       only ajv:          /sections/0/style/base/background anyOf
       only json_schemer: -
   DIFFERENT SET invalid/style-tone-not-slot.json
       only ajv:          /sections/0/children/0/children/0/style/base/color anyOf
       only json_schemer: -
-normalised documents with the same numbers and values: 369/369
-RESULT: PASS (413 files, 0 disagreements, 0 exceptions)
+normalised documents with the same numbers and values: 451/451
+RESULT: PASS (495 files, 0 disagreements, 0 exceptions)
 ```
 
 **The example site's pages and its collections' templates**, which live

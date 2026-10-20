@@ -7,7 +7,9 @@
 // being edited, so the page is edited in its place, below the header it
 // will have, and a click on one opens it. A header whose document says it
 // is sticky stays at the top of the window (data-sticky, site.css), which
-// holds its rows on each device (./policy.ts, stickyRows).
+// holds its rows on each device (./policy.ts, stickyRows). The header's
+// first section loads its picture at once, at the top of the window as the
+// page's first is; the footer's wait until they near the view.
 import { isObject } from "../document/json.ts";
 import { PageSections } from "./blocks.tsx";
 import type { RenderContext } from "./context.ts";
@@ -34,7 +36,7 @@ export function SitePart({ kind, document, ctx, locked = false }: { kind: PartKi
   const Element = kind;
   return (
     <Element className={`sw-${kind}`} data-sticky={stickyHeader(kind, document) ?? undefined} inert={locked || undefined} data-theme-part={locked ? kind : undefined}>
-      <PageSections document={document} ctx={ctx} />
+      <PageSections document={document} ctx={ctx} eagerFirst={kind === "header"} />
     </Element>
   );
 }

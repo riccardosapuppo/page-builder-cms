@@ -37,6 +37,32 @@ export function BlockImg({ item, image }: { item: Record<string, unknown>; image
   );
 }
 
+// The picture behind a section (its props' picture, a library item by its
+// mediaId), or null when there is none to draw: no picture, one that names
+// no library item, or an item the resolver does not know (deleted from the
+// library). The twin of section_picture in blocks_helper.rb.
+export function sectionPicture(props: Record<string, unknown>, media: MediaResolver): MediaImage | null {
+  const picture = Object.hasOwn(props, "picture") ? props.picture : undefined;
+  if (!isObject(picture) || typeof picture.mediaId !== "string") return null;
+  return media(picture.mediaId) ?? null;
+}
+
+// The <img> of a section's picture: decorative, its words saying what
+// matters; loaded at once for the first section of its document (a
+// page's, a header's), as it nears the view otherwise.
+export function PictureImg({ image, eager }: { image: MediaImage; eager: boolean }) {
+  return (
+    <img
+      src={image.src}
+      width={image.width ?? undefined}
+      height={image.height ?? undefined}
+      alt=""
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+    />
+  );
+}
+
 // The contract's resolver, the same rule as the server's for its goldens
 // (cms/test/support/contract_media.rb): every mediaId is
 // /media/<id>.png, 800 by 600, except an id starting with "missing", which

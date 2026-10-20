@@ -1,0 +1,522 @@
+{
+  "schemaVersion": 1,
+  "title": "Motion",
+  "sections": [
+    {
+      "id": "mo",
+      "type": "section",
+      "props": {
+        "anchor": "mo"
+      },
+      "children": [
+        {
+          "id": "mo-1",
+          "type": "column",
+          "props": {},
+          "children": [
+            {
+              "id": "mo-h",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Into view"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              }
+            },
+            {
+              "id": "mo-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Fading in."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              }
+            },
+            {
+              "id": "mo-i",
+              "type": "image",
+              "props": {
+                "mediaId": "mo-image",
+                "alt": "A swimmer at the buoy line"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "fade"
+                },
+                "tablet": {
+                  "motion": "zoom"
+                },
+                "phone": {
+                  "motion": "none"
+                }
+              }
+            },
+            {
+              "id": "mo-b",
+              "type": "button",
+              "props": {
+                "label": "Join",
+                "href": "#mo"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "zoom"
+                },
+                "tablet": {
+                  "motion": "none"
+                },
+                "phone": {
+                  "motion": "rise"
+                }
+              }
+            },
+            {
+              "id": "mo-d",
+              "type": "divider",
+              "props": {},
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              }
+            },
+            {
+              "id": "mo-s",
+              "type": "spacer",
+              "props": {
+                "size": "m"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              }
+            },
+            {
+              "id": "mo-g",
+              "type": "gallery",
+              "props": {
+                "items": [
+                  {
+                    "mediaId": "mo-g-1",
+                    "alt": "The bay"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "fade"
+                },
+                "tablet": {
+                  "motion": "zoom"
+                },
+                "phone": {
+                  "motion": "none"
+                }
+              }
+            },
+            {
+              "id": "mo-v",
+              "type": "video",
+              "props": {
+                "provider": "vimeo",
+                "videoId": "123456789",
+                "title": "A dawn swim"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "zoom"
+                },
+                "tablet": {
+                  "motion": "none"
+                },
+                "phone": {
+                  "motion": "rise"
+                }
+              }
+            },
+            {
+              "id": "mo-m",
+              "type": "map",
+              "props": {
+                "latitude": 54.4851,
+                "longitude": -0.6157,
+                "zoom": 15,
+                "label": "The slipway"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              }
+            },
+            {
+              "id": "mo-ib",
+              "type": "iconbox",
+              "props": {
+                "icon": "dumbbell",
+                "title": "Strength",
+                "text": "Weights and coaching."
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              }
+            },
+            {
+              "id": "mo-q",
+              "type": "quote",
+              "props": {
+                "text": "Cold water, warm tea."
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "fade"
+                },
+                "tablet": {
+                  "motion": "zoom"
+                },
+                "phone": {
+                  "motion": "none"
+                }
+              }
+            },
+            {
+              "id": "mo-a",
+              "type": "accordion",
+              "props": {
+                "items": [
+                  {
+                    "question": "How cold?",
+                    "answer": "Cold."
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "zoom"
+                },
+                "tablet": {
+                  "motion": "none"
+                },
+                "phone": {
+                  "motion": "rise"
+                }
+              }
+            },
+            {
+              "id": "mo-st",
+              "type": "stats",
+              "props": {
+                "items": [
+                  {
+                    "value": "12",
+                    "label": "Years"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              }
+            },
+            {
+              "id": "mo-sp",
+              "type": "steps",
+              "props": {
+                "items": [
+                  {
+                    "title": "Come",
+                    "text": "Any Saturday."
+                  },
+                  {
+                    "title": "Swim",
+                    "text": "With a coach."
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              }
+            },
+            {
+              "id": "mo-pr",
+              "type": "pricing",
+              "props": {
+                "plans": [
+                  {
+                    "name": "Trial",
+                    "price": "Free",
+                    "period": "",
+                    "text": "",
+                    "features": [],
+                    "button": {
+                      "label": "Book",
+                      "href": "#mo"
+                    },
+                    "featured": false,
+                    "badge": ""
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "fade"
+                },
+                "tablet": {
+                  "motion": "zoom"
+                },
+                "phone": {
+                  "motion": "none"
+                }
+              }
+            },
+            {
+              "id": "mo-cl",
+              "type": "collectionList",
+              "props": {
+                "collection": 1,
+                "count": 3,
+                "order": {
+                  "by": "publishedAt",
+                  "direction": "desc"
+                },
+                "layout": "grid",
+                "columns": 3,
+                "linkLabel": "Read more",
+                "emptyText": "Nothing here yet."
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "zoom"
+                },
+                "tablet": {
+                  "motion": "none"
+                },
+                "phone": {
+                  "motion": "rise"
+                }
+              }
+            },
+            {
+              "id": "mo-f",
+              "type": "form",
+              "props": {
+                "items": [
+                  {
+                    "name": "name",
+                    "kind": "text",
+                    "label": "Name",
+                    "required": true,
+                    "maxLength": 100
+                  }
+                ],
+                "submitLabel": "Send",
+                "confirmation": "Thank you."
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              }
+            },
+            {
+              "id": "mo-lo",
+              "type": "logo",
+              "props": {
+                "name": "Slack Water"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              }
+            },
+            {
+              "id": "mo-me",
+              "type": "menu",
+              "props": {
+                "label": "Main",
+                "items": [
+                  {
+                    "label": "Swims",
+                    "href": "/#swims"
+                  }
+                ]
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "fade"
+                },
+                "tablet": {
+                  "motion": "zoom"
+                },
+                "phone": {
+                  "motion": "none"
+                }
+              }
+            },
+            {
+              "id": "mo-fi",
+              "type": "field",
+              "props": {
+                "field": "title"
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "zoom"
+                },
+                "tablet": {
+                  "motion": "none"
+                },
+                "phone": {
+                  "motion": "rise"
+                }
+              }
+            },
+            {
+              "id": "mo-ac",
+              "type": "addToCart",
+              "props": {
+                "label": "Add to cart",
+                "quantity": false
+              },
+              "children": [],
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              }
+            }
+          ],
+          "style": {
+            "base": {
+              "motion": "fade"
+            },
+            "phone": {
+              "motion": "none"
+            }
+          }
+        }
+      ],
+      "style": {
+        "base": {
+          "motion": "rise"
+        },
+        "tablet": {
+          "motion": "zoom"
+        }
+      }
+    }
+  ]
+}

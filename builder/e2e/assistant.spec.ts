@@ -66,11 +66,48 @@ interface Asked {
   body: unknown;
 }
 
+// A plan written from the question, as a model writes one from what the
+// site has: a gym's page, its opening's picture the first image of the
+// library the question lists, its points the site's icons, two sections
+// coming into view, and its call to action said again at the end.
+const RICH_PLAN = (system: string): string => {
+  const library = /^ {2}- ([A-Za-z0-9_-]+): .* \((?:wide|tall|square|size unknown)/m.exec(system.slice(system.indexOf("Its library of images")))?.[1] ?? "none";
+  const point = (icon: string, title: string, text: string) => ({ align: "left", blocks: [{ kind: "iconbox", icon, title, text }] });
+  const none = { source: "none" };
+  const band = (label: string, anchor: string, background: string, columns: unknown[], more: Record<string, unknown> = {}) => ({ label, anchor, background, picture: none, motion: "none", widths: "equal", columns, ...more });
+  return JSON.stringify({
+    title: "Modern fitness gym",
+    description: "Strength, cardio, functional workouts and personal coaching, with a free first session.",
+    sections: [
+      band("Opening", "", "text", [{ align: "left", blocks: [
+        { kind: "heading", level: 1, text: "Train stronger, every week", display: true },
+        words("Strength training, cardio, functional workouts and coaching that keeps you going."),
+        { kind: "button", label: "Book a free session", target: "#join" },
+      ] }], { picture: { source: "library", mediaId: library, veil: "dark", strength: "strong", focus: "top" } }),
+      band("What we offer", "", "none", [{ align: "center", blocks: [{ kind: "heading", level: 2, text: "Everything under one roof", display: false }, words("Four ways to train, one membership.")] }], { motion: "fade" }),
+      band("Ways to train", "", "none", [
+        point("dumbbell", "Strength", "Free weights, racks and platforms."),
+        point("heart-pulse", "Cardio", "Rowers, bikes and treadmills."),
+        point("activity", "Functional", "Circuits that build everyday strength."),
+        point("user-round", "Coaching", "A coach who plans with you."),
+      ], { motion: "rise" }),
+      band("How it starts", "", "soft", [{ align: "left", blocks: [{ kind: "heading", level: 2, text: "How it starts", display: false }, { kind: "steps", steps: [
+        { title: "Book a session", text: "Choose a time that suits you." }, { title: "Meet your coach", text: "Talk through what you want." }, { title: "Start training", text: "With a plan of your own." },
+      ] }] }], { motion: "rise" }),
+      band("Join", "join", "primary", [{ align: "center", blocks: [{ kind: "heading", level: 2, text: "Your first session is on us", display: false }, { kind: "button", label: "Book a free session", target: "#join" }] }]),
+    ],
+  });
+};
+
+// The question's system words, as a string or as text blocks.
+const systemText = (system: unknown): string => (typeof system === "string" ? system : Array.isArray(system) ? system.map((part: { text?: unknown }) => (typeof part.text === "string" ? part.text : "")).join("\n") : "");
+
 // The answer to a question, by the schema it asks for: a page's plan, a
-// heading written again, an image described.
-function answerTo(body: { output_config?: { format?: { schema?: { required?: string[] } } } }, plan = PLAN): string {
+// heading written again, an image described. A plan may be written from
+// the question itself.
+function answerTo(body: { system?: unknown; output_config?: { format?: { schema?: { required?: string[] } } } }, plan: string | ((system: string) => string) = PLAN): string {
   const asked = body.output_config?.format?.schema?.required ?? [];
-  if (asked.includes("sections")) return plan;
+  if (asked.includes("sections")) return typeof plan === "string" ? plan : plan(systemText(body.system));
   if (asked.includes("decorative")) return JSON.stringify({ decorative: false, alt: "A small green and sand picture, split down the middle" });
   return JSON.stringify({ text: "Swim at first light" });
 }
@@ -78,7 +115,7 @@ function answerTo(body: { output_config?: { format?: { schema?: { required?: str
 // Anthropic's API answered here: the models a key may use, and one answer
 // streamed as server-sent events, a page's being `plan`; a key other than
 // `key` refused, as the API refuses it.
-async function anthropic(page: Page, key = ANTHROPIC_KEY, plan = PLAN): Promise<Asked[]> {
+async function anthropic(page: Page, key = ANTHROPIC_KEY, plan: string | ((system: string) => string) = PLAN): Promise<Asked[]> {
   const asked: Asked[] = [];
   await page.route("https://api.anthropic.com/**", async (route: Route) => {
     const request = route.request();
@@ -253,6 +290,62 @@ test("stats, steps and pricing land as blocks of their own; a plan's button whos
   await expect(box.getByText("Left out the link of the button “Join” of the plan “Family”: it would lead to an address the brief does not give.")).toBeVisible();
 });
 
+test("a page with rhythm: the library's picture behind its opening under a veil, points side by side with the site's new icons, sections coming into view, its call to action said again at the end", async ({ page, request }) => {
+  await anthropic(page, ANTHROPIC_KEY, RICH_PLAN);
+  await startOn(page, request, "Before the gym");
+  // An image in the library for the plan to name, uploaded and not placed.
+  await block(page, "h1").click();
+  await drawer(page, "Insert");
+  await page.getByRole("group", { name: "Basic" }).getByRole("button", { name: "Image" }).click();
+  const library = page.getByRole("dialog", { name: "Media library" });
+  const name = `${unique("gym-floor")}.png`;
+  await library.getByLabel("Images to upload").setInputFiles({ name, mimeType: "image/png", buffer: png(160, 90, (x, y) => (y < 45 ? [40, 44, 52] : x < 80 ? [180, 60, 40] : [230, 220, 200])) });
+  await expect(library.getByRole("radio", { name: `${name}, no alt text` })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+  await library.getByRole("textbox", { name: /^Alt text/ }).fill("The gym floor at opening");
+  await library.getByRole("textbox", { name: /^Alt text/ }).press("Enter");
+  await library.getByRole("button", { name: "Cancel" }).click();
+  await expect(library).toHaveCount(0);
+
+  const box = await assistant(page);
+  await box.getByLabel("Your Anthropic key").fill(ANTHROPIC_KEY);
+  await box.getByRole("button", { name: "Connect Anthropic" }).click();
+  await expect(box.getByText("key …a1b2")).toBeVisible();
+  await box.getByLabel("What is the page for?").fill("A modern fitness gym offering strength training, cardio, functional workouts, and personal coaching. The first session is free.");
+  await box.getByRole("button", { name: "Write the page" }).click();
+  await expect(box.getByRole("status").filter({ hasText: "5 sections on “Modern fitness gym”" })).toBeVisible();
+  await expect(box.getByText(/things? (was|were) left out/)).toHaveCount(0);
+
+  const sections = pageSections(page);
+  await expect(sections).toHaveCount(5);
+  // The opening: the library's picture behind it, decorative, loaded at
+  // once, under a strong dark veil kept at its top.
+  const opening = sections.first();
+  const picture = opening.locator(":scope > picture.sw-picture > img");
+  await expect(picture).toHaveAttribute("alt", "");
+  await expect(picture).toHaveAttribute("loading", "eager");
+  await expect(picture).toHaveJSProperty("complete", true);
+  expect(await picture.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(160);
+  await expect(opening).toHaveAttribute("data-veil", "dark");
+  await expect(opening).toHaveAttribute("data-veil-strength", "strong");
+  await expect(opening).toHaveAttribute("data-focus", "top");
+  // Its words in the colour that reads on the veil: the site's paper.
+  await expect(opening.locator("h1")).toHaveCSS("color", "rgb(255, 255, 255)");
+  // Points side by side, each its icon of the site's set, drawn inline.
+  const points = sections.nth(2).locator("[data-block-type='iconbox']");
+  await expect(points).toHaveCount(4);
+  expect(await points.evaluateAll((boxes) => boxes.map((box) => [box.getAttribute("data-icon"), box.querySelectorAll("svg.sw-icon > :is(path, circle, line, rect)").length > 0]))).toEqual([
+    ["dumbbell", true], ["heart-pulse", true], ["activity", true], ["user-round", true],
+  ]);
+  const tops = await points.evaluateAll((boxes) => boxes.map((box) => Math.round(box.getBoundingClientRect().top)));
+  expect(new Set(tops).size).toBe(1);
+  // Two sections come into view, the others are still; none moves on the canvas.
+  expect(await sections.evaluateAll((all) => all.map((section) => section.getAttribute("data-motion")))).toEqual([null, "fade", "rise", "rise", null]);
+  expect(await sections.nth(2).evaluate((section) => getComputedStyle(section).animationName)).toBe("none");
+  // The call to action, said again at the end, leads where the opening's does.
+  await expect(sections.locator("a.sw-btn")).toHaveText(["Book a free session", "Book a free session"]);
+  expect(await sections.locator("a.sw-btn").evaluateAll((links) => links.map((link) => link.getAttribute("href")))).toEqual(["#join", "#join"]);
+});
+
 test("OpenAI: the same page, asked with a strict schema; models it cannot use are not offered", async ({ page, request }) => {
   const asked = await openai(page);
   await startOn(page, request, "Before OpenAI");
@@ -303,6 +396,43 @@ test("with no key, the sample written by hand builds its page the same way, sect
   await expect(box.getByRole("status").filter({ hasText: "4 sections on “Open day”" })).toBeVisible({ timeout: 20_000 });
   await expect(box.getByText("A sample written by hand: no model was asked.")).toBeVisible();
   await expect(pageSections(page)).toHaveCount(4);
+});
+
+// On a phone, the keyboard up while the brief is written takes the bar's
+// room, and the sheet stands on it. The first tap on Write the page must
+// land: the sheet must not move from under the finger when the field lets
+// go of the focus, as it once did, by the bar's height, and the tap missed.
+test.describe("in a phone's window, 390 by 844, with a finger", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test("the first tap on Write the page, the brief's field focused, writes the page; the bar comes back after it", async ({ page, request }) => {
+    await anthropic(page);
+    await startOn(page, request, "Phone brief");
+    const bar = page.getByRole("navigation", { name: "Editor tools" });
+    await bar.getByRole("button", { name: "More", exact: true }).tap();
+    await page.getByRole("dialog", { name: "More" }).getByRole("button", { name: "Assistant" }).tap();
+    const box = page.getByRole("complementary", { name: "Assistant", exact: true });
+    await expect(box).toBeVisible();
+    await box.getByLabel("Your Anthropic key").fill(ANTHROPIC_KEY);
+    await box.getByLabel("Your Anthropic key").press("Enter");
+    await expect(box.getByText("key …a1b2")).toBeVisible();
+
+    // Writing the brief: the field has the focus, and the bar gives the
+    // keyboard its room.
+    const brief = box.getByLabel("What is the page for?");
+    await brief.tap();
+    await brief.fill("An open day at the club on Saturday 12 April, from 8 to 11.");
+    await expect(brief).toBeFocused();
+    await expect(bar).toBeHidden();
+    const write = box.getByRole("button", { name: "Write the page" });
+    await write.scrollIntoViewIfNeeded();
+    const before = (await write.boundingBox())!;
+
+    // One tap, where the key is.
+    await page.touchscreen.tap(before.x + before.width / 2, before.y + before.height / 2);
+    await expect(box.getByRole("status").filter({ hasText: "3 sections on “Open day”" })).toBeVisible({ timeout: 10_000 });
+    await expect(bar).toBeVisible();
+  });
 });
 
 test("the Assistant's drawer passes axe, asking for a key, with one kept, and after a page, with what it used and the total", async ({ page, request }) => {

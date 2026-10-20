@@ -35,10 +35,13 @@ interface ImagePickerProps {
   // An image of the library and no other: an entry's (./collections/),
   // which the collection schema takes from the library only.
   libraryOnly?: boolean;
+  // A picture drawn as decorative whatever it shows (a section's, behind
+  // its words): placing it asks for no alt text.
+  decorative?: boolean;
 }
 
-export function ImagePicker({ confirm, multiple = false, onPick, onClose, where, beside, libraryOnly = false }: ImagePickerProps) {
-  return <MediaLibrary purpose={{ kind: "pick", confirm, multiple, onPick, ...(where ? { where } : {}), ...(beside ? { beside } : {}), ...(libraryOnly ? { libraryOnly } : {}) }} onClose={onClose} />;
+export function ImagePicker({ confirm, multiple = false, onPick, onClose, where, beside, libraryOnly = false, decorative = false }: ImagePickerProps) {
+  return <MediaLibrary purpose={{ kind: "pick", confirm, multiple, onPick, ...(where ? { where } : {}), ...(beside ? { beside } : {}), ...(libraryOnly ? { libraryOnly } : {}), ...(decorative ? { decorative } : {}) }} onClose={onClose} />;
 }
 
 // ------------------------------------------------------------ video

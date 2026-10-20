@@ -87,6 +87,102 @@ body { background: #FFFFFF; -webkit-font-smoothing: antialiased; }
 .col { display: flex; flex-direction: column; gap: var(--col-gap); min-width: 0; }
 .w { min-width: 0; }
 
+/* ---------- A section's picture ---------- */
+/* A library image behind a section's columns, covering the section: the
+   section's first child (.sw-picture), decorative. It is cropped to the
+   section's box with the point its focus names kept in view (--picture-
+   focus, the centre unless the section names another), under a veil, a
+   layer of colour that keeps the words over it readable: none, dark
+   (black), light (white) or the site's Text tone, at a strength
+   (--picture-veil-strength: light .4, medium .6, strong .8; medium unless
+   the section names another). The section's root says each on every
+   device it has one (data-veil, data-veil-strength, data-focus, and their
+   tablet- and phone- forms), and only while it draws a picture.
+   The words take the colour that reads on the veil, as on a band of that
+   colour (tokens.css, bg-<slot>): on a dark veil and on the Text tone's,
+   the site's Background, headings, links, icons, captions and the focus
+   ring with them; on a light veil, the site's Text, all of them. They are
+   set on the row of the columns (.sw-inner), so None hands the words back
+   to the section's own background, and a column with a background of its
+   own keeps its own colours. The picture and the row are positioned, the
+   row after the picture, so it stands over it. */
+.sec:has(> .sw-picture) { position: relative; }
+.sw-picture { position: absolute; inset: 0; display: block; overflow: hidden; pointer-events: none; }
+.sw-picture img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: var(--picture-focus, 50% 50%); }
+.sw-picture::after { content: ""; position: absolute; inset: 0; background-color: var(--picture-veil, transparent); opacity: var(--picture-veil-strength, .6); }
+.sw-picture + .sw-inner { position: relative; }
+.sec[data-veil="none"] { --picture-veil: transparent; }
+.sec[data-veil="dark"] { --picture-veil: #000000; }
+.sec[data-veil="light"] { --picture-veil: #FFFFFF; }
+.sec[data-veil="text"] { --picture-veil: var(--sw-text); }
+.sec[data-veil-strength="light"] { --picture-veil-strength: .4; }
+.sec[data-veil-strength="medium"] { --picture-veil-strength: .6; }
+.sec[data-veil-strength="strong"] { --picture-veil-strength: .8; }
+.sec[data-focus="center"] { --picture-focus: 50% 50%; }
+.sec[data-focus="top"] { --picture-focus: 50% 0%; }
+.sec[data-focus="bottom"] { --picture-focus: 50% 100%; }
+.sec[data-focus="left"] { --picture-focus: 0% 50%; }
+.sec[data-focus="right"] { --picture-focus: 100% 50%; }
+.sec[data-focus="top-left"] { --picture-focus: 0% 0%; }
+.sec[data-focus="top-right"] { --picture-focus: 100% 0%; }
+.sec[data-focus="bottom-left"] { --picture-focus: 0% 100%; }
+.sec[data-focus="bottom-right"] { --picture-focus: 100% 100%; }
+.sec:is([data-veil="dark"], [data-veil="text"]) > .sw-inner { color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
+.sec:is([data-veil="dark"], [data-veil="text"]) > .sw-inner > * { --ring-color: var(--sw-background); }
+.sec[data-veil="light"] > .sw-inner { color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+.sec[data-veil="light"] > .sw-inner > * { --ring-color: var(--sw-text); }
+.sec[data-veil="none"] > .sw-inner { color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
+.sec[data-veil="none"] > .sw-inner > * { --ring-color: inherit; }
+/* A tablet's and a phone's own, at the width the page is drawn at. */
+@container site (560px <= width < 800px) {
+  .sec[data-tablet-veil="none"] { --picture-veil: transparent; }
+  .sec[data-tablet-veil="dark"] { --picture-veil: #000000; }
+  .sec[data-tablet-veil="light"] { --picture-veil: #FFFFFF; }
+  .sec[data-tablet-veil="text"] { --picture-veil: var(--sw-text); }
+  .sec[data-tablet-veil-strength="light"] { --picture-veil-strength: .4; }
+  .sec[data-tablet-veil-strength="medium"] { --picture-veil-strength: .6; }
+  .sec[data-tablet-veil-strength="strong"] { --picture-veil-strength: .8; }
+  .sec[data-tablet-focus="center"] { --picture-focus: 50% 50%; }
+  .sec[data-tablet-focus="top"] { --picture-focus: 50% 0%; }
+  .sec[data-tablet-focus="bottom"] { --picture-focus: 50% 100%; }
+  .sec[data-tablet-focus="left"] { --picture-focus: 0% 50%; }
+  .sec[data-tablet-focus="right"] { --picture-focus: 100% 50%; }
+  .sec[data-tablet-focus="top-left"] { --picture-focus: 0% 0%; }
+  .sec[data-tablet-focus="top-right"] { --picture-focus: 100% 0%; }
+  .sec[data-tablet-focus="bottom-left"] { --picture-focus: 0% 100%; }
+  .sec[data-tablet-focus="bottom-right"] { --picture-focus: 100% 100%; }
+  .sec:is([data-tablet-veil="dark"], [data-tablet-veil="text"]) > .sw-inner { color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
+  .sec:is([data-tablet-veil="dark"], [data-tablet-veil="text"]) > .sw-inner > * { --ring-color: var(--sw-background); }
+  .sec[data-tablet-veil="light"] > .sw-inner { color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+  .sec[data-tablet-veil="light"] > .sw-inner > * { --ring-color: var(--sw-text); }
+  .sec[data-tablet-veil="none"] > .sw-inner { color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
+  .sec[data-tablet-veil="none"] > .sw-inner > * { --ring-color: inherit; }
+}
+@container site (width < 560px) {
+  .sec[data-phone-veil="none"] { --picture-veil: transparent; }
+  .sec[data-phone-veil="dark"] { --picture-veil: #000000; }
+  .sec[data-phone-veil="light"] { --picture-veil: #FFFFFF; }
+  .sec[data-phone-veil="text"] { --picture-veil: var(--sw-text); }
+  .sec[data-phone-veil-strength="light"] { --picture-veil-strength: .4; }
+  .sec[data-phone-veil-strength="medium"] { --picture-veil-strength: .6; }
+  .sec[data-phone-veil-strength="strong"] { --picture-veil-strength: .8; }
+  .sec[data-phone-focus="center"] { --picture-focus: 50% 50%; }
+  .sec[data-phone-focus="top"] { --picture-focus: 50% 0%; }
+  .sec[data-phone-focus="bottom"] { --picture-focus: 50% 100%; }
+  .sec[data-phone-focus="left"] { --picture-focus: 0% 50%; }
+  .sec[data-phone-focus="right"] { --picture-focus: 100% 50%; }
+  .sec[data-phone-focus="top-left"] { --picture-focus: 0% 0%; }
+  .sec[data-phone-focus="top-right"] { --picture-focus: 100% 0%; }
+  .sec[data-phone-focus="bottom-left"] { --picture-focus: 0% 100%; }
+  .sec[data-phone-focus="bottom-right"] { --picture-focus: 100% 100%; }
+  .sec:is([data-phone-veil="dark"], [data-phone-veil="text"]) > .sw-inner { color: var(--sw-background); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: var(--sw-background); --mark-line: var(--sw-text); --caption-color: currentColor; }
+  .sec:is([data-phone-veil="dark"], [data-phone-veil="text"]) > .sw-inner > * { --ring-color: var(--sw-background); }
+  .sec[data-phone-veil="light"] > .sw-inner { color: var(--sw-text); --heading-color: currentColor; --link-color: currentColor; --icon-color: currentColor; --mark-disc: initial; --mark-line: initial; --caption-color: currentColor; }
+  .sec[data-phone-veil="light"] > .sw-inner > * { --ring-color: var(--sw-text); }
+  .sec[data-phone-veil="none"] > .sw-inner { color: inherit; --heading-color: inherit; --link-color: inherit; --icon-color: inherit; --mark-disc: inherit; --mark-line: inherit; --caption-color: inherit; }
+  .sec[data-phone-veil="none"] > .sw-inner > * { --ring-color: inherit; }
+}
+
 /* ---------- Heading ---------- */
 .w-heading {
   font-family: "Archivo", "Helvetica Neue", sans-serif;
@@ -846,4 +942,52 @@ a.sw-btn:not([href]) { cursor: default; }
   .sw-embed-bar-row { flex-direction: column; align-items: flex-start; gap: 10px; }
   .sw-embed-bar small { font-size: 14px; }
   .sw-play-dot { width: 52px; height: 52px; }
+}
+
+/* ---------- Motion: how a block comes into view ---------- */
+/* A block's motion (data-motion, and its tablet- and phone- forms, on its
+   root) plays as the page scrolls the block into view, driven by the
+   scroll itself, with no script (a scroll-driven animation, view()): rise,
+   up from a little below; fade; zoom, from a little smaller. It plays only
+   on a screen whose browser can (@supports) for a visitor who has not
+   asked for less motion; anywhere else nothing moves and nothing is
+   hidden. It runs while the block enters the window and is whole by the
+   time the block is three-fifths in (entry 60%), which the page always
+   reaches: scrolled to its end, every block has wholly entered, and one in
+   view as the page opens has entered already. It moves the block's
+   transform, never its translate, which a card's lift moves (below). */
+@media screen and (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    [data-motion="rise"] { animation: sw-rise both cubic-bezier(.2, .7, .3, 1); animation-timeline: view(); animation-range: entry 0% entry 60%; }
+    [data-motion="fade"] { animation: sw-fade both linear; animation-timeline: view(); animation-range: entry 0% entry 60%; }
+    [data-motion="zoom"] { animation: sw-zoom both cubic-bezier(.2, .7, .3, 1); animation-timeline: view(); animation-range: entry 0% entry 60%; }
+    @container site (560px <= width < 800px) {
+      [data-tablet-motion="none"] { animation: none; }
+      [data-tablet-motion="rise"] { animation: sw-rise both cubic-bezier(.2, .7, .3, 1); animation-timeline: view(); animation-range: entry 0% entry 60%; }
+      [data-tablet-motion="fade"] { animation: sw-fade both linear; animation-timeline: view(); animation-range: entry 0% entry 60%; }
+      [data-tablet-motion="zoom"] { animation: sw-zoom both cubic-bezier(.2, .7, .3, 1); animation-timeline: view(); animation-range: entry 0% entry 60%; }
+    }
+    @container site (width < 560px) {
+      [data-phone-motion="none"] { animation: none; }
+      [data-phone-motion="rise"] { animation: sw-rise both cubic-bezier(.2, .7, .3, 1); animation-timeline: view(); animation-range: entry 0% entry 60%; }
+      [data-phone-motion="fade"] { animation: sw-fade both linear; animation-timeline: view(); animation-range: entry 0% entry 60%; }
+      [data-phone-motion="zoom"] { animation: sw-zoom both cubic-bezier(.2, .7, .3, 1); animation-timeline: view(); animation-range: entry 0% entry 60%; }
+    }
+  }
+}
+@keyframes sw-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes sw-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sw-zoom { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+
+/* ---------- A card's lift ---------- */
+/* Under a pointer that hovers, a card (an icon box, a pricing plan, a
+   Collection list's card) and a button rise a little as it comes over
+   them, a plan's shadow deepening; not for a visitor who asked for less
+   motion. Moved by translate, apart from the transform a block's motion
+   plays. A featured plan keeps its ring. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .sw-btn, .sw-iconbox, .sw-plan, .sw-entry { transition: translate .2s cubic-bezier(.2, .7, .3, 1), box-shadow .2s cubic-bezier(.2, .7, .3, 1); }
+  :is(a.sw-btn[href], button.sw-btn):hover, .sw-iconbox:hover, .sw-entry:hover { translate: 0 -2px; }
+  .sw-plan:hover { translate: 0 -3px; box-shadow: 0 18px 30px -22px color-mix(in srgb, currentColor 60%, transparent); }
+  .sw-plan[data-featured]:hover { box-shadow: 0 0 0 1px var(--plan-ring), 0 18px 30px -22px color-mix(in srgb, currentColor 60%, transparent); }
 }

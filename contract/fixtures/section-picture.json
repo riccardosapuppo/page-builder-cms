@@ -1,0 +1,962 @@
+{
+  "schemaVersion": 1,
+  "title": "Section pictures",
+  "description": "A picture of the library behind a section: the first section's loaded at once, every other's as it nears the view; its veil, strength and focus on every device as data attributes, beside a background; and what the renderers draw nothing for: an item the library no longer has, a picture of another site's address, a picture that is no object or names no string, values the schema does not list (a veil that blurs, a strength as a number, a focus written out, markup), a veil with no picture, and a picture on a column, which takes none. A media id that would close its attribute is written as text.",
+  "sections": [
+    {
+      "id": "pic-first",
+      "type": "section",
+      "props": {
+        "label": "Hero",
+        "picture": {
+          "mediaId": "gym-floor"
+        }
+      },
+      "style": {
+        "base": {
+          "background": "text",
+          "veil": "dark",
+          "veilStrength": "strong",
+          "focus": "top"
+        },
+        "tablet": {
+          "veil": "light",
+          "focus": "bottom-left"
+        },
+        "phone": {
+          "veilStrength": "light",
+          "focus": "bottom-right"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-first-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-first-h",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "text": "Train with people who know you"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-first-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Strength, cardio and coaching under one roof."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-first-b",
+              "type": "button",
+              "props": {
+                "label": "Start a trial",
+                "href": "#trial"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-text",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": "rowing"
+        }
+      },
+      "style": {
+        "base": {
+          "background": "soft",
+          "veil": "text",
+          "veilStrength": "medium",
+          "focus": "center"
+        },
+        "tablet": {
+          "veil": "none"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-text-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-text-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-text-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-text-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "pic-text-2",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {
+              "background": "background"
+            }
+          },
+          "children": [
+            {
+              "id": "pic-text-2-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Two columns over one picture."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-none",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": "stretch"
+        }
+      },
+      "style": {
+        "base": {
+          "veil": "none",
+          "focus": "left"
+        },
+        "phone": {
+          "veil": "dark",
+          "veilStrength": "medium",
+          "focus": "right"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-none-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-none-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-none-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-none-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-plain",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": "weights"
+        }
+      },
+      "style": {
+        "base": {}
+      },
+      "children": [
+        {
+          "id": "pic-plain-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-plain-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-plain-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-plain-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-gone",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": "missing-gym"
+        }
+      },
+      "style": {
+        "base": {
+          "veil": "dark",
+          "veilStrength": "strong",
+          "focus": "top-left"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-gone-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-gone-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-gone-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-gone-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-url",
+      "type": "section",
+      "props": {
+        "picture": {
+          "url": "https://images.example.org/gym.jpg"
+        }
+      },
+      "style": {
+        "base": {
+          "veil": "dark"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-url-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-url-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-url-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-url-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-string",
+      "type": "section",
+      "props": {
+        "picture": "gym-floor"
+      },
+      "style": {
+        "base": {
+          "veil": "light"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-string-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-string-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-string-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-string-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-number",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": 42
+        }
+      },
+      "style": {
+        "base": {
+          "veil": "light"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-number-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-number-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-number-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-number-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-null",
+      "type": "section",
+      "props": {
+        "picture": null
+      },
+      "style": {
+        "base": {
+          "veil": "dark"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-null-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-null-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-null-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-null-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-traps",
+      "type": "section",
+      "props": {
+        "picture": {
+          "mediaId": "x\" onerror=\"alert(1)"
+        }
+      },
+      "style": {
+        "base": {
+          "veil": "blur",
+          "veilStrength": 0.6,
+          "focus": "20% 30%"
+        },
+        "tablet": {
+          "veil": "<script>alert(1)</script>",
+          "veilStrength": "heavy",
+          "focus": "top;background:url(x)"
+        },
+        "phone": {
+          "veil": "dark",
+          "veilStrength": "strong",
+          "focus": "top-right"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-traps-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-traps-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-traps-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-traps-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-kept",
+      "type": "section",
+      "props": {},
+      "style": {
+        "base": {
+          "veil": "dark",
+          "veilStrength": "strong",
+          "focus": "bottom"
+        }
+      },
+      "children": [
+        {
+          "id": "pic-kept-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {}
+          },
+          "children": [
+            {
+              "id": "pic-kept-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-kept-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-kept-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pic-column",
+      "type": "section",
+      "props": {},
+      "style": {
+        "base": {}
+      },
+      "children": [
+        {
+          "id": "pic-column-1",
+          "type": "column",
+          "props": {
+            "picture": {
+              "mediaId": "gym-floor"
+            }
+          },
+          "style": {
+            "base": {
+              "veil": "dark",
+              "focus": "top"
+            }
+          },
+          "children": [
+            {
+              "id": "pic-column-1-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Strength and conditioning"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-column-1-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Coached sessions, six days a week."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            },
+            {
+              "id": "pic-column-1-b",
+              "type": "button",
+              "props": {
+                "label": "Book a session",
+                "href": "#book"
+              },
+              "style": {
+                "base": {}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

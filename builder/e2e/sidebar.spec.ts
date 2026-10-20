@@ -24,7 +24,7 @@ test("closed groups say their values, and which are open is kept in this browser
   const sidebar = page.getByRole("complementary", { name: "Settings" });
   const head = (name: string) => sidebar.getByRole("button", { name, exact: true });
   await block(page, "h").click();
-  await expect(sidebar.locator(".grp-name")).toHaveText(["Text", "Size and color", "Type", "Alignment", "Shown on", "Advanced"]);
+  await expect(sidebar.locator(".grp-name")).toHaveText(["Text", "Size and color", "Type", "Alignment", "Motion", "Shown on", "Advanced"]);
   await expect(head("Text")).toHaveAttribute("aria-expanded", "true");
   await expect(head("Size and color")).toHaveAccessibleDescription("Heading 2, theme color");
   await expect(head("Type")).toHaveAccessibleDescription("Preset");

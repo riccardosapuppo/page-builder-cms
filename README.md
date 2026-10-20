@@ -26,6 +26,10 @@ staying at the top of the window if asked. Site style sets the site's
 palette, colours of its own included, its type scale and its letter width,
 over which a heading, a text or a quote may set its own size (in px, rem
 or vw), weight, letter spacing, line height and letter width;
+a section may have a picture of the library behind it, under a veil that
+keeps its words readable, and any block may come into view with a motion
+as the page scrolls, drawn by the stylesheet alone and never for a visitor
+who asked for less motion;
 any block may take CSS classes and an anchor of its own, which the site's
 custom CSS styles, inside the site and nowhere else. Rails keeps each page
 as one JSON document that a single schema describes, with one draft and
@@ -69,7 +73,10 @@ and the browser sends it to that provider and nowhere else. The Assistant
 can do three things:
 
 - **Write a page from a brief.** The page grows on the canvas section by
-  section, and each section is a step in History.
+  section, and each section is a step in History. It is planned with
+  rhythm: a strong opening, a picture of the library behind it when one
+  fits, bands that alternate, points side by side as icon boxes, one call
+  to action said again at the end, and a little motion.
 - **Write a heading or a text again**: shorter, warmer, in another
   language.
 - **Describe an image** of the library, from the picture itself.
@@ -1066,3 +1073,6 @@ MIT, see [LICENSE](LICENSE). Developed by Riccardo Sapuppo. The fonts in
 next to its font. The editor's icons are Lucide's, under the ISC License:
 the files it draws them from are in `builder/src/editor/lucide/`, with the
 licence beside them, and it is quoted in `builder/src/editor/icons.tsx`.
+Forty of the icon box's forty-eight icons are Lucide's too, in
+`schema/icons.svg`, with the licence beside them in
+`schema/LICENSE-Lucide.txt`.

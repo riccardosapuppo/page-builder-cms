@@ -12,7 +12,9 @@
 // colour a background or a colour names (../shared/free-colors.ts) is no
 // class: it is a data attribute (freeColorData), which the stylesheet of
 // the page's free colours reads; so is free type (../shared/free-type.ts,
-// freeTypeData), which the stylesheet of the page's free type reads.
+// freeTypeData), which the stylesheet of the page's free type reads; and so
+// are a section's picture's veil, strength and focus (pictureData) and
+// every block's motion (motionData), which site.css draws.
 import { isObject } from "../document/json.ts";
 import { COLUMN_WIDTHS_TOKENS, DEVICES, SPACE_TOKENS, STACK_TOKENS, STYLE_TOKENS, type StyleTokens } from "../shared/document.ts";
 import { isFreeColor, type FreeColor } from "../shared/free-colors.ts";
@@ -20,8 +22,12 @@ import { FREE_TYPE_KEYS, freeTypeText, isFreeTypeKey, type FreeTypeKey } from ".
 
 export type StyleKey = keyof StyleTokens;
 
+// The settings drawn by data attribute rather than by class: a section's
+// picture's, and motion.
+type AttributeKey = "veil" | "veilStrength" | "focus" | "motion";
+
 // The class family of each key that becomes a class of its own.
-const FAMILY: Readonly<Record<Exclude<StyleKey, "visibility" | FreeTypeKey>, string>> = {
+const FAMILY: Readonly<Record<Exclude<StyleKey, "visibility" | FreeTypeKey | AttributeKey>, string>> = {
   spaceInside: "pad",
   spaceBetween: "gap",
   spaceAbove: "space-above",
@@ -110,6 +116,40 @@ export function freeTypeData(style: unknown): Record<string, string> {
   return data;
 }
 
+// The keys a section's picture reads, each carried by a data attribute of
+// its own: its veil, the veil's strength, the point of it kept in view. No
+// class: site.css draws the attributes.
+export const PICTURE_FAMILY = { veil: "veil", veilStrength: "veil-strength", focus: "focus" } as const;
+
+// A section's picture's settings as data attributes, named by the key's
+// family and the device's prefix as a free colour's are ({ veil: "dark",
+// "tablet-veil-strength": "strong", "phone-focus": "top" }): only values the
+// schema lists. The section writes them only while it draws its picture.
+// The twin of BlockStyle.picture_data.
+export function pictureData(style: unknown): Record<string, string> {
+  const data: Record<string, string> = {};
+  for (const [key, family] of Object.entries(PICTURE_FAMILY)) {
+    for (const device of DEVICES) {
+      const value = styleValue(style, device, key);
+      if (value !== null) data[device === "base" ? family : `${device}-${family}`] = value;
+    }
+  }
+  return data;
+}
+
+// How a block comes into view, on every device it says one, as data
+// attributes ({ motion: "rise", "phone-motion": "none" }), which site.css
+// plays: every block's root carries them (./block-root.tsx). The twin of
+// BlockStyle.motion_data.
+export function motionData(style: unknown): Record<string, string> {
+  const data: Record<string, string> = {};
+  for (const device of DEVICES) {
+    const value = styleValue(style, device, "motion");
+    if (value !== null) data[device === "base" ? "motion" : `${device}-motion`] = value;
+  }
+  return data;
+}
+
 // The free colours of a background or a colour as data attributes for
 // BlockRoot's data, named by the key's family and the device's prefix as a
 // class is ({ bg: "#1d4e6f", "tablet-bg": "#c2352b" }): a divider's colour
@@ -135,7 +175,7 @@ interface ClassOptions {
 
 // The classes for one key: the base value (or the fallback), then the
 // tablet and phone overrides with their prefix.
-export function styleClasses(style: unknown, key: Exclude<StyleKey, "visibility" | FreeTypeKey>, options: ClassOptions = {}): string[] {
+export function styleClasses(style: unknown, key: Exclude<StyleKey, "visibility" | FreeTypeKey | AttributeKey>, options: ClassOptions = {}): string[] {
   const family = options.family ?? FAMILY[key];
   const classes: string[] = [];
   for (const device of DEVICES) {

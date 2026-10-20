@@ -36,13 +36,25 @@ guarantee that holds.
 
 1. **The question.** [`prompts.ts`](prompts.ts) asks for a plan in a small
    schema of its own, [`plan.ts`](plan.ts): sections of columns of blocks,
-   each block a kind and its words. The question carries the site's palette,
-   its library of images, its pages and its icons.
+   each block a kind and its words, and each section its background, its
+   picture and its motion. The question carries the site's palette, its
+   library of images (each with its shape, wide or tall, and its size), its
+   pages and its icons, the forty-eight of the icon box with the words each
+   stands for ([`../widgets/iconbox/words.ts`](../widgets/iconbox/words.ts)).
    - **What the model writes.** The plan names only the blocks a model can
      fill without inventing facts: headings, text, lists, buttons, the
      library's images, icon boxes, quotations, questions and answers,
      steps, one form, dividers. Stats and pricing too, but their figures
      and prices only as the brief gives them, which the question says.
+   - **A page with rhythm.** The question asks for a strong opening, bands
+     that alternate their background and how much they hold, points side
+     by side as icon boxes under a heading that announces them, figures
+     and steps where the brief gives them, one clear call to action said
+     again at the end, and motion with restraint: an opening that stands
+     still, a few bands that rise or fade in. A section may have a picture
+     of the library behind it, by id, with a veil and the point of it to
+     keep in view; at most two on a page. Its rules on facts are the same
+     as before.
    - **What it leaves out.** No videos, maps or galleries, because their
      ids and coordinates would be made up. No logo or menu either: those
      belong to the site's header and footer.
@@ -65,6 +77,20 @@ guarantee that holds.
      words and leads to the top of the page (`#`), as a new button does.
    - **Images and forms.** An image is the library's, by id. A form's
      fields get names from their labels, and a page takes one form.
+   - **A section's picture** is the library's too, by id, or none: an id
+     the library does not have leaves the picture out, with a note. Its
+     veil must let the section's words read on it, by the same measure as
+     the panel's check (4.5 to 1 where the picture is lightest or
+     darkest, [`../shared/veil.ts`](../shared/veil.ts)): a veil too faint
+     is made strong, and a text-coloured one that still is not enough is
+     made dark and strong, each said in a note. A picture's source is a
+     choice of its own (`none` or `library`), so a picture made for the
+     page can be one more source beside the library's.
+   - **Motion** is one of the schema's, or none.
+   - **One band.** A heading's section and the points it announces after
+     it, side by side on the same background with no picture behind
+     either, read as one band: the points' section takes no space above,
+     so one gap of the theme's stands between the two, not two.
    - **Lists of a widget's own.** Stats keep their first eight figures,
      steps their first ten, and pricing its first four plans, each with
      its first twelve features. Stats with no figure, steps with fewer than

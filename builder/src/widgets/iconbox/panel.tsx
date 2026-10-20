@@ -1,30 +1,56 @@
 // The icon box's Icon box group: its icon, from the site's own set
 // (schema/icons.svg, drawn as the page draws it), its title and its text.
+// The set holds forty-eight icons: a grid of them, the site's own first,
+// with a search that keeps those whose name or words hold what is typed
+// (./words.ts); the icon chosen stays in the grid whatever is typed.
+import { useId, useState } from "react";
 import { RadioField, TextField } from "../../editor/controls.tsx";
 import { useBlockCommands } from "../../editor/panels/hooks.ts";
 import type { ContentProps, WidgetPanel } from "../../editor/panels/types.ts";
 import { SiteIcon } from "../../render/drawings.tsx";
-import { ICON_NAMES, type IconName } from "../../shared/document.ts";
-
-const ICON_LABELS: Readonly<Record<IconName, string>> = {
-  sunrise: "Sunrise", buoys: "Buoys", cup: "Cup", calendar: "Calendar", clock: "Clock", pin: "Pin", globe: "Globe", info: "Info",
-};
+import type { IconName } from "../../shared/document.ts";
+import { findIcons, ICON_LABELS } from "./words.ts";
 
 function IconboxContent({ block }: ContentProps<"iconbox">) {
   const commands = useBlockCommands(block.id);
+  const [query, setQuery] = useState("");
+  const search = useId();
+  const found = findIcons(query);
+  const chosen = block.props.icon;
+  // Whatever is typed, the icon chosen stays: the grid is never empty, and
+  // its choice can be seen and kept.
+  const shown: IconName[] = found.includes(chosen) ? found : [chosen, ...found];
+  const none = query.trim() !== "" && found.length === 0;
   return (
     <>
       <RadioField
         label="Icon"
-        look="choices"
-        choices={ICON_NAMES.map((name) => ({
+        look="icon-grid"
+        before={
+          <div className="icon-find">
+            <label className="visually-hidden" htmlFor={search}>Find an icon</label>
+            <input
+              id={search}
+              className="input icon-find-input"
+              type="search"
+              placeholder="Find an icon"
+              autoComplete="off"
+              spellCheck={false}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
+        }
+        choices={shown.map((name) => ({
           value: name,
           label: ICON_LABELS[name],
-          content: <><SiteIcon name={name} className="sw-icon" /><span>{ICON_LABELS[name]}</span></>,
+          title: ICON_LABELS[name],
+          content: <SiteIcon name={name} className="sw-icon" />,
         }))}
-        value={block.props.icon}
+        value={chosen}
         blockId={block.id}
         field="/props/icon"
+        hint={none ? `No other icon is called “${query.trim()}”: ${ICON_LABELS[chosen]} stays chosen.` : `Chosen: ${ICON_LABELS[chosen]}.`}
         onChange={(icon) => commands.setProps({ icon })}
       />
       <TextField

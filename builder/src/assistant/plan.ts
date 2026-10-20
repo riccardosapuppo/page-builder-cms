@@ -16,9 +16,14 @@
 // Blocks a model would have to invent the facts of are not in it: a video
 // (its id), a map (its coordinates), a gallery of pictures the site may
 // not have; nor the header's and footer's logo and menu, which are parts
-// of the site, not of a page. Images come from the site's library, by id;
-// figures and prices only from the brief, which the question says.
-import { ICON_NAMES, type IconName } from "../shared/document.ts";
+// of the site, not of a page. Images come from the site's library, by id,
+// a section's picture too; figures and prices only from the brief, which
+// the question says.
+//
+// A section's picture says where it comes from (`source`): none, or the
+// library, by id. A picture made for the page (a later step) is one more
+// source of the same choice, read and built beside the library's.
+import { FOCUS_TOKENS, ICON_NAMES, MOTION_TOKENS, type FocusToken, type IconName, type MotionToken } from "../shared/document.ts";
 
 export const PLAN_WIDTHS = ["equal", "3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2"] as const;
 export type PlanWidths = (typeof PLAN_WIDTHS)[number];
@@ -28,6 +33,12 @@ export const PLAN_ALIGNS = ["left", "center"] as const;
 export type PlanAlign = (typeof PLAN_ALIGNS)[number];
 export const PLAN_FIELD_TYPES = ["text", "email", "longtext", "checkbox"] as const;
 export type PlanFieldType = (typeof PLAN_FIELD_TYPES)[number];
+// A plan's picture always has a veil, at a strength words read through:
+// the page's own settings take none and light too, by hand.
+export const PLAN_VEILS = ["dark", "light", "text"] as const;
+export type PlanVeil = (typeof PLAN_VEILS)[number];
+export const PLAN_STRENGTHS = ["medium", "strong"] as const;
+export type PlanStrength = (typeof PLAN_STRENGTHS)[number];
 const LEVELS = [1, 2, 3, 4] as const;
 
 export type PlanBlock =
@@ -66,10 +77,19 @@ export interface PlanColumn {
   blocks: PlanBlock[];
 }
 
+// A section's picture: none, or one of the library's by id, with the veil
+// that keeps its words readable, the veil's strength, and the point of it
+// kept in view.
+export type PlanPicture =
+  | { source: "none" }
+  | { source: "library"; mediaId: string; veil: PlanVeil; strength: PlanStrength; focus: FocusToken };
+
 export interface PlanSection {
   label: string;
   anchor: string;
   background: PlanBackground;
+  picture: PlanPicture;
+  motion: MotionToken;
   widths: PlanWidths;
   columns: PlanColumn[];
 }
@@ -157,6 +177,21 @@ const BLOCK: Schema = {
   ],
 };
 
+// A section's picture: one choice of objects, by where it comes from.
+const PICTURE: Schema = {
+  anyOf: [
+    closed({ source: { type: "string", enum: ["none"] } }, "No picture behind the section."),
+    closed({
+      source: { type: "string", enum: ["library"] },
+      mediaId: text("The id of an image of the site's library listed whose description fits this section, as written there."),
+      veil: choice(PLAN_VEILS, "The layer over the picture that keeps the words readable: dark (light words), light (dark words), or text, the site's text colour (light words)."),
+      strength: choice(PLAN_STRENGTHS, "How much of the picture the veil hides: medium, or strong where much text sits over it."),
+      focus: choice(FOCUS_TOKENS, "The part of the picture kept in view where the section crops it: center, an edge or a corner."),
+    }, "A picture of the site's library behind the section, covering it, under a veil."),
+  ],
+  description: "A picture behind the section, from the site's library, or none.",
+};
+
 export const PLAN_SCHEMA: Schema = closed({
   title: text("The page's title, for the browser's tab and search results, up to 60 characters."),
   description: text("One or two sentences for search results, up to 155 characters."),
@@ -164,12 +199,14 @@ export const PLAN_SCHEMA: Schema = closed({
     label: text("The section's name in the editor's outline, in one to three words."),
     anchor: text("A short name for links to the section, lowercase letters, digits and hyphens, starting with a letter; empty when nothing links to it."),
     background: choice(PLAN_BACKGROUNDS, "A colour of the site's palette behind the section, or none."),
+    picture: PICTURE,
+    motion: choice(MOTION_TOKENS, "How the section comes into view as the reader scrolls to it: none, rise (up from a little below), fade, or zoom (from a little smaller)."),
     widths: choice(PLAN_WIDTHS, "How the columns share the width: equal, or a ratio with as many parts as there are columns."),
     columns: list(closed({
       align: choice(PLAN_ALIGNS, "How the column's blocks line up."),
       blocks: list(BLOCK, "The column's blocks, top to bottom."),
     }), "One to four columns, side by side on a wide screen."),
-  }), "The page's sections, top to bottom, three to seven of them."),
+  }), "The page's sections, top to bottom, four to eight of them."),
 });
 
 // ------------------------------------------------------------- the reader
@@ -240,6 +277,21 @@ export function readBlock(value: unknown): PlanBlock | null {
   }
 }
 
+// A section's picture: one of the library's, with a veil the plan offers,
+// or none for anything else (a plan written before pictures, a source the
+// plan does not have).
+export function readPicture(value: unknown): PlanPicture {
+  const picture = record(value);
+  if (picture?.source !== "library") return { source: "none" };
+  return {
+    source: "library",
+    mediaId: word(picture.mediaId),
+    veil: one(picture.veil, PLAN_VEILS, "dark"),
+    strength: one(picture.strength, PLAN_STRENGTHS, "medium"),
+    focus: one(picture.focus, FOCUS_TOKENS, "center"),
+  };
+}
+
 export function readSection(value: unknown): PlanSection | null {
   const section = record(value);
   if (!section) return null;
@@ -252,6 +304,8 @@ export function readSection(value: unknown): PlanSection | null {
     label: word(section.label),
     anchor: word(section.anchor),
     background: one(section.background, PLAN_BACKGROUNDS, "none"),
+    picture: readPicture(section.picture),
+    motion: one(section.motion, MOTION_TOKENS, "none"),
     widths: one(section.widths, PLAN_WIDTHS, "equal"),
     columns,
   };

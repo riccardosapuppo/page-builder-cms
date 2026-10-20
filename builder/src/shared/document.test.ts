@@ -9,9 +9,10 @@ import { describe, expect, test } from "vitest";
 import schemaJson from "../../../schema/block-document.schema.json";
 import {
   ACCORDION_ITEM_KEYS, ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, BLOCK_TYPES, COLUMN_WIDTHS_BY_COUNT,
-  COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, INLINE_NODE_TYPES,
-  LIST_COLUMNS, LIST_DIRECTIONS, LIST_FILTER_KEYS, LIST_LAYOUTS, LIST_ORDER_KEYS, MARK_TYPES, MENU_LINK_KEYS, ORDERED_LIST_STYLES, PALETTE_SLOTS, PRICING_BUTTON_KEYS, PRICING_PLAN_KEYS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION, SECTION_SPACE_TOKENS,
-  SPACE_TOKENS, STACK_TOKENS, STATS_ITEM_KEYS, STEPS_ITEM_KEYS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, TYPEFACE_TOKENS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
+  COLUMN_WIDTHS_TOKENS, DOCUMENT_KEYS, EMAIL_MAX_LENGTH, FOCUS_TOKENS, FORM_FIELD_KEYS, FORM_FIELD_KINDS, FORM_TEXT_LIMITS, HEADING_LEVELS, ICON_NAMES, IMAGE_PROPS_KEYS, IMAGE_REF_KEYS, INLINE_NODE_TYPES,
+  LIST_COLUMNS, LIST_DIRECTIONS, LIST_FILTER_KEYS, LIST_LAYOUTS, LIST_ORDER_KEYS, MARK_TYPES, MENU_LINK_KEYS, MOTION_TOKENS, ORDERED_LIST_STYLES, PALETTE_SLOTS, PRICING_BUTTON_KEYS, PRICING_PLAN_KEYS, PROP_KEYS, RICH_TEXT_BLOCK_TYPES, SCHEMA_VERSION,
+  SECTION_PICTURE_KEYS, SECTION_SPACE_TOKENS, SITE_OWN_ICONS,
+  SPACE_TOKENS, STACK_TOKENS, STATS_ITEM_KEYS, STEPS_ITEM_KEYS, STYLE_KEYS_BY_TYPE, STYLE_TOKEN_KEYS, STYLE_TOKENS, TYPE_STEPS, TYPEFACE_TOKENS, VEIL_STRENGTH_TOKENS, VEIL_TOKENS, VERTICAL_ALIGN_TOKENS, VIDEO_PROVIDERS,
   VISIBILITY_TOKENS, WIDGET_TYPES, type BlockType,
 } from "./document.ts";
 
@@ -63,10 +64,13 @@ describe("the document's types match the schema", () => {
       [COLUMN_WIDTHS_TOKENS, "columnWidthsToken"], [STACK_TOKENS, "stackToken"], [ASPECT_TOKENS, "aspectToken"],
       [PALETTE_SLOTS, "paletteSlot"], [BACKGROUND_TOKENS, "backgroundToken"], [TYPE_STEPS, "typeStep"],
       [ALIGN_TOKENS, "alignToken"], [VERTICAL_ALIGN_TOKENS, "verticalAlignToken"], [VISIBILITY_TOKENS, "visibilityToken"],
-      [TYPEFACE_TOKENS, "typefaceToken"],
+      [TYPEFACE_TOKENS, "typefaceToken"], [VEIL_TOKENS, "veilToken"], [VEIL_STRENGTH_TOKENS, "veilStrengthToken"], [FOCUS_TOKENS, "focusToken"],
+      [MOTION_TOKENS, "motionToken"],
     ];
     for (const [ours, name] of pairs) expect([...ours], name).toEqual(enumOf(def(name)));
     expect([...ICON_NAMES]).toEqual(enumOf(properties(branch("iconbox").props).icon as Node));
+    // The site's own eight come first, as they always were.
+    expect(ICON_NAMES.slice(0, SITE_OWN_ICONS.length)).toEqual([...SITE_OWN_ICONS]);
     // A collection list's layouts, its order's two ways, and a grid's columns.
     const list = properties(branch("collectionList").props);
     expect([...LIST_LAYOUTS]).toEqual(enumOf(list.layout as Node));
@@ -121,6 +125,12 @@ describe("the document's types match the schema", () => {
     // The block types that take it are those that take a typeface.
     expect(BLOCK_TYPES.filter((type) => (STYLE_KEYS_BY_TYPE[type] as readonly string[]).includes("fontSize"))).toEqual([...FREE_TYPE_BLOCKS]);
     expect(BLOCK_TYPES.filter((type) => (STYLE_KEYS_BY_TYPE[type] as readonly string[]).includes("typeface"))).toEqual([...FREE_TYPE_BLOCKS]);
+    // Every block type takes motion; only a section takes its picture's
+    // veil, strength and focus.
+    expect(BLOCK_TYPES.filter((type) => (STYLE_KEYS_BY_TYPE[type] as readonly string[]).includes("motion"))).toEqual([...BLOCK_TYPES]);
+    for (const key of ["veil", "veilStrength", "focus"]) {
+      expect(BLOCK_TYPES.filter((type) => (STYLE_KEYS_BY_TYPE[type] as readonly string[]).includes(key)), key).toEqual(["section"]);
+    }
     for (const type of BLOCK_TYPES) {
       const style = branch(type).style;
       // Each device of a type's style refers to the same list of keys.
@@ -151,6 +161,11 @@ describe("the document's types match the schema", () => {
     expect(sorted(FORM_FIELD_KEYS)).toEqual(sorted(keyTable(deref(formItems.items as Node))));
     const menuItems = properties(branch("menu").props).items as Node;
     expect(sorted(MENU_LINK_KEYS)).toEqual(sorted(keyTable(deref(menuItems.items as Node))));
+    // A section's picture: a library item by its id, as an image's.
+    const picture = deref(properties(branch("section").props).picture as Node);
+    expect(sorted(SECTION_PICTURE_KEYS)).toEqual(sorted(keyTable(picture)));
+    expect(properties(picture).mediaId?.$ref).toBe("#/$defs/mediaId");
+    expect(picture.additionalProperties).toBe(false);
     const list = properties(branch("collectionList").props);
     expect(sorted(LIST_ORDER_KEYS)).toEqual(sorted(keyTable(deref(list.order as Node))));
     expect(sorted(LIST_FILTER_KEYS)).toEqual(sorted(keyTable(deref(list.filter as Node))));

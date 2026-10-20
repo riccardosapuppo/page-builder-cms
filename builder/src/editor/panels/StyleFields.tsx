@@ -20,8 +20,8 @@ import { Fragment, useId, useRef, useState, type CSSProperties, type MouseEvent,
 import { REMOVE } from "../../document/commands.ts";
 import { settingWords, STYLE_KEY_NAMES, tokenName } from "../../document/labels.ts";
 import {
-  ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, SECTION_SPACE_TOKENS, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, TYPE_STEPS, TYPEFACE_TOKENS, VERTICAL_ALIGN_TOKENS,
-  type Block, type BlockType, type Device, type PaletteSlot, type StyleTokens,
+  ALIGN_TOKENS, ASPECT_TOKENS, BACKGROUND_TOKENS, MOTION_TOKENS, SECTION_SPACE_TOKENS, SPACE_TOKENS, STYLE_KEYS_BY_TYPE, TYPE_STEPS, TYPEFACE_TOKENS, VEIL_STRENGTH_TOKENS, VEIL_TOKENS, VERTICAL_ALIGN_TOKENS,
+  type Block, type BlockType, type Device, type FocusToken, type PaletteSlot, type StyleTokens,
 } from "../../shared/document.ts";
 import { locate } from "../../document/tree.ts";
 import { LEVEL_SIZES } from "../../widgets/heading/render.tsx";
@@ -53,6 +53,8 @@ export function labelOf(type: BlockType, key: StyleKey): string {
   if (key === "align") return "Alignment";
   // In the Type group, the type's size is its Size.
   if (key === "fontSize") return "Size";
+  // Under the Veil, its Strength.
+  if (key === "veilStrength") return "Strength";
   return STYLE_KEY_NAMES[key];
 }
 
@@ -75,8 +77,8 @@ const STEP_SAMPLES: Readonly<Record<string, { size: number; sans: boolean; label
 // in the order type is set in: size, weight, the space between the
 // letters and the lines, and how wide the letters are.
 const DISPLAY_ORDER: readonly StyleKey[] = [
-  "spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "textSize", "typeface",
-  "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "verticalAlign", "align", "color", "aspect",
+  "spaceInside", "spaceAbove", "spaceBelow", "spaceBetween", "background", "veil", "veilStrength", "focus", "textSize", "typeface",
+  "fontSize", "fontWeight", "letterSpacing", "lineHeight", "letterWidth", "verticalAlign", "align", "color", "aspect", "motion",
 ];
 
 // The keys of `keys` the block's type accepts, in that order.
@@ -175,10 +177,42 @@ export function inUseOf(block: Block, key: StyleKey, device: Device, columnStyle
       return "top";
     case "aspect":
       return "original";
+    // A section's picture shows with no veil, at the strength a veil has
+    // when none is named, from its centre; a block comes into view as it
+    // is, with no motion.
+    case "veil":
+      return block.type === "section" ? "none" : null;
+    case "veilStrength":
+      return block.type === "section" ? "medium" : null;
+    case "focus":
+      return block.type === "section" ? "center" : null;
+    case "motion":
+      return "none";
     default:
       return null;
   }
 }
+
+// A section's picture's focus, a grid of the nine points in reading order,
+// each drawn as a dot in a frame where it stands.
+const FOCUS_GRID: readonly FocusToken[] = ["top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right"];
+const FOCUS_AT: Readonly<Record<FocusToken, [number, number]>> = {
+  "top-left": [4.5, 4.5], top: [10, 4.5], "top-right": [15.5, 4.5],
+  left: [4.5, 10], center: [10, 10], right: [15.5, 10],
+  "bottom-left": [4.5, 15.5], bottom: [10, 15.5], "bottom-right": [15.5, 15.5],
+};
+const FOCUS_CHOICES = FOCUS_GRID.map((point) => {
+  const [cx, cy] = FOCUS_AT[point];
+  return {
+    value: point as string,
+    label: tokenName(point),
+    title: tokenName(point),
+    content: <svg className="focus-pic" viewBox="0 0 20 20" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="2.5" /><circle cx={cx} cy={cy} r="2.6" /></svg>,
+  };
+});
+const VEIL_CHOICES = VEIL_TOKENS.map((veil) => ({ value: veil as string, label: settingWords("veil", veil) }));
+const STRENGTH_CHOICES = VEIL_STRENGTH_TOKENS.map((strength) => ({ value: strength as string, label: tokenName(strength) }));
+const MOTION_CHOICES = MOTION_TOKENS.map((motion) => ({ value: motion as string, label: tokenName(motion) }));
 
 // The swatches in the design's order: None, the light tones, the
 // colours, the ink; then the slot the design does not draw, Slate.
@@ -588,6 +622,27 @@ export function StyleFields({ block, keys: wanted }: { block: Block; keys: reado
             return <RadioField key={key} {...common} look="seg-icons" choices={VALIGN_CHOICES} value={value} inUse={inUse} onChange={set} />;
           case "aspect":
             return <RadioField key={key} {...common} look="seg" choices={ASPECT_TOKENS.map((t) => ({ value: t, label: tokenName(t) }))} value={value} inUse={inUse} onChange={set} hint={hint ?? "Crops the image to this shape; Original keeps its own."} />;
+          // A section's picture (./picture.tsx): its veil, how much of it
+          // the veil hides, and the point kept in view.
+          case "veil":
+            return <RadioField key={key} {...common} look="seg" choices={VEIL_CHOICES} value={value} inUse={inUse} onChange={set} hint={hint ?? "A layer over the picture so the words read; they take the colour that reads on it."} />;
+          case "veilStrength":
+            return <RadioField key={key} {...common} look="seg" choices={STRENGTH_CHOICES} value={value} inUse={inUse} onChange={set} hint={hint ?? "How much of the picture the veil hides."} />;
+          case "focus":
+            return <RadioField key={key} {...common} look="focus-grid" choices={FOCUS_CHOICES} value={value} inUse={inUse} onChange={set} hint={hint ?? "The part of the picture kept in view where the section crops it."} />;
+          case "motion":
+            return (
+              <RadioField
+                key={key}
+                {...common}
+                look="seg"
+                choices={MOTION_CHOICES}
+                value={value}
+                inUse={inUse}
+                onChange={set}
+                hint={hint ?? "How it comes into view as the page scrolls to it: in Preview and on the published page, not while you edit, and never for visitors who ask for less motion."}
+              />
+            );
           default:
             return null;
         }

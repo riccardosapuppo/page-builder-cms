@@ -16,9 +16,9 @@
 // by hand; closed, it says it holds one.
 import { isFreeColor } from "../../shared/free-colors.ts";
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
-import { freeTypeWords, tokenName } from "../../document/labels.ts";
+import { freeTypeWords, settingWords, tokenName } from "../../document/labels.ts";
 import { FREE_TYPE_KEYS, isFreeTypeKey } from "../../shared/free-type.ts";
-import type { Block, BlockType, PaletteSlot, WidgetBlock } from "../../shared/document.ts";
+import type { Block, BlockType, PaletteSlot, SectionBlock, WidgetBlock } from "../../shared/document.ts";
 import { slotTone } from "../../shared/site-tokens.ts";
 import type { BlockFieldError } from "../../storage/adapter.ts";
 import { fieldStyleBlock, useFieldShape } from "../../widgets/field/panel.tsx";
@@ -31,6 +31,7 @@ import { paletteName } from "../palette.ts";
 import type { WidgetPanel } from "./types.ts";
 import { ShownOn, shownOnWords } from "./ShownOn.tsx";
 import { advancedWords, BlockAdvanced } from "./advanced.tsx";
+import { SectionBackground } from "./picture.tsx";
 import { columnsWords, nameWords, SectionColumns, SectionName } from "./structure.tsx";
 import { acceptedKeys, inUseOf, StyleFields, useColumnStyle, type StyleKey } from "./StyleFields.tsx";
 
@@ -54,7 +55,7 @@ export interface GroupSpec {
 // The style groups each type has, by the keys they hold, in the layout's
 // order around the widget's own content and Shown on. Every key a type
 // accepts is in exactly one of its groups (groups.test.tsx holds it).
-type StyleGroupId = "size" | "free-type" | "type" | "colors" | "text-color" | "line-color" | "disc-color" | "highlight-color" | "shape" | "spacing" | "background" | "alignment";
+type StyleGroupId = "size" | "free-type" | "type" | "colors" | "text-color" | "line-color" | "disc-color" | "highlight-color" | "shape" | "spacing" | "background" | "alignment" | "motion";
 const STYLE_GROUPS: Readonly<Record<StyleGroupId, { name: string; keys: readonly StyleKey[] }>> = {
   size: { name: "Size and color", keys: ["textSize", "typeface", "color"] },
   // A heading's, a text's or a quote's own type, over the step's and the
@@ -68,42 +69,46 @@ const STYLE_GROUPS: Readonly<Record<StyleGroupId, { name: string; keys: readonly
   "highlight-color": { name: "Highlight color", keys: ["color"] },
   shape: { name: "Shape", keys: ["aspect"] },
   spacing: { name: "Spacing", keys: ["spaceInside", "spaceAbove", "spaceBelow", "spaceBetween"] },
-  background: { name: "Background", keys: ["background"] },
+  // A section's also holds its picture (./picture.tsx), and the picture's
+  // veil, strength and focus.
+  background: { name: "Background", keys: ["background", "veil", "veilStrength", "focus"] },
   alignment: { name: "Alignment", keys: ["verticalAlign", "align"] },
+  // How the block comes into view as the page scrolls to it.
+  motion: { name: "Motion", keys: ["motion"] },
 };
 
 // The groups of each type, top to bottom: "content" is a widget's own
 // group (its folder's panel), "columns" and "name" a section's, "shown"
-// every block's.
+// every block's, and "motion" too, just before it.
 type GroupId = StyleGroupId | "content" | "columns" | "name" | "shown" | "advanced";
-const TEXT: readonly GroupId[] = ["content", "size", "free-type", "alignment", "shown", "advanced"];
+const TEXT: readonly GroupId[] = ["content", "size", "free-type", "alignment", "motion", "shown", "advanced"];
 export const GROUPS_BY_TYPE: Readonly<Record<BlockType, readonly GroupId[]>> = {
-  section: ["columns", "background", "spacing", "shown", "name", "advanced"],
-  column: ["spacing", "background", "type", "alignment", "shown", "advanced"],
+  section: ["columns", "background", "spacing", "motion", "shown", "name", "advanced"],
+  column: ["spacing", "background", "type", "alignment", "motion", "shown", "advanced"],
   heading: TEXT,
   text: TEXT,
   quote: TEXT,
-  image: ["content", "shape", "shown", "advanced"],
-  button: ["content", "colors", "alignment", "shown", "advanced"],
-  divider: ["line-color", "shown", "advanced"],
-  accordion: ["content", "line-color", "shown", "advanced"],
-  spacer: ["content", "shown", "advanced"],
-  video: ["content", "shown", "advanced"],
-  map: ["content", "shown", "advanced"],
-  gallery: ["content", "spacing", "shown", "advanced"],
-  iconbox: ["content", "text-color", "alignment", "shown", "advanced"],
-  stats: ["content", "text-color", "alignment", "shown", "advanced"],
-  steps: ["content", "disc-color", "shown", "advanced"],
-  pricing: ["content", "highlight-color", "shown", "advanced"],
-  collectionList: ["content", "text-color", "shown", "advanced"],
-  form: ["content", "shown", "advanced"],
-  logo: ["content", "text-color", "alignment", "shown", "advanced"],
-  menu: ["content", "text-color", "alignment", "shown", "advanced"],
+  image: ["content", "shape", "motion", "shown", "advanced"],
+  button: ["content", "colors", "alignment", "motion", "shown", "advanced"],
+  divider: ["line-color", "motion", "shown", "advanced"],
+  accordion: ["content", "line-color", "motion", "shown", "advanced"],
+  spacer: ["content", "motion", "shown", "advanced"],
+  video: ["content", "motion", "shown", "advanced"],
+  map: ["content", "motion", "shown", "advanced"],
+  gallery: ["content", "spacing", "motion", "shown", "advanced"],
+  iconbox: ["content", "text-color", "alignment", "motion", "shown", "advanced"],
+  stats: ["content", "text-color", "alignment", "motion", "shown", "advanced"],
+  steps: ["content", "disc-color", "motion", "shown", "advanced"],
+  pricing: ["content", "highlight-color", "motion", "shown", "advanced"],
+  collectionList: ["content", "text-color", "motion", "shown", "advanced"],
+  form: ["content", "motion", "shown", "advanced"],
+  logo: ["content", "text-color", "alignment", "motion", "shown", "advanced"],
+  menu: ["content", "text-color", "alignment", "motion", "shown", "advanced"],
   // A field takes the groups of the widget it draws as (fieldStyleBlock);
   // these are a field's whose field the template's collection has not.
-  field: ["content", "shown", "advanced"],
+  field: ["content", "motion", "shown", "advanced"],
   // A button's: its button is one.
-  addToCart: ["content", "colors", "alignment", "shown", "advanced"],
+  addToCart: ["content", "colors", "alignment", "motion", "shown", "advanced"],
 };
 
 // A type's style groups and the keys each holds, those the type accepts.
@@ -195,8 +200,16 @@ function styleWords(id: StyleGroupId, keys: readonly StyleKey[], { block, device
         dot = t.dot;
         words = t.label;
       }
+      // A section's picture, and its veil: "Soft, picture, dark veil".
+      if (block.type === "section" && block.props.picture !== undefined) {
+        const veil = inUse("veil") ?? "none";
+        words += `, picture, ${veil === "none" ? "no veil" : `${settingWords("veil", veil).toLowerCase()} veil`}`;
+      }
       break;
     }
+    case "motion":
+      words = tokenName(inUse("motion") ?? "none");
+      break;
     case "shape":
       words = tokenName(inUse("aspect") ?? "original");
       break;
@@ -304,14 +317,16 @@ export function useBlockGroups(block: Block): GroupSpec[] {
         const keys = acceptedKeys(styled.type, STYLE_GROUPS[id].keys);
         if (keys.length === 0) return [];
         const { words, dot } = styleWords(id, keys, context);
+        // A section's Background holds its picture too (./picture.tsx).
+        const picture = id === "background" && styled.type === "section";
         return [{
           id,
           name: STYLE_GROUPS[id].name,
           keys,
-          holds: (field) => (keys as readonly string[]).includes(styleKeyOf(field) ?? ""),
+          holds: (field) => (keys as readonly string[]).includes(styleKeyOf(field) ?? "") || (picture && (field === "/props/picture" || field.startsWith("/props/picture/"))),
           summary: words,
           dot,
-          body: <StyleFields block={styled} keys={keys} />,
+          body: picture ? <SectionBackground block={styled as SectionBlock} /> : <StyleFields block={styled} keys={keys} />,
         }];
       }
     }

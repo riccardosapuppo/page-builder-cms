@@ -16,6 +16,7 @@ import { writePage, type PageHooks } from "../assistant/write.ts";
 import type { SiteFacts } from "../assistant/build.ts";
 import { PALETTE_SLOTS, type PaletteSlot } from "../shared/document.ts";
 import { isFreeColor } from "../shared/free-colors.ts";
+import { slotTone } from "../shared/site-tokens.ts";
 import type { MediaItem, SiteStyle } from "../storage/adapter.ts";
 import { afterRender } from "./act.ts";
 import { runMade, useEnv, useUi, type EditorEnv } from "./context.tsx";
@@ -40,10 +41,17 @@ function paletteHex(style: SiteStyle | null): Record<PaletteSlot, string> {
 
 const pathOf = (page: { home: boolean; slug: string | null }): string => (page.home ? "/" : `/${page.slug ?? ""}`);
 
-// What the site has that a plan may name: its library and its pages.
-function siteFacts(session: Session, media: ReadonlyMap<string, MediaItem>, brief: string): SiteFacts & { pages: Array<{ path: string; title: string }> } {
+// What the site has that a plan may name: its library, each image with its
+// size, and its pages; and the colours words take over a veiled picture.
+function siteFacts(session: Session, media: ReadonlyMap<string, MediaItem>, brief: string, style: SiteStyle | null): SiteFacts & { media: SiteWords["media"]; pages: Array<{ path: string; title: string }> } {
   const pages = session.pages.filter((page) => page.kind === "page").map((page) => ({ path: pathOf(page), title: page.title }));
-  return { media: [...media.values()].map(({ id, alt }) => ({ id, alt })), paths: pages.map((page) => page.path), pages, brief };
+  return {
+    media: [...media.values()].map(({ id, alt, width, height }) => ({ id, alt, width, height })),
+    paths: pages.map((page) => page.path),
+    pages,
+    brief,
+    ink: { text: slotTone("text", style?.palette).hex, background: slotTone("background", style?.palette).hex },
+  };
 }
 
 // The steps of ../assistant/write.ts done by this editor: a page made from
@@ -197,10 +205,11 @@ function Sample() {
   const session = useSession();
   const assistant = useAssistantStore();
   const media = useUi((u) => u.media);
+  const style = useUi((u) => u.siteStyle);
   const busy = useAssistant((a) => a.running !== null);
   const build = () => {
     if (busy) return;
-    const facts = siteFacts(session, media, SAMPLE_BRIEF);
+    const facts = siteFacts(session, media, SAMPLE_BRIEF, style);
     void run(assistant, (signal, tell) => writePage({
       ask: sampleAnswer(samplePlan(facts.media), env.clock, signal),
       facts, newId: env.newId, hooks: pageHooks(env, session), tell, signal,
@@ -236,7 +245,7 @@ function Brief() {
       return;
     }
     setMissing(false);
-    const facts = siteFacts(session, media, brief);
+    const facts = siteFacts(session, media, brief, style);
     const words: SiteWords = { palette: paletteHex(style), media: facts.media, pages: facts.pages };
     const name = models.find((choice) => choice.id === model)?.name ?? model ?? "the model";
     void run(assistant, (signal, tell) => writePage({

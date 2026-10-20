@@ -851,6 +851,26 @@ export const STORAGE_CONTRACT: readonly ContractCase[] = [
     },
   },
   {
+    name: "a section's picture is a use of its image, as an image block's is: one the library does not have is refused at the section's picture, and an image a section shows is not deleted",
+    needs: [],
+    async run(env) {
+      const page = await newPage(env, "pictured");
+      const behind = (mediaId: string): SectionBlock => ({ ...section(heading("Over the picture")), props: { picture: { mediaId } }, style: { base: { veil: "dark" } } });
+      const missing = behind("NoSuchImage0000");
+      const document = documentOf("Missing picture", missing);
+      const problem = refusal(await env.adapter.saveDraft(page.id, { revision: page.revision, document, saveId: "pictured-1" }), "the save");
+      if (problem.kind !== "invalid") throw new Error(`expected invalid, got ${problem.kind}`);
+      env.expect(errorsByBlock(document, problem.errors).map((e) => [e.blockId, e.field, e.keyword])).toEqual([[missing.id, "/props/picture/mediaId", "mediaExists"]]);
+
+      const item = await upload(env, `${env.unique("picture")}.png`, "A slipway");
+      await saved(env.adapter, page.id, { revision: page.revision, document: documentOf("With a picture", behind(item.id)), saveId: "pictured-2" });
+      const used = refusal(await env.adapter.deleteMedia(item.id), "deleting an image a section shows");
+      env.expect(used.kind).toBe("in-use");
+      env.expect(used.usedBy.pages).toEqual([{ id: page.id, title: "With a picture", slug: page.slug }]);
+      env.expect((await env.adapter.listMedia()).map((m) => m.id)).toContain(item.id);
+    },
+  },
+  {
     name: "a document showing an image the library does not have is refused at that image",
     needs: [],
     async run(env) {

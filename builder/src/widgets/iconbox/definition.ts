@@ -11,9 +11,6 @@ export const iconbox: WidgetDefinition<"iconbox"> = {
   needs: null,
   props: () => ({ icon: "info", title: "Title", text: "A short text." }),
   render: IconboxRender,
-  traps: [
-    "t-iconbox", "t-iconbox-markup-icon", "s-iconbox-styled",
-    "e-iconbox-every-icon-1", "e-iconbox-every-icon-2", "e-iconbox-every-icon-3", "e-iconbox-every-icon-4",
-    "e-iconbox-every-icon-5", "e-iconbox-every-icon-6", "e-iconbox-every-icon-7", "e-iconbox-every-icon-8",
-  ],
+  // Every icon of the set, the site's eight and Lucide's forty, one box each.
+  traps: ["t-iconbox", "t-iconbox-markup-icon", "s-iconbox-styled", ...Array.from({ length: 48 }, (_, k) => `e-iconbox-every-icon-${k + 1}`)],
 };

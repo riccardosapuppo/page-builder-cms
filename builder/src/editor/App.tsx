@@ -79,7 +79,7 @@ import { siteWhen } from "./site-time.ts";
 import { Sidebar } from "./Sidebar.tsx";
 import { StatusBar } from "./StatusBar.tsx";
 import { PhoneBar } from "./PhoneBar.tsx";
-import { useLayoutMode } from "./layout-mode.ts";
+import { markTyping, useLayoutMode } from "./layout-mode.ts";
 import { TopBar } from "./TopBar.tsx";
 import { pushes } from "./ui-store.ts";
 
@@ -1070,6 +1070,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   useLayoutEffect(() => {
     env.ui.getState().setOnePanel(layout !== "wide");
   }, [env, layout]);
+  // Whether a field that takes typing has the focus, for the bar and the
+  // sheets on a phone's window (./layout-mode.ts, markTyping).
+  const appRoot = useRef<HTMLDivElement>(null);
+  useEffect(() => (appRoot.current ? markTyping(appRoot.current) : undefined), []);
 
   return (
     <EditorProvider env={env}>
@@ -1083,7 +1087,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
               {/* In the order the Tab key goes: the top bar, the drawer, the
                   canvas, the sidebar (Tab from the selection reaches its
                   settings), then the bottom line. The grid places each. */}
-              <div className={`app${sidebarOpen ? "" : " app-wide"}${pushed ? " app-pushed" : ""}${foot ? " app-foot" : ""}`} data-layout={layout}>
+              <div ref={appRoot} className={`app${sidebarOpen ? "" : " app-wide"}${pushed ? " app-pushed" : ""}${foot ? " app-foot" : ""}`} data-layout={layout}>
                 <TopBar />
                 <ConflictBanner />
                 {drawer === "insert" && <DrawerShell which="insert"><Palette /></DrawerShell>}

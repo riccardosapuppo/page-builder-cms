@@ -388,6 +388,28 @@ function styleLabel(doc: PageDocument, id: string, device: Device, updates: Styl
   return `Changed the style${onDevice(device)} of ${where}`;
 }
 
+// -------------------------------------------------------------- picture
+
+// A section's picture, a library item by its id, or null for none. A first
+// picture on a section that names no veil on any device comes with a dark
+// one, in the same step, so the words over it read from the start; a veil
+// the section names stays as it is, and stays when the picture goes, read
+// again by the next picture.
+export function makeSetPicture(doc: PageDocument, sectionId: string, mediaId: string | null): Made {
+  const found = locate(doc, sectionId);
+  if (found?.block.type !== "section") return unknown(sectionId);
+  const section = found.block;
+  const name = blockName(doc, sectionId);
+  const ops = keySteps(sectionId, ["props"], section.props as Record<string, unknown>, { picture: mediaId === null ? REMOVE : { mediaId } }, propOrder("section")).ops;
+  const first = section.props.picture === undefined;
+  const veiled = DEVICES.some((device) => section.style[device]?.veil !== undefined);
+  if (mediaId !== null && first && !veiled) {
+    ops.push(...keySteps(sectionId, ["style", "base"], section.style.base as Record<string, unknown>, { veil: "dark" }, STYLE_TOKEN_KEYS).ops);
+  }
+  const label = mediaId === null ? `Removed the picture of ${name}` : first ? `Set a picture behind ${name}` : `Replaced the picture of ${name}`;
+  return made("props", label, { id: sectionId }, ops);
+}
+
 // -------------------------------------------------------- column widths
 
 // A section's widths preset, or "equal" for none. The preset must have one

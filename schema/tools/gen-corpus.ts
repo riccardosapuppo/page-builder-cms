@@ -497,6 +497,47 @@ valid("free-type-every-key", "a heading's, a text's and a quote's own type, besi
     rule: "free type written 700.0, 1e2, 2.00 and -0.0 is the weight 700, the width 100, the line height 2 and the spacing 0 to both engines, after the rules make them integers",
   });
 }
+valid("section-picture-every-setting", "a section's picture of the library under every veil at every strength, kept in view at every point, on every device; a picture with no veil; a veil, a strength and a focus kept on a section with no picture, read again by the next", doc("Pictures", [
+  ...(["none", "dark", "light", "text"] as const).map((veil, k) => section(`pic-${veil}`, [column(`pic-${veil}-1`, [heading(`pic-${veil}-h`, k === 0 ? 1 : 2, `Under the ${veil} veil`)])], { picture: { mediaId: `bay-${veil}` } }, {
+    base: { background: "text", veil, veilStrength: ["light", "medium", "strong", "medium"][k], focus: ["center", "top", "bottom", "left"][k] },
+    tablet: { veil: ["dark", "light", "text", "none"][k], veilStrength: "strong", focus: ["right", "top-left", "top-right", "bottom-left"][k] },
+    phone: { veilStrength: "light", focus: "bottom-right" },
+  })),
+  section("pic-plain", [column("pic-plain-1", [text("pic-plain-t", rich(p(t("A picture with no veil."))))])], { label: "Plain picture", picture: { mediaId: "bay-plain" } }),
+  section("pic-kept", [column("pic-kept-1", [text("pic-kept-t", rich(p(t("A veil kept with no picture."))))])], {}, { base: { veil: "dark", veilStrength: "strong", focus: "top" } }),
+]));
+{
+  // How every type of block comes into view: each motion on each device,
+  // the section and the column too.
+  const motions = ["none", "rise", "fade", "zoom"];
+  const moved = (w: J, k: number): J => ({ ...w, style: { base: { motion: motions[k % 4] }, tablet: { motion: motions[(k + 1) % 4] }, phone: { motion: motions[(k + 2) % 4] } } });
+  const widgets = [
+    heading("mo-h", 1, "Into view"),
+    text("mo-t", rich(p(t("Fading in.")))),
+    image("mo-i", { mediaId: "mo-image", alt: "A swimmer at the buoy line" }),
+    button("mo-b", "Join", "#mo"),
+    divider("mo-d"),
+    spacer("mo-s", "m"),
+    gallery("mo-g", [{ mediaId: "mo-g-1", alt: "The bay" }]),
+    video("mo-v", "vimeo", "123456789", "A dawn swim"),
+    map("mo-m", 54.4851, -0.6157, 15, "The slipway"),
+    iconbox("mo-ib", "dumbbell", "Strength", "Weights and coaching."),
+    quote("mo-q", "Cold water, warm tea."),
+    accordion("mo-a", [{ question: "How cold?", answer: "Cold." }]),
+    stats("mo-st", [figure("12", "Years")]),
+    steps("mo-sp", [step("Come", "Any Saturday."), step("Swim", "With a coach.")]),
+    pricing("mo-pr", [plan("Trial", "Free", "", "", [], "Book", "#mo")]),
+    collectionList("mo-cl"),
+    form("mo-f", [field("name", "text", "Name", true, 100)], "Send", "Thank you."),
+    logo("mo-lo", "Slack Water"),
+    menu("mo-me", "Main", [menuLink("Swims", "/#swims")]),
+    entryField("mo-fi", { field: "title" }),
+    addToCart("mo-ac", "Add to cart", false),
+  ].map(moved);
+  valid("motion-every-block", "how every type of block comes into view: none, rise, fade and zoom, each on every device, a section and a column too", doc("Motion", [
+    { ...section("mo", [{ ...column("mo-1", widgets), style: { base: { motion: "fade" }, phone: { motion: "none" } } }], { anchor: "mo" }), style: { base: { motion: "rise" }, tablet: { motion: "zoom" } } },
+  ]));
+}
 valid("section-space-every-step", "every value of spaceAbove and spaceBelow, spacing steps and section steps, in base and in both overrides", doc("Section space", [
   "none", "xs", "s", "m", "l", "xl", "xxl", "section-s", "section-l",
 ].map((step, k, all) => section(`space-${k}`, [column(`space-${k}-1`, [])], {}, {
@@ -504,9 +545,16 @@ valid("section-space-every-step", "every value of spaceAbove and spaceBelow, spa
   tablet: { spaceAbove: all[(k + 1) % all.length] },
   phone: { spaceBelow: all[(k + 2) % all.length] },
 }))));
-valid("every-icon-and-provider", "every icon name, both video providers, map extremes", doc("Icons", [
+valid("every-icon-and-provider", "every icon name, the site's eight and Lucide's forty, both video providers, map extremes", doc("Icons", [
   section("ic", [column("ic-1", [
-    ...["sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info"].map((icon) => iconbox(`ic-${icon}`, icon, icon, `The ${icon} icon.`)),
+    ...[
+      "sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info",
+      "accessibility", "activity", "award", "baby", "bike", "book-open", "briefcase", "building-2", "calendar-days", "camera",
+      "circle-check", "dumbbell", "flame", "gift", "graduation-cap", "heart-pulse", "house", "leaf", "lightbulb", "mail",
+      "moon", "music", "palette", "phone", "rocket", "scissors", "shield-check", "shopping-bag", "square-parking", "star",
+      "sun", "target", "ticket", "timer", "trophy", "user-round", "users", "utensils", "wifi", "zap",
+    ].map((icon) => iconbox(`ic-${icon}`, icon, icon, `The ${icon} icon.`)),
+  ]), column("ic-2", [
     video("ic-youtube", "youtube", "A_b-C1d2E3f", "A video"),
     video("ic-vimeo", "vimeo", "123456789", "Another video"),
     map("ic-map-north", 90, 180, 19, "North-east corner"),
@@ -874,6 +922,33 @@ invalid("free-type-text-phone-three-decimals", "on a text, on a phone, as on a h
 invalid("free-type-on-button", "a button's type is the theme's", `${BTN}/style/base/fontSize`, "additionalProperties", (d) => { at(d, BTN).style.base.fontSize = "48px"; });
 invalid("free-type-on-column", "a column takes a text size for what it holds, never free type", `${COL}/style/base/fontWeight`, "additionalProperties", (d) => { at(d, COL).style.base.fontWeight = 700; });
 
+// ======================= INVALID: a section's picture, motion =======================
+// The hero, with a picture of its own changed; the column, the heading and
+// the image where said.
+const picture = (value: J) => (d: J): void => { at(d, HERO).props.picture = value; };
+invalid("section-picture-no-media-id", "a section's picture names a library item", `${HERO}/props/picture`, "required", picture({}));
+invalid("section-picture-url", "a section's picture is the library's: no address of another site", `${HERO}/props/picture/url`, "additionalProperties", picture({ url: "https://images.example.org/bay.jpg" }));
+invalid("section-picture-alt", "a section's picture is decorative: it holds no alt text, its words say what matters", `${HERO}/props/picture/alt`, "additionalProperties", picture({ mediaId: "hero-dawn", alt: "The bay at dawn" }));
+invalid("section-picture-media-id-space", "a media id is letters, digits, _ and -", `${HERO}/props/picture/mediaId`, "pattern", picture({ mediaId: "hero dawn" }));
+invalid("section-picture-media-id-number", "a media id is a string", `${HERO}/props/picture/mediaId`, "type", picture({ mediaId: 42 }));
+invalid("section-picture-string", "a picture is an object holding its media id, never the id alone", `${HERO}/props/picture`, "type", picture("hero-dawn"));
+invalid("section-picture-null", "no picture is the key's absence, not null", `${HERO}/props/picture`, "type", picture(null));
+invalid("section-picture-in-style", "the picture is one for every device, a prop as an image's source is, not a style per device", `${HERO}/style/tablet/picture`, "additionalProperties", (d) => { at(d, HERO).style.tablet = { picture: { mediaId: "hero-dawn" } }; });
+invalid("section-picture-on-column", "only a section has a picture", `${COL}/props/picture`, "additionalProperties", (d) => { at(d, COL).props.picture = { mediaId: "hero-dawn" }; });
+invalid("style-veil-unknown", "a veil is none, dark, light or the Text tone's", `${HERO}/style/base/veil`, "enum", (d) => { at(d, HERO).style.base.veil = "blur"; });
+invalid("style-veil-free-color", "a veil is a name, never a colour of its own", `${HERO}/style/phone/veil`, "enum", (d) => { at(d, HERO).style.phone.veil = "#000000"; });
+invalid("style-veil-slot", "a veil in the site's colour is the Text tone's: no other slot", `${HERO}/style/base/veil`, "enum", (d) => { at(d, HERO).style.base.veil = "primary"; });
+invalid("style-veil-strength-number", "a veil's strength is light, medium or strong, never an opacity", `${HERO}/style/base/veilStrength`, "enum", (d) => { at(d, HERO).style.base.veilStrength = 0.6; });
+invalid("style-veil-strength-unknown", "a veil's strength is one of three", `${HERO}/style/base/veilStrength`, "enum", (d) => { at(d, HERO).style.base.veilStrength = "heavy"; });
+invalid("style-focus-position", "a focus is one of nine points, never a position written out", `${HERO}/style/base/focus`, "enum", (d) => { at(d, HERO).style.base.focus = "20% 30%"; });
+invalid("style-focus-declaration", "a focus holds no CSS", `${HERO}/style/base/focus`, "enum", (d) => { at(d, HERO).style.base.focus = "center;background:url(x)"; });
+invalid("style-veil-on-column", "only a section's picture has a veil", `${COL}/style/base/veil`, "additionalProperties", (d) => { at(d, COL).style.base.veil = "dark"; });
+invalid("style-focus-on-image", "an image is cropped by its shape; the focus is a section's picture's", `${IMG}/style/base/focus`, "additionalProperties", (d) => { at(d, IMG).style.base.focus = "top"; });
+invalid("style-motion-unknown", "a block comes into view by none, rise, fade or zoom", `${H}/style/base/motion`, "enum", (d) => { at(d, H).style.base.motion = "spin"; });
+invalid("style-motion-animation", "a motion is a name, never an animation written out", `${H}/style/base/motion`, "enum", (d) => { at(d, H).style.base.motion = "rise 2s infinite"; });
+invalid("style-motion-boolean", "a motion is a name, not on or off", `${H}/style/phone/motion`, "enum", (d) => { at(d, H).style.phone.motion = true; });
+invalid("style-motion-null", "no motion is the key's absence or none, never null", `${COL}/style/base/motion`, "enum", (d) => { at(d, COL).style.base.motion = null; });
+
 // =============================== INVALID: heading ===============================
 invalid("heading-level-5", "levels are 1 to 4", `${H}/props/level`, "maximum", (d) => { at(d, H).props.level = 5; });
 invalidRaw("heading-level-5-written-5.0", "5.0 is the integer 5 to both engines, and still above 4", `${H}/props/level`, "maximum",
@@ -1028,7 +1103,9 @@ invalidRaw("map-latitude-minus-1e400", "-1e400 is -Infinity (a rule)", `${MAP}/p
 invalidRaw("map-zoom-1e300", "1e300 is an integer far beyond 2^53 (a rule)", `${MAP}/props/zoom`, "safeInteger", (d) => { at(d, MAP).props.zoom = "__RAW__"; }, "1e300");
 
 // =============================== INVALID: icon box ==============================
-invalid("iconbox-icon-unknown", "icons come from the project's set", `${ICON}/props/icon`, "enum", (d) => { at(d, ICON).props.icon = "rocket"; });
+invalid("iconbox-icon-unknown", "icons come from the project's set", `${ICON}/props/icon`, "enum", (d) => { at(d, ICON).props.icon = "kayak"; });
+invalid("iconbox-icon-lucide-not-in-set", "the set holds forty of Lucide's icons, not all of them", `${ICON}/props/icon`, "enum", (d) => { at(d, ICON).props.icon = "anchor"; });
+invalid("iconbox-icon-lucide-prefixed", "a Lucide icon is named as the set names it, with no prefix", `${ICON}/props/icon`, "enum", (d) => { at(d, ICON).props.icon = "lucide-dumbbell"; });
 invalid("iconbox-icon-markup", "an icon is a name, never markup", `${ICON}/props/icon`, "enum", (d) => { at(d, ICON).props.icon = "<svg onload=alert(1)>"; });
 invalid("iconbox-title-missing", "an icon box has a title", `${ICON}/props`, "required", (d) => { delete at(d, ICON).props.title; });
 invalid("iconbox-text-too-long", "the text has at most 300 characters", `${ICON}/props/text`, "maxLength", (d) => { at(d, ICON).props.text = "x".repeat(301); });

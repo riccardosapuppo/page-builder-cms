@@ -3,18 +3,32 @@ require "test_helper"
 class SiteIconsTest < ActiveSupport::TestCase
   SCHEMA = JSON.parse(Rails.application.config.x.schema_dir.join("block-document.schema.json").read)
 
-  test "every icon name the schema allows has a drawing, and the sprite has no other" do
-    allowed = SCHEMA.dig("$defs", "iconboxBlock", "properties", "props", "properties", "icon", "enum")
+  # The schema's names: the site's own eight first, then Lucide's forty.
+  ALLOWED = SCHEMA.dig("$defs", "iconboxBlock", "properties", "props", "properties", "icon", "enum")
 
-    assert_equal 8, allowed.size
-    assert_equal allowed.sort, SiteIcons.names.sort
+  test "every icon name the schema allows has a drawing, and the sprite has no other" do
+    assert_equal 48, ALLOWED.size
+    assert_equal ALLOWED.sort, SiteIcons.names.sort
   end
 
-  test "each drawing is on the 40-unit grid, with exactly one accent shape class in use" do
-    SiteIcons.all.each do |name, icon|
+  test "the site's eight are on the 40-unit grid, each with a shape in the accent" do
+    ALLOWED.first(8).each do |name|
+      icon = SiteIcons[name]
       assert_equal "0 0 40 40", icon.view_box, name
       assert icon.shapes.any? { |_, attributes| attributes["class"] == "fill" }, "#{name} has no filled shape"
     end
+  end
+
+  test "Lucide's forty are on Lucide's 24-unit grid, outlines only, with Lucide's licence beside the sprite" do
+    ALLOWED.drop(8).each do |name|
+      icon = SiteIcons[name]
+      assert_equal "0 0 24 24", icon.view_box, name
+      assert_predicate icon.shapes, :any?, name
+      assert icon.shapes.none? { |_, attributes| attributes.key?("class") }, "#{name} has a shape of its own colour"
+    end
+    licence = SiteIcons::PATH.dirname.join("LICENSE-Lucide.txt")
+    assert_predicate licence, :exist?
+    assert_match(/\AISC License\n\nCopyright \(c\) for portions of Lucide/, licence.read)
   end
 
   test "a sprite with anything but plain shapes is refused when it loads" do

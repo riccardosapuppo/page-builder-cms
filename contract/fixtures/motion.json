@@ -1,0 +1,563 @@
+{
+  "schemaVersion": 1,
+  "title": "Motion",
+  "description": "How each block comes into view, as data attributes on its root, the section's and the column's too: each motion on every device, none written out; and the values the renderers refuse: a motion the schema does not list, an animation written out, markup, a number, true and null, each no attribute and not in data-style.",
+  "sections": [
+    {
+      "id": "mo-band",
+      "type": "section",
+      "props": {
+        "label": "Moving"
+      },
+      "style": {
+        "base": {
+          "motion": "rise"
+        },
+        "tablet": {
+          "motion": "none"
+        },
+        "phone": {
+          "motion": "zoom"
+        }
+      },
+      "children": [
+        {
+          "id": "mo-band-1",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {
+              "motion": "fade"
+            }
+          },
+          "children": [
+            {
+              "id": "mo-h",
+              "type": "heading",
+              "props": {
+                "level": 2,
+                "text": "Into view"
+              },
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-t",
+              "type": "text",
+              "props": {
+                "doc": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Each block says how it comes into view."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-i",
+              "type": "image",
+              "props": {
+                "mediaId": "mo-image",
+                "alt": "A rower at the catch"
+              },
+              "style": {
+                "base": {
+                  "motion": "zoom",
+                  "aspect": "16:9"
+                },
+                "phone": {
+                  "motion": "fade",
+                  "aspect": "1:1"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-b",
+              "type": "button",
+              "props": {
+                "label": "Join",
+                "href": "#join"
+              },
+              "style": {
+                "base": {
+                  "motion": "zoom"
+                },
+                "tablet": {
+                  "motion": "none"
+                },
+                "phone": {
+                  "motion": "rise"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-d",
+              "type": "divider",
+              "props": {},
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-s",
+              "type": "spacer",
+              "props": {
+                "size": "m"
+              },
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-g",
+              "type": "gallery",
+              "props": {
+                "items": [
+                  {
+                    "mediaId": "mo-g-1",
+                    "alt": "The gym floor"
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "motion": "fade"
+                },
+                "tablet": {
+                  "motion": "zoom"
+                },
+                "phone": {
+                  "motion": "none"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-v",
+              "type": "video",
+              "props": {
+                "provider": "vimeo",
+                "videoId": "123456789",
+                "title": "A class"
+              },
+              "style": {
+                "base": {
+                  "motion": "zoom"
+                },
+                "tablet": {
+                  "motion": "none"
+                },
+                "phone": {
+                  "motion": "rise"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-m",
+              "type": "map",
+              "props": {
+                "latitude": 54.4851,
+                "longitude": -0.6157,
+                "zoom": 15,
+                "label": "The gym"
+              },
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-ib",
+              "type": "iconbox",
+              "props": {
+                "icon": "dumbbell",
+                "title": "Strength",
+                "text": "Free weights and racks."
+              },
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-q",
+              "type": "quote",
+              "props": {
+                "text": "The coaches know my name.",
+                "attribution": "A member"
+              },
+              "style": {
+                "base": {
+                  "motion": "fade"
+                },
+                "tablet": {
+                  "motion": "zoom"
+                },
+                "phone": {
+                  "motion": "none"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-a",
+              "type": "accordion",
+              "props": {
+                "items": [
+                  {
+                    "question": "Do I need to book?",
+                    "answer": "Classes, yes."
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "motion": "zoom"
+                },
+                "tablet": {
+                  "motion": "none"
+                },
+                "phone": {
+                  "motion": "rise"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-st",
+              "type": "stats",
+              "props": {
+                "items": [
+                  {
+                    "value": "6",
+                    "label": "Days a week"
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-sp",
+              "type": "steps",
+              "props": {
+                "items": [
+                  {
+                    "title": "Book",
+                    "text": "A free trial."
+                  },
+                  {
+                    "title": "Train",
+                    "text": "With a coach."
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-pr",
+              "type": "pricing",
+              "props": {
+                "plans": [
+                  {
+                    "name": "Trial",
+                    "price": "Free",
+                    "period": "",
+                    "text": "",
+                    "features": [],
+                    "button": {
+                      "label": "Book",
+                      "href": "#join"
+                    },
+                    "featured": false,
+                    "badge": ""
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "motion": "fade"
+                },
+                "tablet": {
+                  "motion": "zoom"
+                },
+                "phone": {
+                  "motion": "none"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-f",
+              "type": "form",
+              "props": {
+                "items": [
+                  {
+                    "name": "name",
+                    "kind": "text",
+                    "label": "Name",
+                    "required": true,
+                    "maxLength": 100
+                  }
+                ],
+                "submitLabel": "Send",
+                "confirmation": "Thank you."
+              },
+              "style": {
+                "base": {
+                  "motion": "zoom"
+                },
+                "tablet": {
+                  "motion": "none"
+                },
+                "phone": {
+                  "motion": "rise"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-lo",
+              "type": "logo",
+              "props": {
+                "name": "The gym"
+              },
+              "style": {
+                "base": {
+                  "motion": "none"
+                },
+                "tablet": {
+                  "motion": "rise"
+                },
+                "phone": {
+                  "motion": "fade"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-me",
+              "type": "menu",
+              "props": {
+                "label": "Main",
+                "items": [
+                  {
+                    "label": "Classes",
+                    "href": "/classes"
+                  }
+                ]
+              },
+              "style": {
+                "base": {
+                  "motion": "rise"
+                },
+                "tablet": {
+                  "motion": "fade"
+                },
+                "phone": {
+                  "motion": "zoom"
+                }
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "mo-band-2",
+          "type": "column",
+          "props": {},
+          "style": {
+            "base": {},
+            "tablet": {
+              "motion": "zoom"
+            }
+          },
+          "children": [
+            {
+              "id": "mo-trap-name",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Spins"
+              },
+              "style": {
+                "base": {
+                  "motion": "spin"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-trap-animation",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Written out"
+              },
+              "style": {
+                "base": {
+                  "motion": "rise 2s infinite"
+                },
+                "tablet": {
+                  "motion": "fade"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-trap-markup",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Markup"
+              },
+              "style": {
+                "base": {
+                  "motion": "\"><script>alert(1)</script>"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-trap-number",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "A number"
+              },
+              "style": {
+                "base": {
+                  "motion": 1
+                },
+                "phone": {
+                  "motion": true
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-trap-null",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Null"
+              },
+              "style": {
+                "base": {
+                  "motion": null
+                },
+                "tablet": {
+                  "motion": "zoom"
+                }
+              },
+              "children": []
+            },
+            {
+              "id": "mo-tablet-only",
+              "type": "heading",
+              "props": {
+                "level": 3,
+                "text": "Tablets only"
+              },
+              "style": {
+                "base": {},
+                "tablet": {
+                  "motion": "rise"
+                }
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

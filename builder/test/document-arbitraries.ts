@@ -233,11 +233,13 @@ const section = fc.integer({ min: 1, max: 4 }).chain((count) => fc.record({
   widths: fc.option(fc.constantFrom(...(COLUMN_WIDTHS_BY_COUNT[count as 1 | 2 | 3 | 4] as readonly string[]), "equal"), { nil: undefined }),
   // A section of one column has nothing to stack, and names no stacking.
   stack: fc.option(fc.constantFrom(...STACK_TOKENS), { nil: undefined }).map((stack) => (count > 1 ? stack : undefined)),
+  // A picture of the library behind it, or none.
+  picture: fc.option(fc.constantFrom(...MEDIA_IDS).map((mediaId) => ({ mediaId })), { nil: undefined }),
   style: style("section"),
-}).map(({ columns, label, anchor, widths, stack, style: s }) => ({
+}).map(({ columns, label, anchor, widths, stack, picture, style: s }) => ({
   id: "",
   type: "section",
-  props: compact({ label, anchor, columnWidths: widths === "equal" ? undefined : widths, stack }),
+  props: compact({ label, anchor, columnWidths: widths === "equal" ? undefined : widths, stack, picture }),
   children: columns,
   style: s,
 })));

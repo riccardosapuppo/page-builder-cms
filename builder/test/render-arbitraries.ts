@@ -4,9 +4,10 @@
 // spaces, invisible characters, emoji, combining marks and right-to-left
 // script; the addresses use every form and character the schema allows;
 // the map's numbers fall on and near the points where a sixth decimal is
-// half way; every style key of a type takes every token on every device,
-// and free type any value its range holds, in every unit, with two
-// decimals, one and none;
+// half way; every style key of a type takes every token on every device
+// (a block's motion, a section's picture's veil, strength and focus among
+// them), and free type any value its range holds, in every unit, with two
+// decimals, one and none; a section may hold a picture of the library;
 // rich text nests lists, puts up to all three marks on one run of text in
 // any order, and puts marks on line breaks. The widgets the panel makes
 // (../src/widgets) are among them.
@@ -287,9 +288,11 @@ function section(mediaIds: readonly string[]): fc.Arbitrary<AnyObject> {
       widths: presets.length > 0 ? fc.option(fc.constantFrom(...presets), { nil: undefined }) : fc.constant(undefined),
       // A section of one column has nothing to stack, and names no stacking.
       stack: count > 1 ? fc.option(fc.constantFrom(...STACK_TOKENS), { nil: undefined }) : fc.constant(undefined),
+      // A picture of the library behind it, where the library has one.
+      picture: mediaIds.length > 0 ? fc.option(fc.constantFrom(...mediaIds).map((mediaId): AnyObject => ({ mediaId })), { nil: undefined }) : fc.constant(undefined),
       style: style("section"),
-    }).map(({ columns, label, anchor, widths, stack, style: s }) => ({
-      id: "", type: "section", props: compact({ label, anchor, columnWidths: widths, stack }), children: columns, style: s,
+    }).map(({ columns, label, anchor, widths, stack, picture, style: s }) => ({
+      id: "", type: "section", props: compact({ label, anchor, columnWidths: widths, stack, picture }), children: columns, style: s,
     }));
   });
 }

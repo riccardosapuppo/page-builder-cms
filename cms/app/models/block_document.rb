@@ -77,10 +77,10 @@ module BlockDocument
   end
 
   # Every place the document names a media library item, as [pointer, id]
-  # pairs. Only images name one ({"mediaId": ...} in an image block and in
-  # each gallery item), but the walk does not depend on that: any member
-  # called mediaId counts, so a widget added later is indexed without a
-  # change here.
+  # pairs. Images name one ({"mediaId": ...} in an image block and in each
+  # gallery item), and so does a section's picture (props.picture), but the
+  # walk does not depend on that: any member called mediaId counts, so a
+  # widget added later is indexed without a change here.
   def media_refs(document)
     refs = []
     stack = [ [ document, "" ] ]

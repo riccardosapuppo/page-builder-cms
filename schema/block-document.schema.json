@@ -116,7 +116,8 @@
             "anchor": { "$ref": "#/$defs/anchor" },
             "className": { "$ref": "#/$defs/className" },
             "columnWidths": { "$ref": "#/$defs/columnWidthsToken" },
-            "stack": { "$ref": "#/$defs/stackToken" }
+            "stack": { "$ref": "#/$defs/stackToken" },
+            "picture": { "$ref": "#/$defs/sectionPicture" }
           }
         },
         "children": {
@@ -359,8 +360,14 @@
           "additionalProperties": false,
           "properties": {
             "icon": {
-              "description": "A name from the project's own icon set; both renderers draw it from that set. Never markup or a URL.",
-              "enum": ["sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info"]
+              "description": "A name from the project's own icon set (schema/icons.svg): the site's eight, then forty of Lucide's under their Lucide names; both renderers draw it from that set. Never markup or a URL.",
+              "enum": [
+                "sunrise", "buoys", "cup", "calendar", "clock", "pin", "globe", "info",
+                "accessibility", "activity", "award", "baby", "bike", "book-open", "briefcase", "building-2", "calendar-days", "camera",
+                "circle-check", "dumbbell", "flame", "gift", "graduation-cap", "heart-pulse", "house", "leaf", "lightbulb", "mail",
+                "moon", "music", "palette", "phone", "rocket", "scissors", "shield-check", "shopping-bag", "square-parking", "star",
+                "sun", "target", "ticket", "timer", "trophy", "user-round", "users", "utensils", "wifi", "zap"
+              ]
             },
             "title": { "$ref": "#/$defs/line", "type": "string", "maxLength": 80 },
             "text": { "$ref": "#/$defs/paragraph", "type": "string", "maxLength": 300 },
@@ -807,6 +814,15 @@
         }
       ]
     },
+    "sectionPicture": {
+      "description": "A picture of the media library behind a section, covering it: one setting for every device, as an image block's source is. The page draws it as the section's first child, decorative (its words say what matters, and its alt text is empty), cropped to the section's box around the point its style's focus keeps in view, under the veil its style's veil and veilStrength give it, so the words over it read. A library item only, by its mediaId, which counts as a use of the item as an image's does; an item the library no longer has draws no picture, and no veil.",
+      "type": "object",
+      "required": ["mediaId"],
+      "additionalProperties": false,
+      "properties": {
+        "mediaId": { "$ref": "#/$defs/mediaId" }
+      }
+    },
     "noChildren": {
       "description": "Widgets hold no blocks: children is always the empty array.",
       "type": "array",
@@ -921,6 +937,22 @@
     "alignToken": { "enum": ["left", "center", "right"] },
     "verticalAlignToken": { "enum": ["top", "middle", "bottom"] },
     "visibilityToken": { "enum": ["visible", "hidden"] },
+    "veilToken": {
+      "description": "The veil over a section's picture, so the words over it read: none; dark, a neutral black; light, a neutral white; text, the site's Text tone. The words take the colour that reads on it, as on a band: the site's Background tone on a dark veil and on the Text tone's, its Text tone on a light one, headings, links and icons with them. Absent, none. Read only while the section draws a picture.",
+      "enum": ["none", "dark", "light", "text"]
+    },
+    "veilStrengthToken": {
+      "description": "How much the veil hides the picture: light, medium or strong. Absent, medium.",
+      "enum": ["light", "medium", "strong"]
+    },
+    "focusToken": {
+      "description": "The point of a section's picture kept in view where the section's box crops it: its centre, the middle of an edge, or a corner. Absent, the centre.",
+      "enum": ["center", "top", "bottom", "left", "right", "top-left", "top-right", "bottom-left", "bottom-right"]
+    },
+    "motionToken": {
+      "description": "How a block comes into view as the page scrolls to it: none; rise, up from a little below; fade; zoom, from a little smaller. Drawn by the stylesheet alone, with no script (a scroll-driven animation), and only where the browser can play it and the visitor has not asked for less motion: anywhere else the block is simply there. Absent, none.",
+      "enum": ["none", "rise", "fade", "zoom"]
+    },
     "typefaceToken": {
       "description": "The face a heading, a text or a quote is set in: the body's or the headings'. Unset, a heading takes the headings' face, a text and a quote the body's.",
       "enum": ["body", "heading"]
@@ -964,6 +996,9 @@
         "spaceBelow": { "$ref": "#/$defs/sectionSpaceToken" },
         "aspect": { "$ref": "#/$defs/aspectToken" },
         "background": { "anyOf": [{ "$ref": "#/$defs/backgroundToken" }, { "$ref": "#/$defs/freeColor" }] },
+        "veil": { "$ref": "#/$defs/veilToken" },
+        "veilStrength": { "$ref": "#/$defs/veilStrengthToken" },
+        "focus": { "$ref": "#/$defs/focusToken" },
         "color": { "anyOf": [{ "$ref": "#/$defs/paletteSlot" }, { "$ref": "#/$defs/freeColor" }] },
         "textSize": { "$ref": "#/$defs/typeStep" },
         "typeface": { "$ref": "#/$defs/typefaceToken" },
@@ -974,6 +1009,7 @@
         "letterWidth": { "$ref": "#/$defs/letterWidth" },
         "align": { "$ref": "#/$defs/alignToken" },
         "verticalAlign": { "$ref": "#/$defs/verticalAlignToken" },
+        "motion": { "$ref": "#/$defs/motionToken" },
         "visibility": { "$ref": "#/$defs/visibilityToken" }
       }
     },
@@ -990,6 +1026,7 @@
     },
 
     "sectionStyle": {
+      "description": "Section: its background, and over a picture of its own (sectionPicture) the veil, its strength and the point kept in view; the space above, below and between its columns; how it comes into view; whether it is shown. The picture's settings are read only while the section draws one. Every block's style takes motion.",
       "type": "object",
       "properties": {
         "base": { "$ref": "#/$defs/sectionStyleKeys" },
@@ -1000,7 +1037,7 @@
     "sectionStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "background": true, "spaceAbove": true, "spaceBelow": true, "spaceBetween": true, "visibility": true }
+      "properties": { "background": true, "veil": true, "veilStrength": true, "focus": true, "spaceAbove": true, "spaceBelow": true, "spaceBetween": true, "motion": true, "visibility": true }
     },
     "columnStyle": {
       "type": "object",
@@ -1015,11 +1052,11 @@
       "additionalProperties": false,
       "properties": {
         "background": true, "spaceInside": true, "spaceBetween": true, "textSize": true,
-        "color": true, "align": true, "verticalAlign": true, "visibility": true
+        "color": true, "align": true, "verticalAlign": true, "motion": true, "visibility": true
       }
     },
     "textStyle": {
-      "description": "Heading, text and quote: their step of the type scale and their typeface, and over those, free type of their own (a size, a weight, letter spacing, a line height, a letter width), each key over the step's or the face's on its own; their colour, where they stand, and whether they are shown.",
+      "description": "Heading, text and quote: their step of the type scale and their typeface, and over those, free type of their own (a size, a weight, letter spacing, a line height, a letter width), each key over the step's or the face's on its own; their colour, where they stand, how they come into view, and whether they are shown.",
       "type": "object",
       "properties": {
         "base": { "$ref": "#/$defs/textStyleKeys" },
@@ -1032,7 +1069,7 @@
       "additionalProperties": false,
       "properties": {
         "textSize": true, "typeface": true, "fontSize": true, "fontWeight": true, "letterSpacing": true, "lineHeight": true, "letterWidth": true,
-        "color": true, "align": true, "visibility": true
+        "color": true, "align": true, "motion": true, "visibility": true
       }
     },
     "buttonStyle": {
@@ -1046,7 +1083,7 @@
     "buttonStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "background": true, "color": true, "align": true, "visibility": true }
+      "properties": { "background": true, "color": true, "align": true, "motion": true, "visibility": true }
     },
     "iconboxStyle": {
       "type": "object",
@@ -1059,7 +1096,7 @@
     "iconboxStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "color": true, "align": true, "visibility": true }
+      "properties": { "color": true, "align": true, "motion": true, "visibility": true }
     },
     "statsStyle": {
       "description": "Stats: the colour of their figures' values, where each figure's words stand, and whether they are shown.",
@@ -1073,7 +1110,7 @@
     "statsStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "color": true, "align": true, "visibility": true }
+      "properties": { "color": true, "align": true, "motion": true, "visibility": true }
     },
     "stepsStyle": {
       "description": "Steps: the colour of the discs their numbers stand in, and whether they are shown.",
@@ -1087,7 +1124,7 @@
     "stepsStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "color": true, "visibility": true }
+      "properties": { "color": true, "motion": true, "visibility": true }
     },
     "pricingStyle": {
       "description": "Pricing: the colour of the featured plan's ring and its badge, and whether it is shown. The plans' words keep the band's colour.",
@@ -1101,7 +1138,7 @@
     "pricingStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "color": true, "visibility": true }
+      "properties": { "color": true, "motion": true, "visibility": true }
     },
     "collectionListStyle": {
       "description": "Collection list: the colour of its cards' words, and whether it is shown.",
@@ -1115,7 +1152,7 @@
     "collectionListStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "color": true, "visibility": true }
+      "properties": { "color": true, "motion": true, "visibility": true }
     },
     "fieldStyle": {
       "description": "Field: the settings of the widget it draws as, a heading's or a text's for words (their step, typeface, free type, colour and alignment), an image's crop, a button's colours and alignment, and whether it is shown. Each is read only while the field draws as that widget, and kept while it does not.",
@@ -1131,7 +1168,7 @@
       "additionalProperties": false,
       "properties": {
         "textSize": true, "typeface": true, "fontSize": true, "fontWeight": true, "letterSpacing": true, "lineHeight": true, "letterWidth": true,
-        "color": true, "align": true, "aspect": true, "background": true, "visibility": true
+        "color": true, "align": true, "aspect": true, "background": true, "motion": true, "visibility": true
       }
     },
     "navStyle": {
@@ -1146,7 +1183,7 @@
     "navStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "color": true, "align": true, "visibility": true }
+      "properties": { "color": true, "align": true, "motion": true, "visibility": true }
     },
     "lineStyle": {
       "description": "Divider and accordion: the colour of their lines.",
@@ -1160,7 +1197,7 @@
     "lineStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "color": true, "visibility": true }
+      "properties": { "color": true, "motion": true, "visibility": true }
     },
     "galleryStyle": {
       "type": "object",
@@ -1173,7 +1210,7 @@
     "galleryStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "spaceBetween": true, "visibility": true }
+      "properties": { "spaceBetween": true, "motion": true, "visibility": true }
     },
     "imageStyle": {
       "description": "Image: its crop, which may differ per device, and whether it is shown. The crop is a style setting, not a property, because it is what changes from one device to another, like a text size: the approved page crops its hero image square on desktop, 16:9 on tablets and 5:4 on phones.",
@@ -1187,10 +1224,10 @@
     "imageStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "aspect": true, "visibility": true }
+      "properties": { "aspect": true, "motion": true, "visibility": true }
     },
     "plainStyle": {
-      "description": "Spacer, video, map and form: they can only be hidden per device.",
+      "description": "Spacer, video, map and form: how they come into view, and whether they are shown, per device.",
       "type": "object",
       "properties": {
         "base": { "$ref": "#/$defs/plainStyleKeys" },
@@ -1201,7 +1238,7 @@
     "plainStyleKeys": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "visibility": true }
+      "properties": { "motion": true, "visibility": true }
     },
 
     "pmDoc": {

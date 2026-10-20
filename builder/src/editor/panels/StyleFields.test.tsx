@@ -18,22 +18,22 @@ const NAMES = (container: HTMLElement) => [...container.querySelectorAll(".grp:n
 test("each type shows the settings it accepts and no other, in the groups that name them", () => {
   const kit = editorKit({ document: widgetPage(), selection: "image" });
   const { container, rerender } = kit.render(<BlockPanel id="image" />);
-  expect(groupNames()).toEqual(["Image", "Shape", "Shown on", "Advanced"]);
+  expect(groupNames()).toEqual(["Image", "Shape", "Motion", "Shown on", "Advanced"]);
   openGroups("Shape");
   expect(NAMES(container)).toEqual(["Crop"]);
   rerender(<BlockPanel id="button" />);
-  expect(groupNames()).toEqual(["Button", "Colors", "Alignment", "Shown on", "Advanced"]);
+  expect(groupNames()).toEqual(["Button", "Colors", "Alignment", "Motion", "Shown on", "Advanced"]);
   openGroups("Colors", "Alignment");
   expect(NAMES(container)).toEqual(["Background", "Text color", "Alignment"]);
   rerender(<BlockPanel id="video" />);
-  expect(groupNames()).toEqual(["Video", "Shown on", "Advanced"]);
+  expect(groupNames()).toEqual(["Video", "Motion", "Shown on", "Advanced"]);
   expect(NAMES(container)).toEqual([]);
 });
 
 test("a column's settings come in the approved layout's groups and order: space, background, type and colour, placement", () => {
   const kit = editorKit({ document: page(), selection: "c1" });
   const { container } = kit.render(<BlockPanel id="c1" />);
-  expect(groupNames()).toEqual(["Spacing", "Background", "Text size and color", "Alignment", "Shown on", "Advanced"]);
+  expect(groupNames()).toEqual(["Spacing", "Background", "Text size and color", "Alignment", "Motion", "Shown on", "Advanced"]);
   openGroups("Background", "Text size and color", "Alignment");
   expect(NAMES(container)).toEqual(["Space inside", "Space between widgets", "Background", "Text size in this column", "Text color", "Alignment"]);
   // The design's Alignment: vertical, then horizontal, side by side.

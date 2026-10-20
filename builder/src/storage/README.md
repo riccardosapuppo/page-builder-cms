@@ -295,7 +295,7 @@ a visitor's form: refused as `unsupported`), no `imageVariants`, no
 - `rails.rails.test.ts` runs the battery of `contract.ts` against a CMS
   the run starts for itself (`npm run test:rails`, port `E2E_CMS_PORT`,
   3901), on its own databases and Active Storage root, deleted at the
-  end. It first checks the battery holds its 72 cases (at least 50),
+  end. It first checks the battery holds its 78 cases (at least 50),
   each named once, and that the Rails adapter skips none of them (with
   `publish` planted as absent in its capabilities, that check failed). A
   visitor's form is sent by the runner as a browser sends it from the

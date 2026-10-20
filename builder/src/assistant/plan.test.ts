@@ -7,7 +7,8 @@
 // says: an answer of every kind comes back whole, and what does not fit
 // stats, steps or pricing is left out.
 import { expect, test } from "vitest";
-import { PLAN_SCHEMA, readBlock } from "./plan.ts";
+import { FOCUS_TOKENS, ICON_NAMES, MOTION_TOKENS } from "../shared/document.ts";
+import { PLAN_SCHEMA, PLAN_STRENGTHS, PLAN_VEILS, readBlock, readPicture, readSection } from "./plan.ts";
 
 type Schema = Record<string, unknown>;
 
@@ -25,7 +26,10 @@ function* walk(schema: Schema, at = "", depth = 0): Generator<{ schema: Schema; 
 const ALL = [...walk(PLAN_SCHEMA)];
 // Where the plan's blocks are: a choice of objects, one for each kind.
 const BLOCK_AT = "/properties/sections/items/properties/columns/items/properties/blocks/items";
-const BLOCKS = ALL.find((found) => Array.isArray(found.schema.anyOf))!.schema.anyOf as Schema[];
+const BLOCKS = ALL.find((found) => found.at === BLOCK_AT)!.schema.anyOf as Schema[];
+// Where a section's picture is: a choice of objects, one for each source.
+const PICTURE_AT = "/properties/sections/items/properties/picture";
+const SECTION = ALL.find((found) => found.at === "/properties/sections/items")!.schema;
 const kindOf = (block: Schema): unknown => ((block.properties as Record<string, Schema>).kind!.enum as unknown[])[0];
 
 // A value for a schema as a model would write it: the first of an enum,
@@ -55,7 +59,37 @@ test("only the keywords both providers take: no counts, lengths, patterns, forma
     // Each is a type, or a choice of objects.
     expect(schema.type !== undefined || Array.isArray(schema.anyOf), at).toBe(true);
   }
-  expect(ALL.filter((found) => found.schema.anyOf).map((found) => found.at)).toEqual([BLOCK_AT]);
+  expect(ALL.filter((found) => found.schema.anyOf).map((found) => found.at)).toEqual([PICTURE_AT, BLOCK_AT]);
+});
+
+test("a section names its picture by where it comes from, none or the library, with a veil words read through, and its motion; an icon box any icon of the site's", () => {
+  const properties = SECTION.properties as Record<string, Schema>;
+  expect(Object.keys(properties)).toEqual(["label", "anchor", "background", "picture", "motion", "widths", "columns"]);
+  const sources = (properties.picture!.anyOf as Schema[]).map((choice) => ({
+    source: ((choice.properties as Record<string, Schema>).source!.enum as unknown[])[0],
+    keys: Object.keys(choice.properties as Schema),
+  }));
+  expect(sources).toEqual([{ source: "none", keys: ["source"] }, { source: "library", keys: ["source", "mediaId", "veil", "strength", "focus"] }]);
+  const library = (properties.picture!.anyOf as Schema[])[1]!.properties as Record<string, Schema>;
+  // No veil and no light one: a plan's picture keeps its words readable.
+  expect(library.veil!.enum).toEqual([...PLAN_VEILS]);
+  expect(PLAN_VEILS).toEqual(["dark", "light", "text"]);
+  expect(library.strength!.enum).toEqual([...PLAN_STRENGTHS]);
+  expect(PLAN_STRENGTHS).toEqual(["medium", "strong"]);
+  expect(library.focus!.enum).toEqual([...FOCUS_TOKENS]);
+  expect(properties.motion!.enum).toEqual([...MOTION_TOKENS]);
+  const iconbox = BLOCKS.find((block) => kindOf(block) === "iconbox")!;
+  expect((iconbox.properties as Record<string, Schema>).icon!.enum).toEqual([...ICON_NAMES]);
+});
+
+test("a section's picture and motion read without trust: none for what is not the library's, the plan's veil, strength and focus or its own", () => {
+  expect(readPicture({ source: "library", mediaId: "m1", veil: "light", strength: "strong", focus: "top-left" })).toEqual({ source: "library", mediaId: "m1", veil: "light", strength: "strong", focus: "top-left" });
+  expect(readPicture({ source: "library", mediaId: 7, veil: "none", strength: "light", focus: "20% 30%" })).toEqual({ source: "library", mediaId: "", veil: "dark", strength: "medium", focus: "center" });
+  for (const other of [undefined, null, "m1", [], { source: "made", prompt: "A gym" }, { mediaId: "m1" }]) expect(readPicture(other), JSON.stringify(other)).toEqual({ source: "none" });
+  const read = (more: Record<string, unknown>) => readSection({ label: "S", anchor: "", background: "none", widths: "equal", columns: [{ align: "left", blocks: [] }], ...more });
+  expect(read({ motion: "zoom" })).toMatchObject({ motion: "zoom", picture: { source: "none" } });
+  expect(read({ motion: "spin" })).toMatchObject({ motion: "none" });
+  expect(read({})).toMatchObject({ motion: "none", picture: { source: "none" } });
 });
 
 test("a block's kind is an enum of one value; the kinds are the plan's, stats, steps and pricing among them", () => {
