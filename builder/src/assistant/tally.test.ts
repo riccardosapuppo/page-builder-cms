@@ -3,10 +3,12 @@
 // estimate at the model's list price, with the price used and the day the
 // prices were read; an amount under a cent; Claude Haiku 5.5's two prices;
 // a model with no price on file; several calls added up; and the total
-// since the key was connected.
+// since the key was connected. A photo priced from its tokens at its image
+// model's prices, the pictures said a line for each kind, the page and its
+// pictures together, and the total counting them by kind.
 import { expect, test } from "vitest";
 import type { Usage } from "./providers.ts";
-import { addTallies, briefWords, ESTIMATE_NOTE, estimateWords, tallyOf, totalWords, usedWords } from "./tally.ts";
+import { addTallies, allWords, briefWords, ESTIMATE_NOTE, estimateWords, photoTallyOf, pictureWords, tallyOf, totalWords, usedWords } from "./tally.ts";
 
 const usage = (input: number, output: number, cacheRead = 0, cacheWrite = 0): Usage => ({ input, cacheRead, cacheWrite, output });
 
@@ -86,4 +88,45 @@ test("the total since the key was connected: the requests, their tokens and what
 test("a call that used no token adds nothing", () => {
   expect(tallyOf("anthropic", "claude-opus-5-5", usage(0, 0))).toEqual([]);
   expect(addTallies([], OPUS, [])).toEqual(OPUS);
+  expect(photoTallyOf("gpt-image-2", { textInput: 0, imageInput: 0, output: 0 })).toEqual([]);
+});
+
+// A photo of gpt-image-2: 50 words in and 1,372 tokens out, at $5 in and $30 out a million: $0.04141.
+const PHOTO = photoTallyOf("gpt-image-2", { textInput: 50, imageInput: 0, output: 1372 });
+
+test("a photo is priced from its tokens at its image model's prices: the words in, any picture in at its own price, the picture out", () => {
+  expect(PHOTO).toEqual([{
+    provider: "openai", model: "gpt-image-2", name: "gpt-image-2", kind: "photo", calls: 1,
+    usage: usage(50, 1372),
+    cost: { price: { input: 5000, cacheRead: 5000, cacheWrite: 5000, output: 30_000 }, band: null, nano: 41_410_000 },
+  }]);
+  // A picture sent with the words is priced at the image input's price: 50 × 5,000 + 100 × 8,000 + 1,372 × 30,000.
+  expect(photoTallyOf("gpt-image-2", { textInput: 50, imageInput: 100, output: 1372 })[0]!.cost).toMatchObject({ nano: 42_210_000 });
+  // gpt-image-1.5 has no price for an image in: the words' price is used. 50 × 5,000 + 100 × 5,000 + 1,000 × 32,000.
+  expect(photoTallyOf("gpt-image-1.5", { textInput: 50, imageInput: 100, output: 1000 })[0]!.cost).toMatchObject({ nano: 32_750_000 });
+  // A model the table does not hold: its tokens only.
+  expect(photoTallyOf("gpt-image-1", { textInput: 50, imageInput: 0, output: 1000 })[0]!.cost).toEqual({ price: null, why: "model" });
+});
+
+test("pictures are said a line for each kind: how many, what they come to, their tokens and the price used", () => {
+  const photos = addTallies(PHOTO, PHOTO, PHOTO);
+  expect(photos).toHaveLength(1);
+  expect(pictureWords(photos, "photo")).toBe("3 photos, ≈ $0.12: 150 tokens in and 4,116 out, at gpt-image-2's list price ($5 in, $30 out per million tokens).");
+  expect(pictureWords(photos, "illustration")).toBeNull();
+  // An illustration is a call to the model that writes, counted as one.
+  const drawn = addTallies(tallyOf("anthropic", "claude-opus-5-5", usage(900, 2100), "illustration"), tallyOf("anthropic", "claude-opus-5-5", usage(900, 2100), "illustration"));
+  expect(pictureWords(drawn, "illustration")).toBe("2 illustrations, ≈ $0.091: 1,800 tokens in and 4,200 out, at Claude Opus 5.5's list price ($4 in, $20 out per million tokens).");
+  expect(pictureWords(photoTallyOf("gpt-image-1", { textInput: 50, imageInput: 0, output: 1000 }), "photo")).toBe("1 photo: 50 tokens in and 1,000 out; no list price on file for gpt-image-1.");
+  // An illustration's tokens are not the page's: they are kept apart, line by line.
+  expect(addTallies(OPUS, drawn)).toHaveLength(2);
+});
+
+test("a page and its pictures together, once pictures were made; and the total counts the pictures by their kind", () => {
+  expect(allWords(OPUS)).toBeNull();
+  expect(allWords(addTallies(OPUS, PHOTO, PHOTO))).toBe("In all, ≈ $0.099 for the page and its pictures.");
+  expect(allWords(addTallies(OPUS, PHOTO, photoTallyOf("gpt-image-1", { textInput: 1, imageInput: 0, output: 1 })))).toBe("In all, ≈ $0.058 for what has a list price on file.");
+  expect(totalWords(addTallies(OPUS, PHOTO, PHOTO))).toBe("Since you connected this key: 1 request and 2 photos, 1,334 tokens in and 3,311 out, ≈ $0.099.");
+  const drawn = tallyOf("anthropic", "claude-opus-5-5", usage(900, 2100), "illustration");
+  expect(totalWords(addTallies(OPUS, OPUS, drawn))).toBe("Since you connected this key: 2 requests and 1 illustration, 3,368 tokens in and 3,234 out, ≈ $0.078.");
+  expect(totalWords(PHOTO)).toBe("Since you connected this key: 1 photo, 50 tokens in and 1,372 out, ≈ $0.041.");
 });

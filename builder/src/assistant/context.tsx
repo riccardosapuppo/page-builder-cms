@@ -1,21 +1,42 @@
 // The Assistant as the interface knows it (./README.md): what it may see
 // of the key (./key.ts: the provider and four characters, never the key),
-// the models the key may use and the one chosen, the page being written,
-// and what the requests since the key was kept used, priced at list price
-// (./tally.ts): kept in memory like the key, and forgotten with it. One per
-// editor, made by the shell (../editor/App.tsx) or a test, which gives the
-// clock and, for a test, the providers.
+// the models the key may use and the one chosen, the image model its
+// photos are made with (OpenAI's), the page being written, and what the
+// requests since the key was kept used, priced at list price (./tally.ts):
+// kept in memory like the key, and forgotten with it. A page's run is bound
+// to the key it began with (Bound): its requests go with that key alone,
+// and stop once it is forgotten or replaced. One per editor, made by the
+// shell (../editor/App.tsx) or a test, which gives the clock and, for a
+// test, the providers.
 import { createContext, useContext, type ReactNode } from "react";
 import { createStore, useStore, type StoreApi } from "zustand";
 import type { Clock } from "../storage/clock.ts";
 import { createKeyKeeper, type ForgetReason, type Held, type KeyKeeper, type ProviderId } from "./key.ts";
-import { AssistantError, providerClient, type Answer, type ModelChoice, type ProviderClient, type Question, type Usage } from "./providers.ts";
-import { addTallies, tallyOf, type Tally } from "./tally.ts";
+import type { ImageQuality, ImageSize } from "./prices.ts";
+import { AssistantError, providerClient, type Answer, type ModelChoice, type PhotoAnswer, type ProviderClient, type Question, type Usage } from "./providers.ts";
+import { addTallies, photoTallyOf, tallyOf, type Tally, type TallyKind } from "./tally.ts";
 import type { Writing } from "./write.ts";
 
 // The page being written as the drawer shows it: a sample written by hand
 // says so, a model's work names the model.
 export type ShownWriting = Writing & { sample?: boolean; model?: string };
+
+// A run's key, bound when the run begins (bind): its provider, the
+// keeper's ticket for it, the model chosen and the image model. A request
+// made with it (ask, photo) is lent that key alone: once the key is
+// forgotten or replaced, `gone` aborts, and every request made with it is
+// refused, never sent with another key, nor counted toward another key's
+// total.
+export interface Bound {
+  provider: ProviderId;
+  ticket: number;
+  model: string;
+  imageModel: string | null;
+  gone: AbortSignal;
+}
+
+// What a request made with a key no longer kept is told.
+export const KEY_GONE = "The key this was begun with is no longer kept: nothing more is asked with it.";
 
 export interface AssistantState {
   held: Held | null;
@@ -23,6 +44,9 @@ export interface AssistantState {
   forgotten: ForgetReason | null;
   models: readonly ModelChoice[];
   model: string | null;
+  // The image model the key's photos are made with: the newest GPT Image
+  // model an OpenAI key may use; null for a key that makes none.
+  imageModel: string | null;
   connecting: boolean;
   // Why the last key given was not kept.
   problem: string | null;
@@ -37,11 +61,19 @@ export interface AssistantState {
   connect(provider: ProviderId, key: string): Promise<boolean>;
   forget(): void;
   choose(model: string): void;
-  // Asks the chosen model; the key is lent for the call and nothing else.
-  // The question may take a moment to make (an image made smaller). What
-  // the call used comes back priced (tally), and is added to `spent`; an
-  // answer refused or cut short says it in its error's tally.
-  ask(question: (model: string) => Question | Promise<Question>, written: (piece: string) => void, signal?: AbortSignal): Promise<Answer & { tally: Tally }>;
+  // The key kept now, with its models, bound for a run; null with none.
+  bind(): Bound | null;
+  // Asks the chosen model, or a run's own (`bound`); the key is lent for
+  // the call and nothing else. The question may take a moment to make (an
+  // image made smaller). What the call used comes back priced (tally), and
+  // is added to `spent` while its key is the one kept; an answer refused
+  // or cut short says it in its error's tally. An illustration drawn for a
+  // page is counted as one (`kind`).
+  ask(question: (model: string) => Question | Promise<Question>, written: (piece: string) => void, signal?: AbortSignal, kind?: TallyKind, bound?: Bound): Promise<Answer & { tally: Tally }>;
+  // Makes one photo with the key's image model, or a run's own (`bound`),
+  // the key lent for the call; what it used comes back priced, and is
+  // added to `spent` while its key is the one kept.
+  photo(ask: { prompt: string; size: ImageSize; quality: ImageQuality }, signal?: AbortSignal, bound?: Bound): Promise<PhotoAnswer & { tally: Tally }>;
   setWriting(writing: ShownWriting | null): void;
   // A run starts, to be stopped with stop(); its end lets it go.
   begin(): AbortSignal;
@@ -54,11 +86,14 @@ export type AssistantStore = StoreApi<AssistantState> & { watch(page: EventTarge
 
 export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<ProviderClient> = providerClient): AssistantStore {
   const keeper: KeyKeeper = createKeyKeeper(clock);
+  // The runs bound to the key kept: each told when it goes.
+  const bindings = new Set<AbortController>();
   const store = createStore<AssistantState>()((set, get) => ({
     held: null,
     forgotten: null,
     models: [],
     model: null,
+    imageModel: null,
     connecting: false,
     problem: null,
     writing: null,
@@ -72,13 +107,17 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
       }
       set({ connecting: true, problem: null });
       try {
-        const models = await (await load(provider)).models(given);
+        const client = await load(provider);
+        const models = await client.models(given);
         if (models.length === 0) {
           set({ connecting: false, problem: "This key may use no model the Assistant can work with." });
           return false;
         }
+        // Its photos' model, where the provider makes them: a listing that
+        // fails leaves the key with none, and the page written without photos.
+        const imageModel = client.photos ? await client.photos.model(given).catch(() => null) : null;
         keeper.keep(provider, given);
-        set({ connecting: false, models, model: models[0]!.id, forgotten: null });
+        set({ connecting: false, models, model: models[0]!.id, imageModel, forgotten: null });
         return true;
       } catch (error) {
         set({ connecting: false, problem: error instanceof Error ? error.message : String(error) });
@@ -87,20 +126,30 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     },
     forget: () => keeper.forget("asked"),
     choose: (model) => set({ model }),
-    async ask(question, written, signal) {
+    bind() {
+      const { held, model, imageModel } = get();
+      if (held === null || model === null) return null;
+      const going = new AbortController();
+      bindings.add(going);
+      return { provider: held.provider, ticket: keeper.ticket(), model, imageModel, gone: going.signal };
+    },
+    async ask(question, written, signal, kind = "words", bound) {
       const { model, held } = get();
-      if (held === null || model === null) throw new AssistantError("Connect a model first.", "key");
-      // The key this question is for: if another is kept while the
-      // question is made, it is not lent to this provider.
-      const ticket = keeper.ticket();
-      const client = await load(held.provider);
-      const asked = await question(model);
-      if (keeper.ticket() !== ticket) throw new AssistantError("The key changed while the question was being made. Ask again.", "key");
+      // The key this question is for: the run's, or the one kept now. If
+      // another is kept while the question is made, it is not lent to
+      // this provider.
+      const using = bound ?? (held === null || model === null ? null : { provider: held.provider, ticket: keeper.ticket(), model });
+      if (using === null) throw new AssistantError("Connect a model first.", "key");
+      const ticket = using.ticket;
+      if (keeper.ticket() !== ticket) throw new AssistantError(KEY_GONE, "key");
+      const client = await load(using.provider);
+      const asked = await question(using.model);
+      if (keeper.ticket() !== ticket) throw new AssistantError(bound ? KEY_GONE : "The key changed while the question was being made. Ask again.", "key");
       // What the call used, priced, and added to the key's total while that
       // key is still the one kept: a call answered after it went counts
       // toward no other key's.
       const counted = (usage: Usage): Tally => {
-        const tally = tallyOf(held.provider, asked.model, usage);
+        const tally = tallyOf(using.provider, asked.model, usage, kind);
         if (keeper.ticket() === ticket) set((state) => ({ spent: addTallies(state.spent, tally) }));
         return tally;
       };
@@ -111,6 +160,22 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
         if (error instanceof AssistantError && error.usage !== null) throw new AssistantError(error.message, error.kind, error.usage, counted(error.usage));
         throw error;
       }
+    },
+    async photo(ask, signal, bound) {
+      const { held, imageModel } = get();
+      const using = bound ?? (held === null ? null : { provider: held.provider, ticket: keeper.ticket(), imageModel });
+      if (using === null || using.imageModel === null) throw new AssistantError("This key makes no photos.", "model");
+      const ticket = using.ticket;
+      const model = using.imageModel;
+      if (keeper.ticket() !== ticket) throw new AssistantError(KEY_GONE, "key");
+      const client = await load(using.provider);
+      if (!client.photos) throw new AssistantError("This key makes no photos.", "model");
+      const photos = client.photos;
+      if (keeper.ticket() !== ticket) throw new AssistantError(KEY_GONE, "key");
+      const answer = await keeper.lend((key) => photos.make(key, { model, ...ask }, signal), ticket);
+      const tally = answer.usage === null ? [] : photoTallyOf(model, answer.usage);
+      if (keeper.ticket() === ticket) set((state) => ({ spent: addTallies(state.spent, tally) }));
+      return { ...answer, tally };
     },
     setWriting: (writing) => set({ writing }),
     begin() {
@@ -123,7 +188,11 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     end: () => set({ running: null }),
   }));
   keeper.subscribe((held, why) => {
-    if (held === null) store.setState({ held: null, forgotten: why, models: [], model: null, spent: [] });
+    // Every run bound to the key that went is told: nothing more of it is
+    // asked, with that key or another.
+    for (const binding of bindings) binding.abort();
+    bindings.clear();
+    if (held === null) store.setState({ held: null, forgotten: why, models: [], model: null, imageModel: null, spent: [] });
     else store.setState({ held, spent: [] });
   });
   return Object.assign(store, { watch: (page: EventTarget) => keeper.watch(page) });

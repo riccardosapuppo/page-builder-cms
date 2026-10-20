@@ -33,14 +33,24 @@
 //   section takes the soft background instead, and the note says so.
 // - A section's picture is one of the library's, by id, as an image is,
 //   under the veil the plan gives it, held to the contrast a colour is
-//   held to: where its words would not read through the veil at its
-//   strength over the worst of pictures (../shared/veil.ts), the veil is
-//   made strong, and failing that dark, and the note says so. Its motion
-//   is a token of the page's.
+//   held to on the site's own colours: where its words would not read
+//   through the veil at its strength over the worst of pictures
+//   (../shared/veil.ts), the veil is made strong, and failing that the
+//   first other strong veil they read through, and the note says so; with
+//   none, the picture is left out, said. Its motion is a token of the
+//   page's.
 // - A heading's section and the points it announces after it, side by side
 //   on the same band with no picture behind either, read as one band: the
 //   points' section takes no space above, so the theme's one gap stands
 //   between the two, not two.
+// - A picture made for the page (./pictures.ts), behind a section or as an
+//   image, is asked for only where the person's provider makes pictures
+//   and the person wants them (facts.made), PLAN_MADE_MOST at most, each
+//   with what it shows, its alt text and its shape: the section goes in
+//   without it, under its veil and focus (a veil with no picture draws
+//   nothing), a column whose image is still to come kept empty for it;
+//   ./write.ts makes the picture, then puts it in as a step of its own.
+//   picturesFor() hands over a section's, once the section is in.
 import {
   COLUMN_WIDTHS_BY_COUNT, type ColumnBlock, type ColumnWidthsToken, type FormField, type HeadingLevel, type ImageProps, type PageDocument, type Paragraph,
   type PricingPlan, type RichTextBlock, type SectionBlock, type SectionPicture, type StylePart, type WidgetBlock,
@@ -51,7 +61,7 @@ import { isLine } from "../shared/validate.ts";
 import { veilContrast, type SiteInk } from "../shared/veil.ts";
 import { checkLink } from "../editor/rich/link-check.ts";
 import type { MediaItem } from "../storage/adapter.ts";
-import { readSection, type PlanBlock, type PlanColumn, type PlanOffer, type PlanPicture, type PlanSection, type PlanStrength, type PlanVeil } from "./plan.ts";
+import { PLAN_MADE_MOST, readSection, type PlanBlock, type PlanColumn, type PlanMade, type PlanOffer, type PlanPicture, type PlanSection, type PlanShape, type PlanStrength, type PlanVeil } from "./plan.ts";
 
 export interface SiteFacts {
   // The site's library: an image block names one of these, and so does a
@@ -65,11 +75,34 @@ export interface SiteFacts {
   // The site's Text and Background tones, the words' colours over a veil;
   // absent, the theme's own.
   ink?: SiteInk;
+  // Whether pictures may be made for the page: the person's provider makes
+  // them and the person wants them. Absent, none is.
+  made?: boolean;
+}
+
+// A picture to be made for a section the builder made: behind it, or an
+// image in one of its columns, after the blocks the plan put before it
+// there (their ids, and the keys of pictures made before it, nearest
+// first). `key` names it until it is in.
+export interface PictureAsk {
+  key: string;
+  sectionId: string;
+  // The section's name in the drawer ("Hero"), and in a note.
+  label: string;
+  called: string;
+  place: { behind: true } | { behind: false; columnId: string; after: readonly string[] };
+  // What it shows, in the model's words, and its alt text (none: it only decorates).
+  prompt: string;
+  alt: string;
+  shape: PlanShape;
 }
 
 // The contrast the words over a veiled picture must have at its worst, as
 // body text must (WCAG's AA, as the panel's check says it).
 const READABLE = 4.5;
+// The veils tried, strong, when the plan's will not do, and their names in a note.
+const PLAN_VEILS_IN_TURN: readonly PlanVeil[] = ["dark", "text", "light"];
+const VEIL_NAMES: Readonly<Record<PlanVeil, string>> = { dark: "dark", text: "the site's text colour", light: "light" };
 
 // A button whose section never came: a button block, or a plan's button,
 // with the plan's place in its pricing block and its name.
@@ -86,6 +119,8 @@ const MAX = {
   figureValue: 24, figureLabel: 80, stepTitle: 120, stepText: 1000,
   planName: 80, price: 24, period: 40, planText: 400, feature: 120, badge: 30,
   fieldLabel: 200, submit: 60, confirmation: 500, alt: 300,
+  // What a picture made for the page is to show: the Images API takes far more.
+  prompt: 800,
 } as const;
 // How much of each a page takes from a plan.
 const MOST = { columns: 4, blocks: 12, paragraphs: 12, items: 20, questions: 30, figures: 8, steps: 10, plans: 4, features: 12, fields: 20 } as const;
@@ -126,9 +161,21 @@ export class PlanBuilder {
   // opens with a heading).
   private previous: { background: string; picture: boolean; announces: boolean } | null = null;
   private readonly facts: SiteFacts;
+  // The pictures to be made, by the id of their section, and how many the
+  // plan has asked for so far.
+  private readonly asked = new Map<string, PictureAsk[]>();
+  private made = 0;
 
   constructor(facts: SiteFacts) {
     this.facts = facts;
+  }
+
+  // The pictures to be made for a section the page now has, handed over
+  // once: none for a section the page did not take.
+  picturesFor(sectionId: string): PictureAsk[] {
+    const asks = this.asked.get(sectionId) ?? [];
+    this.asked.delete(sectionId);
+    return asks;
   }
 
   // The page's title and description from the plan's head; null where the
@@ -152,10 +199,18 @@ export class PlanBuilder {
       return null;
     }
     const id = draw();
-    const columns = plan.columns.slice(0, MOST.columns).map((column) => this.column(column, draw)).filter((column) => column.children.length > 0);
+    // Its picture first: one made for the page counts before its images.
+    const picture = this.picture(plan, plan.picture);
+    // The images to be made in its columns, gathered as the columns are built.
+    const images: Array<Omit<PictureAsk, "sectionId" | "label" | "called">> = [];
+    const built = plan.columns.slice(0, MOST.columns).map((column) => this.column(column, draw, images));
+    // A column whose image is still to come is kept, empty, for it.
+    const columns = built.filter((column) => column.children.length > 0 || images.some((image) => !image.place.behind && image.place.columnId === column.id));
     if (plan.columns.length > MOST.columns) this.notes.push(`Kept the first ${MOST.columns} columns of ${this.called(plan)}: a section has at most ${MOST.columns}.`);
     if (columns.length === 0) {
       this.notes.push(`Left out ${this.called(plan)}: nothing in it could be kept.`);
+      // Nothing of it is made: what it asked for goes back to the page's count.
+      this.made -= (picture?.made ? 1 : 0) + images.length;
       return null;
     }
     const props: SectionBlock["props"] = {};
@@ -166,17 +221,23 @@ export class PlanBuilder {
     const widths = plan.widths === "equal" ? null : plan.widths;
     if (widths !== null && (COLUMN_WIDTHS_BY_COUNT[columns.length as 1 | 2 | 3 | 4] as readonly string[]).includes(widths)) props.columnWidths = widths as ColumnWidthsToken;
     const background = this.behindKeys(plan, columns);
-    const picture = this.picture(plan, plan.picture);
     // Points side by side after the heading's section that announces them,
     // on its band, with no picture behind either, read as one band with
     // it: they take no space above, the theme's one gap between the two.
     const before = this.previous;
     const announced = before !== null && before.announces && before.background === background && !before.picture && picture === null && columns.length >= 2;
     const base: StylePart<"section"> = { ...(announced ? { spaceAbove: "none" } : {}), ...(background === "none" ? {} : { background }) };
+    const asks: PictureAsk[] = [];
+    const called = this.called(plan);
+    const said = label === "" ? "a section" : label;
     if (picture !== null) {
-      props.picture = picture.props;
+      // A picture made for the page comes later: the section takes its veil and focus now.
+      if (picture.props) props.picture = picture.props;
+      if (picture.made) asks.push({ key: picture.made.key, sectionId: id, label: said, called, place: { behind: true }, prompt: picture.made.prompt, alt: picture.made.alt, shape: picture.made.shape });
       Object.assign(base, picture.style);
     }
+    for (const image of images) asks.push({ ...image, sectionId: id, label: said, called });
+    if (asks.length > 0) this.asked.set(id, asks);
     if (plan.motion !== "none") base.motion = plan.motion;
     this.previous = { background, picture: picture !== null, announces: columns.length === 1 && columns[0]!.children[0]?.type === "heading" };
     return { id, type: "section", props, children: columns, style: { base } };
@@ -184,39 +245,73 @@ export class PlanBuilder {
 
   // A section's picture as the page's: its props and the style it brings,
   // or null for none. Where it comes from decides how it is found: the
-  // library's by id. (A picture made for the page, a later step, is one
-  // more source here.)
-  private picture(plan: PlanSection, asked: PlanPicture): { props: SectionPicture; style: StylePart<"section"> } | null {
-    switch (asked.source) {
-      case "none":
+  // library's by id; a picture made for the page has no props yet, only
+  // what it is to show, and is made later.
+  private picture(plan: PlanSection, asked: PlanPicture): { props?: SectionPicture; made?: PlanMade & { key: string }; style: StylePart<"section"> } | null {
+    if (asked.source === "none") return null;
+    let found: { props?: SectionPicture; made?: PlanMade & { key: string } };
+    if (asked.source === "library") {
+      const item = this.facts.media.find((media) => media.id === asked.mediaId);
+      if (!item) {
+        this.notes.push(`Left out the picture of ${this.called(plan)}: it is not in the site's library.`);
         return null;
-      case "library": {
-        const item = this.facts.media.find((media) => media.id === asked.mediaId);
-        if (!item) {
-          this.notes.push(`Left out the picture of ${this.called(plan)}: it is not in the site's library.`);
-          return null;
-        }
-        const { veil, strength } = this.readable(plan, asked.veil, asked.strength);
-        // The theme's own strength and focus are not written.
-        return {
-          props: { mediaId: item.id },
-          style: { veil, ...(strength === "medium" ? {} : { veilStrength: strength }), ...(asked.focus === "center" ? {} : { focus: asked.focus }) },
-        };
       }
+      found = { props: { mediaId: item.id } };
+    } else {
+      const made = this.toMake(asked, `the picture of ${this.called(plan)}`);
+      if (made === null) return null;
+      found = { made };
     }
+    const readable = this.readable(plan, asked.veil, asked.strength);
+    if (readable === null) return null;
+    if (found.made) this.made += 1;
+    const { veil, strength } = readable;
+    // The theme's own strength and focus are not written.
+    return { ...found, style: { veil, ...(strength === "medium" ? {} : { veilStrength: strength }), ...(asked.focus === "center" ? {} : { focus: asked.focus }) } };
   }
 
-  // A veil the words read through at its worst, as the panel measures it:
-  // the plan's, else strong, else dark and strong, said.
-  private readable(plan: PlanSection, veil: PlanVeil, strength: PlanStrength): { veil: PlanVeil; strength: PlanStrength } {
+  // A picture the plan asks to be made, as it will be asked for, or null
+  // with a note: none is made for this page, the page has as many as it
+  // takes, or the plan said nothing of what it shows. Counted by its taker.
+  private toMake(asked: PlanMade, what: string): (PlanMade & { key: string }) | null {
+    if (!this.facts.made) {
+      this.notes.push(`Left out ${what}: no picture is made for this page.`);
+      return null;
+    }
+    if (this.made >= PLAN_MADE_MOST) {
+      this.notes.push(`Left out ${what}: a page has at most ${PLAN_MADE_MOST} pictures made for it.`);
+      return null;
+    }
+    const prompt = line(asked.prompt, MAX.prompt);
+    if (prompt === "") {
+      this.notes.push(`Left out ${what}: the plan did not say what it shows.`);
+      return null;
+    }
+    return { key: `made-${this.made + 1}`, prompt, alt: line(asked.alt, MAX.alt), shape: asked.shape };
+  }
+
+  // A veil the words read through at its worst, as the panel measures it,
+  // on this site's colours: the plan's; else its kind, strong; else the
+  // first of the other kinds that reads when strong (dark, the text
+  // colour's, light), said. On a dark site a dark veil takes words in its
+  // dark Background, and a light one in its pale Text: only the text
+  // colour's may read. With none that reads, null: the picture is left
+  // out, said, rather than words put where they cannot be read.
+  private readable(plan: PlanSection, veil: PlanVeil, strength: PlanStrength): { veil: PlanVeil; strength: PlanStrength } | null {
     const site = this.facts.ink ?? { text: slotTone("text").hex, background: slotTone("background").hex };
-    if (veilContrast(veil, strength, site).ratio >= READABLE) return { veil, strength };
-    if (veilContrast(veil, "strong", site).ratio >= READABLE) {
+    const reads = (kind: PlanVeil, at: PlanStrength): boolean => veilContrast(kind, at, site).ratio >= READABLE;
+    if (reads(veil, strength)) return { veil, strength };
+    if (reads(veil, "strong")) {
       this.notes.push(`Made the veil over the picture of ${this.called(plan)} strong: its words would not read through a ${strength} one.`);
       return { veil, strength: "strong" };
     }
-    this.notes.push(`Made the veil over the picture of ${this.called(plan)} dark and strong: its words would not read through the ${veil === "text" ? "text colour's" : veil} one.`);
-    return { veil: "dark", strength: "strong" };
+    const other = PLAN_VEILS_IN_TURN.find((kind) => kind !== veil && reads(kind, "strong"));
+    if (other === undefined) {
+      this.notes.push(`Left out the picture of ${this.called(plan)}: no veil lets its words read on this site's colours.`);
+      return null;
+    }
+    this.notes.push(`Made the veil over the picture of ${this.called(plan)} ${VEIL_NAMES[other]} and strong: its words would not read through the ${veil === "text" ? "text colour's" : veil} one.`);
+    return { veil: other, strength: "strong" };
   }
 
   // The buttons on the page that lead to a section of this plan the page
@@ -267,12 +362,27 @@ export class PlanBuilder {
     return anchor;
   }
 
-  private column(plan: PlanColumn, draw: () => string): ColumnBlock {
+  // A column of the plan as the page's; an image to be made for the page
+  // is gathered in `images`, with what stands before it, and comes later.
+  private column(plan: PlanColumn, draw: () => string, images: Array<Omit<PictureAsk, "sectionId" | "label" | "called">>): ColumnBlock {
     const id = draw();
     const children: WidgetBlock[] = [];
+    // What stands before the next block, nearest first: the blocks put in,
+    // and the images to be made, by their keys.
+    const before: string[] = [];
     for (const block of plan.blocks.slice(0, MOST.blocks)) {
-      const made = this.block(block, draw);
-      if (made) children.push(made);
+      if (block.kind === "image" && block.source === "made") {
+        const made = this.toMake(block, "an image to be made for the page");
+        if (made === null) continue;
+        this.made += 1;
+        images.push({ key: made.key, place: { behind: false, columnId: id, after: [...before] }, prompt: made.prompt, alt: made.alt, shape: made.shape });
+        before.unshift(made.key);
+        continue;
+      }
+      const built = this.block(block, draw);
+      if (!built) continue;
+      children.push(built);
+      before.unshift(built.id);
     }
     return { id, type: "column", props: {}, children, style: { base: plan.align === "center" ? { align: "center" } : {} } };
   }
@@ -338,6 +448,8 @@ export class PlanBuilder {
         return widget({ type: "button", props: { label, href } });
       }
       case "image": {
+        // One to be made is the column's to gather.
+        if (plan.source === "made") return this.leave("an image to be made for the page");
         const item = this.facts.media.find((media) => media.id === plan.mediaId);
         if (!item) return this.leave("an image that is not in the site's library");
         const alt = line(plan.alt, MAX.alt);

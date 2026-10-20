@@ -4,12 +4,15 @@
 // strong opening, bands that alternate, points side by side, figures and
 // steps where the brief gives them, one call to action said again at the
 // end, motion with restraint, the library's pictures where they fit), and
-// keeps its rules on facts as they were.
+// keeps its rules on facts as they were. Where pictures are made for the
+// page, it asks for a few, where they matter, never with words in them or
+// anyone real; a photo is asked for with the same two rules, and an
+// illustration in the site's palette, in the viewBox of its shape.
 import { expect, test } from "vitest";
 import { ICON_NAMES } from "../shared/document.ts";
 import { ICON_WORDS } from "../widgets/iconbox/words.ts";
-import { PLAN_SCHEMA } from "./plan.ts";
-import { pageQuestion, rewriteQuestion, type SiteWords } from "./prompts.ts";
+import { PLAN_MADE_MOST, PLAN_SCHEMA, PLAN_SCHEMA_MADE } from "./plan.ts";
+import { illustrationQuestion, pageQuestion, photoPrompt, rewriteQuestion, SVG_SCHEMA, type SiteWords } from "./prompts.ts";
 
 const SITE: SiteWords = {
   palette: { text: "#0E2A35", background: "#FFFFFF", primary: "#C2352B", accent: "#F2A541", soft: "#E6EFEA", muted: "#4E625B" },
@@ -50,6 +53,55 @@ test("it asks for a page with rhythm and life", () => {
     "- Motion with restraint: rise or fade on two or three sections after the opening, zoom once at most, none on the opening",
     "- A picture behind a section only from the library, and only where what it shows fits",
   ]) expect(system, rule).toContain(rule);
+});
+
+test("where pictures are made, the plan may make them: a few, where they matter, never with words in them or anyone real; the rules on facts are the same", () => {
+  for (const kind of ["photo", "illustration"] as const) {
+    const { system, schema } = pageQuestion("m", "brief", SITE, kind);
+    expect(schema).toBe(PLAN_SCHEMA_MADE);
+    for (const rule of [
+      "Use only these ids for the library's images, and one only where what it shows fits the page; where none fits, a picture may be made for the page instead:",
+      "Behind it a picture: the library's when one fits the page, else one made for it.",
+      "- A picture behind a section from the library where one fits, else made for the page, and only where it serves the section: at most two on a page",
+      `At most ${PLAN_MADE_MOST} on the page, where they matter: the opening's picture, a band that shows what the page offers, cards side by side (an image above each card's words). Each one costs the person: make none where the page does not need it.`,
+      "its shape, landscape (3:2) behind a section or across a column, square or portrait (2:3) for cards.",
+      "- Never text in a picture: no words, letters, numbers, signs or logos. The page's words carry those.",
+      "- People in a picture, if any, are generic and unnamed: never a real person, a brand or a trademark.",
+      `- ${FACTS}`,
+    ]) expect(system, `${kind}: ${rule}`).toContain(rule);
+    // The rules of a page with no pictures made are gone.
+    expect(system).not.toContain("A picture behind a section only from the library");
+  }
+  expect(pageQuestion("m", "b", SITE, "photo").system).toContain("are photographs, natural light on real places, people and things");
+  expect(pageQuestion("m", "b", SITE, "illustration").system).toContain("are flat vector illustrations in the site's palette");
+  expect(pageQuestion("m", "b", { ...SITE, media: [] }, "photo").system).toContain("(no images: make the pictures the page needs)");
+  expect(pageQuestion("m", "b", SITE).schema).toBe(PLAN_SCHEMA);
+});
+
+test("a photo is asked for in the plan's words, with the two rules every picture keeps", () => {
+  expect(photoPrompt({ prompt: "  Rowers on a misty river at dawn, seen from the bank.  " })).toBe(
+    "Rowers on a misty river at dawn, seen from the bank.\n\nA photograph for a web page. Never text in a picture: no words, letters, numbers, signs or logos. The page's words carry those. People in a picture, if any, are generic and unnamed: never a real person, a brand or a trademark.",
+  );
+});
+
+test("an illustration is one SVG in a small schema, in the site's palette as hex, in the viewBox of its shape, holding only what the cleaner keeps", () => {
+  const question = illustrationQuestion("claude-opus-5-5", { prompt: "A rower on calm water.", shape: "portrait" }, SITE.palette);
+  expect(question).toMatchObject({ model: "claude-opus-5-5", text: "The illustration shows: A rower on calm water.", schema: SVG_SCHEMA, name: "illustration", effort: "low", once: true });
+  // Asked once, as a picture is; the page's own question keeps the SDK's retry.
+  expect(pageQuestion("m", "b", SITE, "illustration").once).toBeUndefined();
+  expect(SVG_SCHEMA).toEqual({ type: "object", additionalProperties: false, required: ["svg"], properties: { svg: { type: "string", description: "The illustration: one SVG document, its svg element the root, nothing before or after it." } } });
+  for (const rule of [
+    "flat, simple vector art, like a poster or a print, never a photograph",
+    "text #0E2A35, background #FFFFFF, primary #C2352B, accent #F2A541, soft #E6EFEA, muted #4E625B",
+    "- Never text in a picture: no words, letters, numbers, signs or logos.",
+    "never a real person, a brand or a trademark",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 600\">",
+    "Only these elements: svg, g, defs, path, rect, circle, ellipse, line, polyline, polygon, linearGradient, radialGradient, stop.",
+    "no style, class, script, text, image, use, href, filter, mask, clipPath, pattern, animation or foreignObject",
+    "a few kilobytes",
+  ]) expect(question.system, rule).toContain(rule);
+  expect(illustrationQuestion("m", { prompt: "x", shape: "landscape" }, SITE.palette).system).toContain("viewBox=\"0 0 600 400\"");
+  expect(illustrationQuestion("m", { prompt: "x", shape: "square" }, SITE.palette).system).toContain("viewBox=\"0 0 400 400\"");
 });
 
 test("its rules on facts are as they were, and as a text written again keeps them", () => {

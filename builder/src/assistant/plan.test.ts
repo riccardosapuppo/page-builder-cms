@@ -5,10 +5,11 @@
 // block's kind an enum of one value; and no object deeper than the plan's
 // were before pricing came. Then what a model sends, read as the schema
 // says: an answer of every kind comes back whole, and what does not fit
-// stats, steps or pricing is left out.
+// stats, steps or pricing is left out. With pictures made for the page,
+// a section's picture and an image may be made, held to the same rules.
 import { expect, test } from "vitest";
 import { FOCUS_TOKENS, ICON_NAMES, MOTION_TOKENS } from "../shared/document.ts";
-import { PLAN_SCHEMA, PLAN_STRENGTHS, PLAN_VEILS, readBlock, readPicture, readSection } from "./plan.ts";
+import { PLAN_SCHEMA, PLAN_SCHEMA_MADE, PLAN_SHAPES, PLAN_STRENGTHS, PLAN_VEILS, planSchema, readBlock, readPicture, readSection } from "./plan.ts";
 
 type Schema = Record<string, unknown>;
 
@@ -82,10 +83,14 @@ test("a section names its picture by where it comes from, none or the library, w
   expect((iconbox.properties as Record<string, Schema>).icon!.enum).toEqual([...ICON_NAMES]);
 });
 
-test("a section's picture and motion read without trust: none for what is not the library's, the plan's veil, strength and focus or its own", () => {
+test("a section's picture and motion read without trust: none for what is not the library's or made, the plan's veil, strength and focus or its own", () => {
   expect(readPicture({ source: "library", mediaId: "m1", veil: "light", strength: "strong", focus: "top-left" })).toEqual({ source: "library", mediaId: "m1", veil: "light", strength: "strong", focus: "top-left" });
   expect(readPicture({ source: "library", mediaId: 7, veil: "none", strength: "light", focus: "20% 30%" })).toEqual({ source: "library", mediaId: "", veil: "dark", strength: "medium", focus: "center" });
-  for (const other of [undefined, null, "m1", [], { source: "made", prompt: "A gym" }, { mediaId: "m1" }]) expect(readPicture(other), JSON.stringify(other)).toEqual({ source: "none" });
+  // Made for the page: what it shows, its alt text and its shape, a shape it has not being landscape.
+  expect(readPicture({ source: "made", prompt: "A gym at dawn", alt: "The gym", shape: "portrait", veil: "text", strength: "strong", focus: "top", mediaId: "m1" })).toEqual({ source: "made", prompt: "A gym at dawn", alt: "The gym", shape: "portrait", veil: "text", strength: "strong", focus: "top" });
+  expect(readPicture({ source: "made", prompt: "A gym" })).toEqual({ source: "made", prompt: "A gym", alt: "", shape: "landscape", veil: "dark", strength: "medium", focus: "center" });
+  expect(readPicture({ source: "made", prompt: ["no"], alt: 3, shape: "wide" })).toMatchObject({ prompt: "", alt: "", shape: "landscape" });
+  for (const other of [undefined, null, "m1", [], { source: "drawn", prompt: "A gym" }, { mediaId: "m1" }]) expect(readPicture(other), JSON.stringify(other)).toEqual({ source: "none" });
   const read = (more: Record<string, unknown>) => readSection({ label: "S", anchor: "", background: "none", widths: "equal", columns: [{ align: "left", blocks: [] }], ...more });
   expect(read({ motion: "zoom" })).toMatchObject({ motion: "zoom", picture: { source: "none" } });
   expect(read({ motion: "spin" })).toMatchObject({ motion: "none" });
@@ -119,6 +124,51 @@ test("an answer of every kind, as the schema has it, is read back whole", () => 
     const written = example(block);
     expect(readBlock(written), String(kindOf(block))).toEqual(written);
   }
+});
+
+// The plan where the person's provider can make pictures and the person
+// wants them: a section's picture and an image may be made for the page.
+const MADE_ALL = [...walk(PLAN_SCHEMA_MADE)];
+const MADE_BLOCKS = MADE_ALL.find((found) => found.at === BLOCK_AT)!.schema.anyOf as Schema[];
+const MADE_SECTION = MADE_ALL.find((found) => found.at === "/properties/sections/items")!.schema;
+const keysOf = (schema: Schema): string[] => Object.keys(schema.properties as Schema);
+const sourceOf = (schema: Schema): unknown => ((schema.properties as Record<string, Schema>).source!.enum as unknown[])[0];
+
+test("with pictures made for the page, a section's picture and an image may be made: what it shows, its alt text and its shape, the same rules held", () => {
+  const pictures = (MADE_SECTION.properties as Record<string, Schema>).picture!.anyOf as Schema[];
+  expect(pictures.map((choice) => [sourceOf(choice), keysOf(choice)])).toEqual([
+    ["none", ["source"]],
+    ["library", ["source", "mediaId", "veil", "strength", "focus"]],
+    ["made", ["source", "prompt", "alt", "shape", "veil", "strength", "focus"]],
+  ]);
+  const made = pictures[2]!.properties as Record<string, Schema>;
+  expect(made.shape!.enum).toEqual([...PLAN_SHAPES]);
+  expect(PLAN_SHAPES).toEqual(["landscape", "square", "portrait"]);
+  expect(made.veil!.enum).toEqual([...PLAN_VEILS]);
+  // No text in it, and no one real: the schema says so where the prompt is written.
+  expect(made.prompt!.description).toContain("No text, letters, numbers, signs or logos in it; any people generic and unnamed, never a real person or a brand.");
+  const images = MADE_BLOCKS.filter((block) => kindOf(block) === "image");
+  expect(images.map((block) => [sourceOf(block), keysOf(block)])).toEqual([["library", ["kind", "source", "mediaId", "alt"]], ["made", ["kind", "source", "prompt", "alt", "shape"]]]);
+  // Closed and required throughout, no keyword but the shared ones, and no deeper.
+  for (const { schema, at } of MADE_ALL.filter((found) => found.schema.type === "object")) {
+    expect(schema.additionalProperties, at).toBe(false);
+    expect(schema.required, at).toEqual(Object.keys(schema.properties as Schema));
+  }
+  for (const { schema, at } of MADE_ALL) for (const key of Object.keys(schema)) expect(KEYWORDS, `${at} ${key}`).toContain(key);
+  expect(Math.max(...MADE_ALL.map((found) => found.depth))).toBe(5);
+  // Each made picture as the schema has it is read back whole.
+  for (const block of images) expect(readBlock(example(block))).toEqual(example(block));
+  expect(readPicture(example(pictures[2]!))).toEqual(example(pictures[2]!));
+  // Without pictures made, neither is offered.
+  expect(((SECTION.properties as Record<string, Schema>).picture!.anyOf as Schema[]).map(sourceOf)).toEqual(["none", "library"]);
+  expect(BLOCKS.filter((block) => kindOf(block) === "image").map(sourceOf)).toEqual(["library"]);
+  expect(planSchema(false)).toEqual(PLAN_SCHEMA);
+  expect(planSchema(true)).toEqual(PLAN_SCHEMA_MADE);
+});
+
+test("an image reads as the library's when it says no source, as a plan written before pictures were made does", () => {
+  expect(readBlock({ kind: "image", mediaId: "m1", alt: "The pier" })).toEqual({ kind: "image", source: "library", mediaId: "m1", alt: "The pier" });
+  expect(readBlock({ kind: "image", source: "made", prompt: "Rowers at dawn", alt: "", shape: "square", mediaId: "m1" })).toEqual({ kind: "image", source: "made", prompt: "Rowers at dawn", alt: "", shape: "square" });
 });
 
 test("stats, steps and pricing read without trust: what is not an object goes, and a word that is not text is none", () => {

@@ -4,11 +4,15 @@
 // on their own at the model's list price (./prices.ts), since a call's
 // prompt sets the price that call pays. A request that makes several calls
 // adds them up, and so does the total since the key was kept, the calls of
-// one model at one price kept as one line. The words the interface says it
-// in are here too, for the drawer and for a block's panel.
+// one model at one price, for one kind of thing, kept as one line: the
+// words (a page, a text, an alt text), or the pictures made for a page,
+// photos and illustrations, each call one picture. A photo is priced at
+// its image model's prices per token. The words the interface says it in
+// are here too, for the drawer and for a block's panel.
 import type { ProviderId } from "./key.ts";
-import { about, costAt, listPrice, perMillion, PRICES_DAY, type Band, type Nano, type Price } from "./prices.ts";
-import { NO_USAGE, type Usage } from "./providers.ts";
+import type { PictureKind } from "./pictures.ts";
+import { about, costAt, IMAGE_PRICES, listPrice, perMillion, PRICES_DAY, type Band, type Nano, type Price } from "./prices.ts";
+import { NO_USAGE, type ImageUsage, type Usage } from "./providers.ts";
 
 // What a line's tokens come to at its list price, or why none is on file.
 export type Cost =
@@ -16,11 +20,15 @@ export type Cost =
   | { price: null; why: "model" }
   | { price: null; why: "prompt"; tokens: number };
 
+// What a line's calls made: words, or pictures for a page.
+export type TallyKind = "words" | PictureKind;
+
 export interface TallyLine {
   provider: ProviderId;
   model: string;
   // As the words say it: the page's name of a model on file, else its id.
   name: string;
+  kind: TallyKind;
   calls: number;
   usage: Usage;
   cost: Cost;
@@ -41,20 +49,39 @@ const add = (a: Usage, b: Usage): Usage => ({
   output: a.output + b.output,
 });
 
-// One call to `model`: its tokens, at the list price its prompt pays. A
-// call that used no token adds nothing.
-export function tallyOf(provider: ProviderId, model: string, usage: Usage): Tally {
+// One call to `model`: its tokens, at the list price its prompt pays; an
+// illustration's call says so. A call that used no token adds nothing.
+export function tallyOf(provider: ProviderId, model: string, usage: Usage, kind: TallyKind = "words"): Tally {
   if (promptOf(usage) + usage.output === 0) return [];
   const found = listPrice(provider, model, promptOf(usage));
   const cost: Cost = found.price !== null
     ? { price: found.price, band: found.band, nano: costAt(found.price, usage) }
     : found.why === "prompt" ? { price: null, why: "prompt", tokens: found.tokens } : { price: null, why: "model" };
-  return [{ provider, model, name: found.name, calls: 1, usage, cost }];
+  return [{ provider, model, name: found.name, kind, calls: 1, usage, cost }];
 }
 
-// The calls of one model at one price, or with none for one reason, are one line.
+// One photo, made by OpenAI's image `model`: the words asked, any picture
+// sent with them, and the picture made, as the Images API counts them, at
+// the model's prices per token (its text in, its image in, its image out).
+// No picture goes with a page's photo, so its input is words. Its tokens
+// are said as input and output; a model with no price on file says so. A
+// photo whose answer counted no token adds nothing.
+export function photoTallyOf(model: string, usage: ImageUsage): Tally {
+  const counted: Usage = { input: usage.textInput + usage.imageInput, cacheRead: 0, cacheWrite: 0, output: usage.output };
+  if (counted.input + counted.output === 0) return [];
+  const price = IMAGE_PRICES.get(model);
+  const cost: Cost = price === undefined ? { price: null, why: "model" } : {
+    price: { input: price.textInput, cacheRead: price.textInput, cacheWrite: price.textInput, output: price.imageOutput },
+    band: null,
+    nano: usage.textInput * price.textInput + usage.imageInput * (price.imageInput ?? price.textInput) + usage.output * price.imageOutput,
+  };
+  return [{ provider: "openai", model, name: model, kind: "photo", calls: 1, usage: counted, cost }];
+}
+
+// The calls of one model at one price, for one kind of thing, or with none
+// for one reason, are one line.
 const lineKey = (line: TallyLine): string =>
-  [line.provider, line.model, line.cost.price === null ? line.cost.why : line.cost.band?.over ? "over" : "within"].join(" ");
+  [line.provider, line.model, line.kind, line.cost.price === null ? line.cost.why : line.cost.band?.over ? "over" : "within"].join(" ");
 
 // Tallies added up, line by line: exact, as their costs are whole numbers.
 export function addTallies(...tallies: Tally[]): Tally {
@@ -148,16 +175,50 @@ export function briefWords(tally: Tally): string {
   return `Used ${tokenWords(usageIn(tally))}, on your key: ${parts.join("; ")}.`;
 }
 
-// Every request since the key was connected: "Since you connected this
-// key: 2 requests, 6,288 tokens in and 2,830 out, ≈ $0.037."
+// The pictures made for a page, of one kind: how many, what they come to,
+// their tokens and the price used. "3 photos, ≈ $0.12: 150 tokens in and
+// 4,116 out, at gpt-image-2's list price ($5 in, $30 out per million
+// tokens)." Null when none was made.
+export function pictureWords(tally: Tally, kind: PictureKind): string | null {
+  const lines = tally.filter((line) => line.kind === kind);
+  if (lines.length === 0) return null;
+  const what = sentence(plural(lines.reduce((n, line) => n + line.calls, 0), kind, `${kind}s`));
+  const priced = lines.filter(isPriced);
+  const unpriced = lines.filter((line) => !isPriced(line));
+  const tokens = tokenWords(usageIn(lines));
+  const at = priced.length === 1
+    ? `${priced[0]!.name}'s list price${bandWords(priced[0]!.cost.band)} (${priceWords(priced[0]!.cost.price, priced[0]!.usage)} per million tokens)`
+    : `the list prices of ${and(priced.map((line) => line.name))}`;
+  const none = `no list price on file for ${and(unpriced.map(noPriceWords))}`;
+  if (unpriced.length === 0) return `${what}, ${about(nanoOf(priced))}: ${tokens}, at ${at}.`;
+  if (priced.length === 0) return `${what}: ${tokens}; ${none}.`;
+  return `${what}, ${about(nanoOf(priced))} for those with a list price on file: ${tokens}, at ${at}; ${none}.`;
+}
+
+// A page and its pictures together, once pictures were made: "In all,
+// ≈ $0.14 for the page and its pictures."
+export function allWords(tally: Tally): string | null {
+  if (!tally.some((line) => line.kind !== "words")) return null;
+  const priced = tally.filter(isPriced);
+  if (priced.length === 0) return null;
+  return `In all, ${about(nanoOf(priced))} for ${priced.length === tally.length ? "the page and its pictures" : "what has a list price on file"}.`;
+}
+
+// Every request since the key was connected, and the pictures made:
+// "Since you connected this key: 2 requests and 3 photos, 6,288 tokens in
+// and 2,830 out, ≈ $0.037."
 export function totalWords(tally: Tally): string {
   const calls = tally.reduce((n, line) => n + line.calls, 0);
+  const of = (kind: TallyKind): number => tally.filter((line) => line.kind === kind).reduce((n, line) => n + line.calls, 0);
+  const kinds: Array<[TallyKind, string, string]> = [["words", "request", "requests"], ["photo", "photo", "photos"], ["illustration", "illustration", "illustrations"]];
+  const made = kinds.filter(([kind]) => of(kind) > 0).map(([kind, one, many]) => plural(of(kind), one, many));
+  const counts = and(made.length > 0 ? made : [plural(0, "request", "requests")]);
   const priced = tally.filter(isPriced);
   const pricedCalls = priced.reduce((n, line) => n + line.calls, 0);
   const cost = priced.length === 0 ? "with no list price on file"
     : pricedCalls === calls ? about(nanoOf(priced))
     : `${about(nanoOf(priced))} for the ${count(pricedCalls)} with a list price on file`;
-  return `Since you connected this key: ${plural(calls, "request", "requests")}, ${tokenWords(usageIn(tally))}, ${cost}.`;
+  return `Since you connected this key: ${counts}, ${tokenWords(usageIn(tally))}, ${cost}.`;
 }
 
 // What every estimate leaves out, said under the total.

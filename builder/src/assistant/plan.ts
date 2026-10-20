@@ -20,9 +20,11 @@
 // a section's picture too; figures and prices only from the brief, which
 // the question says.
 //
-// A section's picture says where it comes from (`source`): none, or the
-// library, by id. A picture made for the page (a later step) is one more
-// source of the same choice, read and built beside the library's.
+// A section's picture, and an image, say where they come from (`source`):
+// the library, by id; or, where the person's provider can make pictures
+// and the person wants them (planSchema(true)), made for the page
+// (./pictures.ts): what it shows (a prompt), its alt text and its shape.
+// A section's picture may also be none.
 import { FOCUS_TOKENS, ICON_NAMES, MOTION_TOKENS, type FocusToken, type IconName, type MotionToken } from "../shared/document.ts";
 
 export const PLAN_WIDTHS = ["equal", "3:2", "2:3", "2:1", "1:2", "2:1:1", "1:2:1", "1:1:2"] as const;
@@ -39,14 +41,28 @@ export const PLAN_VEILS = ["dark", "light", "text"] as const;
 export type PlanVeil = (typeof PLAN_VEILS)[number];
 export const PLAN_STRENGTHS = ["medium", "strong"] as const;
 export type PlanStrength = (typeof PLAN_STRENGTHS)[number];
+// A picture made for the page: landscape (3:2), square, or portrait (2:3).
+export const PLAN_SHAPES = ["landscape", "square", "portrait"] as const;
+export type PlanShape = (typeof PLAN_SHAPES)[number];
+// The most pictures a page has made for it: a few, where they matter.
+export const PLAN_MADE_MOST = 5;
 const LEVELS = [1, 2, 3, 4] as const;
+
+// What a picture made for the page is to show (a prompt, in the model's
+// words), its alt text, and its shape.
+export interface PlanMade {
+  prompt: string;
+  alt: string;
+  shape: PlanShape;
+}
 
 export type PlanBlock =
   | { kind: "heading"; level: 1 | 2 | 3 | 4; text: string; display: boolean }
   | { kind: "text"; paragraphs: string[] }
   | { kind: "list"; ordered: boolean; items: string[] }
   | { kind: "button"; label: string; target: string }
-  | { kind: "image"; mediaId: string; alt: string }
+  | { kind: "image"; source: "library"; mediaId: string; alt: string }
+  | ({ kind: "image"; source: "made" } & PlanMade)
   | { kind: "iconbox"; icon: IconName; title: string; text: string }
   | { kind: "quote"; text: string; attribution: string }
   | { kind: "questions"; items: Array<{ question: string; answer: string }> }
@@ -77,12 +93,13 @@ export interface PlanColumn {
   blocks: PlanBlock[];
 }
 
-// A section's picture: none, or one of the library's by id, with the veil
-// that keeps its words readable, the veil's strength, and the point of it
-// kept in view.
+// A section's picture: none, one of the library's by id, or one made for
+// the page, with the veil that keeps its words readable, the veil's
+// strength, and the point of it kept in view.
 export type PlanPicture =
   | { source: "none" }
-  | { source: "library"; mediaId: string; veil: PlanVeil; strength: PlanStrength; focus: FocusToken };
+  | { source: "library"; mediaId: string; veil: PlanVeil; strength: PlanStrength; focus: FocusToken }
+  | ({ source: "made"; veil: PlanVeil; strength: PlanStrength; focus: FocusToken } & PlanMade);
 
 export interface PlanSection {
   label: string;
@@ -115,8 +132,17 @@ const closed = (properties: Record<string, Schema>, description?: string): Schem
   ...(description ? { description } : {}),
 });
 const kind = (name: PlanBlockKind): Schema => ({ type: "string", enum: [name] });
+const only = (value: string): Schema => ({ type: "string", enum: [value] });
 
-const BLOCK: Schema = {
+// What a picture made for the page is asked as: what it shows, its alt
+// text and its shape, the same for a section's picture and an image.
+const MADE: Record<keyof PlanMade, Schema> = {
+  prompt: text("What the picture shows, in one to three sentences in English: its subject, setting, light and framing. No text, letters, numbers, signs or logos in it; any people generic and unnamed, never a real person or a brand."),
+  alt: text("What the picture shows, for someone who cannot see it, in the page's language, up to 150 characters; empty when it only decorates."),
+  shape: choice(PLAN_SHAPES, "landscape (3:2) behind a section or across a column, square or portrait (2:3) for cards side by side."),
+};
+
+const BLOCK = (made: boolean): Schema => ({
   anyOf: [
     closed({
       kind: kind("heading"),
@@ -133,9 +159,11 @@ const BLOCK: Schema = {
     }, "A button."),
     closed({
       kind: kind("image"),
+      source: only("library"),
       mediaId: text("The id of an image of the site's library listed, as written there."),
       alt: text("What the image shows, for someone who cannot see it, up to 150 characters; empty when it only decorates."),
     }, "An image of the site's library."),
+    ...(made ? [closed({ kind: kind("image"), source: only("made"), ...MADE }, "An image made for this page, where none of the library fits.")] : []),
     closed({ kind: kind("iconbox"), icon: choice(ICON_NAMES, "The site's icon that fits."), title: text("Up to 60 characters."), text: text("Up to 200 characters.") }, "An icon with a short title and text, for points side by side."),
     closed({ kind: kind("quote"), text: text("Up to 300 characters."), attribution: text("Who said it, or empty.") }, "A quotation."),
     closed({
@@ -175,39 +203,53 @@ const BLOCK: Schema = {
     }, "A form whose answers the site keeps. At most one on a page."),
     closed({ kind: kind("divider") }, "A line between blocks."),
   ],
+});
+
+// The veil, its strength and the focus of a section's picture, wherever it comes from.
+const VEILED: Record<"veil" | "strength" | "focus", Schema> = {
+  veil: choice(PLAN_VEILS, "The layer over the picture that keeps the words readable: dark (light words), light (dark words), or text, the site's text colour (light words)."),
+  strength: choice(PLAN_STRENGTHS, "How much of the picture the veil hides: medium, or strong where much text sits over it."),
+  focus: choice(FOCUS_TOKENS, "The part of the picture kept in view where the section crops it: center, an edge or a corner."),
 };
 
 // A section's picture: one choice of objects, by where it comes from.
-const PICTURE: Schema = {
+const PICTURE = (made: boolean): Schema => ({
   anyOf: [
-    closed({ source: { type: "string", enum: ["none"] } }, "No picture behind the section."),
+    closed({ source: only("none") }, "No picture behind the section."),
     closed({
-      source: { type: "string", enum: ["library"] },
+      source: only("library"),
       mediaId: text("The id of an image of the site's library listed whose description fits this section, as written there."),
-      veil: choice(PLAN_VEILS, "The layer over the picture that keeps the words readable: dark (light words), light (dark words), or text, the site's text colour (light words)."),
-      strength: choice(PLAN_STRENGTHS, "How much of the picture the veil hides: medium, or strong where much text sits over it."),
-      focus: choice(FOCUS_TOKENS, "The part of the picture kept in view where the section crops it: center, an edge or a corner."),
+      ...VEILED,
     }, "A picture of the site's library behind the section, covering it, under a veil."),
+    ...(made ? [closed({ source: only("made"), ...MADE, ...VEILED }, "A picture made for this page behind the section, covering it, under a veil, where none of the library fits.")] : []),
   ],
-  description: "A picture behind the section, from the site's library, or none.",
-};
-
-export const PLAN_SCHEMA: Schema = closed({
-  title: text("The page's title, for the browser's tab and search results, up to 60 characters."),
-  description: text("One or two sentences for search results, up to 155 characters."),
-  sections: list(closed({
-    label: text("The section's name in the editor's outline, in one to three words."),
-    anchor: text("A short name for links to the section, lowercase letters, digits and hyphens, starting with a letter; empty when nothing links to it."),
-    background: choice(PLAN_BACKGROUNDS, "A colour of the site's palette behind the section, or none."),
-    picture: PICTURE,
-    motion: choice(MOTION_TOKENS, "How the section comes into view as the reader scrolls to it: none, rise (up from a little below), fade, or zoom (from a little smaller)."),
-    widths: choice(PLAN_WIDTHS, "How the columns share the width: equal, or a ratio with as many parts as there are columns."),
-    columns: list(closed({
-      align: choice(PLAN_ALIGNS, "How the column's blocks line up."),
-      blocks: list(BLOCK, "The column's blocks, top to bottom."),
-    }), "One to four columns, side by side on a wide screen."),
-  }), "The page's sections, top to bottom, four to eight of them."),
+  description: made ? "A picture behind the section, from the site's library or made for this page, or none." : "A picture behind the section, from the site's library, or none.",
 });
+
+// The plan's schema: with `made`, a section's picture and an image may be
+// made for the page; without, they come from the library only.
+export function planSchema(made: boolean): Schema {
+  return closed({
+    title: text("The page's title, for the browser's tab and search results, up to 60 characters."),
+    description: text("One or two sentences for search results, up to 155 characters."),
+    sections: list(closed({
+      label: text("The section's name in the editor's outline, in one to three words."),
+      anchor: text("A short name for links to the section, lowercase letters, digits and hyphens, starting with a letter; empty when nothing links to it."),
+      background: choice(PLAN_BACKGROUNDS, "A colour of the site's palette behind the section, or none."),
+      picture: PICTURE(made),
+      motion: choice(MOTION_TOKENS, "How the section comes into view as the reader scrolls to it: none, rise (up from a little below), fade, or zoom (from a little smaller)."),
+      widths: choice(PLAN_WIDTHS, "How the columns share the width: equal, or a ratio with as many parts as there are columns."),
+      columns: list(closed({
+        align: choice(PLAN_ALIGNS, "How the column's blocks line up."),
+        blocks: list(BLOCK(made), "The column's blocks, top to bottom."),
+      }), "One to four columns, side by side on a wide screen."),
+    }), "The page's sections, top to bottom, four to eight of them."),
+  });
+}
+
+// The plan with the library's pictures only, and with pictures made too.
+export const PLAN_SCHEMA: Schema = planSchema(false);
+export const PLAN_SCHEMA_MADE: Schema = planSchema(true);
 
 // ------------------------------------------------------------- the reader
 
@@ -234,7 +276,9 @@ export function readBlock(value: unknown): PlanBlock | null {
     case "button":
       return { kind: "button", label: word(block.label), target: word(block.target) };
     case "image":
-      return { kind: "image", mediaId: word(block.mediaId), alt: word(block.alt) };
+      // One written before pictures were made, with no source, is the library's.
+      if (block.source === "made") return { kind: "image", source: "made", ...readMade(block) };
+      return { kind: "image", source: "library", mediaId: word(block.mediaId), alt: word(block.alt) };
     case "iconbox":
       return { kind: "iconbox", icon: one(block.icon, ICON_NAMES, "info"), title: word(block.title), text: word(block.text) };
     case "quote":
@@ -277,19 +321,25 @@ export function readBlock(value: unknown): PlanBlock | null {
   }
 }
 
-// A section's picture: one of the library's, with a veil the plan offers,
-// or none for anything else (a plan written before pictures, a source the
-// plan does not have).
+// What a picture made for the page is to show, its alt text and its shape,
+// a shape the plan does not have being landscape.
+function readMade(made: Record<string, unknown>): PlanMade {
+  return { prompt: word(made.prompt), alt: word(made.alt), shape: one(made.shape, PLAN_SHAPES, "landscape") };
+}
+
+// A section's picture: one of the library's or one made for the page, with
+// a veil the plan offers, or none for anything else (a plan written before
+// pictures, a source the plan does not have).
 export function readPicture(value: unknown): PlanPicture {
   const picture = record(value);
-  if (picture?.source !== "library") return { source: "none" };
-  return {
-    source: "library",
-    mediaId: word(picture.mediaId),
+  if (picture?.source !== "library" && picture?.source !== "made") return { source: "none" };
+  const veiled = {
     veil: one(picture.veil, PLAN_VEILS, "dark"),
     strength: one(picture.strength, PLAN_STRENGTHS, "medium"),
     focus: one(picture.focus, FOCUS_TOKENS, "center"),
   };
+  if (picture.source === "made") return { source: "made", ...readMade(picture), ...veiled };
+  return { source: "library", mediaId: word(picture.mediaId), ...veiled };
 }
 
 export function readSection(value: unknown): PlanSection | null {

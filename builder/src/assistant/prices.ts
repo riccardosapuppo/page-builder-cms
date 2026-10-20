@@ -9,8 +9,11 @@
 //   up to 272,000 tokens. Past that no price is on file here, and only the
 //   tokens are said. Where the page gives a dash for cached input or for
 //   cache writes, those tokens are counted at the input price.
-// - The image models' (text in, image in, image out), for the pictures a
-//   later step makes; nothing asks for them yet.
+// - The image models' (text in, image in, image out), which price each
+//   photo made for a page from the tokens it used (./tally.ts); and GPT
+//   Image 2's price per image, by quality and size, as the image
+//   generation guide gives it, which the drawer shows before a photo is
+//   made. No other model has a price per image on file.
 // A model the tables do not hold has no list price on file, whatever its
 // name is like: a dated snapshot has a price only where a page gives that
 // snapshot one, and neither page prices a snapshot as its model.
@@ -200,7 +203,7 @@ export function costAt(price: Price, usage: Usage): Nano {
 }
 
 // The image models', per million tokens: text in, image in where the page
-// gives it, image out. For the pictures a later step makes.
+// gives it, image out. A photo made for a page is priced from them.
 export interface ImagePrice {
   textInput: Nano;
   imageInput: Nano | null;
@@ -221,6 +224,44 @@ export const IMAGE_PRICES: ReadonlyMap<string, ImagePrice> = new Map(IMAGE_TABLE
   imageInput: imageInput === null ? null : perToken(imageInput),
   imageOutput: perToken(imageOutput),
 }]));
+
+// The qualities a photo is made at, and the three sizes, square, portrait
+// and landscape, as the Images API names them.
+export const IMAGE_QUALITIES = ["low", "medium", "high"] as const;
+export type ImageQuality = (typeof IMAGE_QUALITIES)[number];
+export type ImageSize = "1024x1024" | "1024x1536" | "1536x1024";
+
+// "$0.053" an image as nano-dollars: 53,000,000. To a billionth of a dollar.
+export function perImage(dollars: string): Nano {
+  const found = /^(\d+)(?:\.(\d{1,9}))?$/.exec(dollars);
+  if (!found) throw new Error(`"${dollars}" is not a price in dollars per image, to a billionth of a dollar`);
+  return Number(found[1]) * 1_000_000_000 + Number((found[2] ?? "").padEnd(9, "0"));
+}
+
+// The price per image the image generation guide gives, by model and
+// quality, for 1024x1024, 1024x1536 and 1536x1024: GPT Image 2's alone.
+type PerImageColumns = readonly [id: string, quality: ImageQuality, square: string, portrait: string, landscape: string];
+const PER_IMAGE_TABLE: readonly PerImageColumns[] = [
+  ["gpt-image-2", "low", "0.006", "0.005", "0.005"],
+  ["gpt-image-2", "medium", "0.053", "0.041", "0.041"],
+  ["gpt-image-2", "high", "0.211", "0.165", "0.165"],
+];
+
+const PER_IMAGE = new Map(PER_IMAGE_TABLE.map(([id, quality, square, portrait, landscape]) => [`${id} ${quality}`, {
+  "1024x1024": perImage(square),
+  "1024x1536": perImage(portrait),
+  "1536x1024": perImage(landscape),
+} as Readonly<Record<ImageSize, Nano>>]));
+
+// What one image of `model` at `quality` and `size` costs as the guide
+// gives it, or null where it gives none: its cost is then known only from
+// the tokens it used.
+export function imagePrice(model: string, quality: ImageQuality, size: ImageSize): Nano | null {
+  return PER_IMAGE.get(`${model} ${quality}`)?.[size] ?? null;
+}
+
+// The models with a price per image on file.
+export const PER_IMAGE_MODELS: readonly string[] = [...new Set(PER_IMAGE_TABLE.map(([id]) => id))];
 
 // ------------------------------------------------------------ written out
 
@@ -255,6 +296,12 @@ export function about(nano: Nano): string {
   if (shown >= CENT) return `≈ $${decimals(shown, 2)}`;
   if (shown >= HUNDREDTH_OF_A_CENT) return `under $0.01 ($${decimals(shown, 0)})`;
   return "under $0.01 (less than $0.0001)";
+}
+
+// A price as a page writes it, exactly, to the cent at least: "$0.041" an
+// image, "$0.27" for five, "$1.05".
+export function dollars(nano: Nano): string {
+  return `$${decimals(nano, 2)}`;
 }
 
 // A price as the pages write it, per million tokens: "$2", "$0.10",

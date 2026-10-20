@@ -3,9 +3,11 @@
 // used, read from each SDK's usage object, a refusal and a cut answer, which
 // still say what they used, which models are offered and in which order,
 // and a provider's error said in a sentence with the key taken out.
+// OpenAI's photos: one Images API request with the newest GPT Image model,
+// at the size and quality asked, as a WebP, and the tokens it used.
 import { expect, test } from "vitest";
 import { anthropic, usageOf as usageOfAnthropic, versionOf, type AnthropicLike } from "./anthropic.ts";
-import { offered, openai, usageOf as usageOfOpenAI, type OpenAILike } from "./openai.ts";
+import { imageUsageOf, offered, openai, PHOTO_COMPRESSION, photoModelOf, usageOf as usageOfOpenAI, type OpenAILike } from "./openai.ts";
 import { AssistantError, said, type Question } from "./providers.ts";
 
 const KEY = "sk-test-not-a-real-key-9z8y";
@@ -185,6 +187,79 @@ test("OpenAI: parts that add up to more than the prompt are cut to it, the cache
 test("OpenAI: the models offered take a strict schema; newest first, a full model before its mini", async () => {
   expect((await openai(openaiClient().make).models(KEY)).map((model) => model.id)).toEqual(["gpt-5", "gpt-5-mini", "o3", "gpt-4o"]);
   expect(["gpt-4.1", "o4-mini", "gpt-realtime", "gpt-3.5-turbo", "omni-moderation-latest"].map(offered)).toEqual([true, true, false, false, false]);
+});
+
+// OpenAI's photos on a client of the test's own: the models it lists, and
+// the Images API's answer.
+function photosClient(answer: { response?: unknown; error?: unknown; listed?: Array<[string, number]> } = {}) {
+  const asked: Array<{ key: string; body: unknown; signal: unknown }> = [];
+  const make = (key: string): OpenAILike => ({
+    ...openaiClient().make(key),
+    models: {
+      async *list() {
+        for (const [id, created] of answer.listed ?? [["gpt-5", 300], ["gpt-image-1", 100], ["gpt-image-2", 400], ["gpt-image-2-2026-04-21", 500], ["gpt-image-1.5", 200], ["dall-e-3", 600]]) yield { id, created };
+      },
+    },
+    images: {
+      async generate(body, options) {
+        asked.push({ key, body, signal: options?.signal });
+        if (answer.error) throw answer.error;
+        return (answer.response ?? {
+          created: 1, output_format: "webp", size: "1536x1024", quality: "medium",
+          data: [{ b64_json: "UklGRg==" }],
+          usage: { input_tokens: 50, input_tokens_details: { text_tokens: 50, image_tokens: 0 }, output_tokens: 1372, total_tokens: 1422 },
+        }) as never;
+      },
+    },
+  });
+  return { asked, make };
+}
+
+test("OpenAI: a photo is one Images API request, with the newest GPT Image model the key may use, the size of its shape, the quality chosen, as a WebP; what it used is the usage's", async () => {
+  const { asked, make } = photosClient();
+  const client = openai(make);
+  expect(await client.photos!.model(KEY)).toBe("gpt-image-2");
+  const signal = new AbortController().signal;
+  const photo = await client.photos!.make(KEY, { model: "gpt-image-2", prompt: "Rowers at dawn.", size: "1536x1024", quality: "low" }, signal);
+  expect(photo).toEqual({ base64: "UklGRg==", usage: { textInput: 50, imageInput: 0, output: 1372 } });
+  expect(asked).toEqual([{
+    key: KEY,
+    signal,
+    body: { model: "gpt-image-2", prompt: "Rowers at dawn.", n: 1, size: "1536x1024", quality: "low", output_format: "webp", output_compression: PHOTO_COMPRESSION },
+  }]);
+  expect(PHOTO_COMPRESSION).toBe(80);
+});
+
+test("OpenAI: the newest GPT Image model, a dated snapshot left to its model and a mini after its full model of the same day; none, none", () => {
+  expect(photoModelOf([{ id: "gpt-image-1", created: 1 }, { id: "gpt-image-1-mini", created: 9 }, { id: "gpt-image-1.5", created: 5 }])).toBe("gpt-image-1-mini");
+  expect(photoModelOf([{ id: "gpt-image-2.5-flare-mini", created: 9 }, { id: "gpt-image-2.5-sunburst", created: 9 }, { id: "gpt-image-2.5-flare", created: 9 }])).toBe("gpt-image-2.5-flare");
+  expect(photoModelOf([{ id: "gpt-image-2-2026-04-21", created: 9 }, { id: "gpt-5", created: 10 }, { id: "dall-e-3", created: 11 }, { id: "chatgpt-image-latest", created: 12 }])).toBeNull();
+});
+
+test("OpenAI: an answer with no picture is said, and a refused one in a sentence; a photo's tokens read from the usage, with or without its details", async () => {
+  await expect(openai(photosClient({ response: { created: 1, data: [] } }).make).photos!.make(KEY, { model: "gpt-image-2", prompt: "x", size: "1024x1024", quality: "medium" })).rejects.toMatchObject({ kind: "answer", message: "OpenAI sent no picture back." });
+  const moderated = Object.assign(new Error(`400 Your request was rejected by the safety system. ${KEY}`), { status: 400 });
+  await expect(openai(photosClient({ error: moderated }).make).photos!.make(KEY, { model: "gpt-image-2", prompt: "x", size: "1024x1024", quality: "medium" })).rejects.toMatchObject({ kind: "other", message: "OpenAI refused the request. It said: 400 Your request was rejected by the safety system. …" });
+  expect(imageUsageOf({ input_tokens: 150, input_tokens_details: { text_tokens: 50, image_tokens: 100 }, output_tokens: 1000 })).toEqual({ textInput: 50, imageInput: 100, output: 1000 });
+  expect(imageUsageOf({ input_tokens: 40, output_tokens: 1000 })).toEqual({ textInput: 40, imageInput: 0, output: 1000 });
+  expect(imageUsageOf({ input_tokens: 40, input_tokens_details: { image_tokens: 90 }, output_tokens: -1 })).toEqual({ textInput: 0, imageInput: 40, output: 0 });
+  // A client with no images makes no photo, and says so.
+  await expect(openai(openaiClient().make).photos!.make(KEY, { model: "gpt-image-2", prompt: "x", size: "1024x1024", quality: "medium" })).rejects.toMatchObject({ message: "This connection to OpenAI makes no pictures." });
+});
+
+test("a call its caller stopped is said to be stopped, whatever the SDK's error is called: neither SDK names its abort error", async () => {
+  // As both SDKs throw it: a class of their own whose name is Error's.
+  class APIUserAbortError extends Error {}
+  const aborted = new APIUserAbortError("Request was aborted.");
+  expect(aborted.name).toBe("Error");
+  const stop = new AbortController();
+  stop.abort();
+  const stopped = { kind: "stopped", message: "Stopped." };
+  await expect(anthropic(anthropicClient({ error: aborted }).make).ask(KEY, QUESTION, () => undefined, stop.signal)).rejects.toMatchObject(stopped);
+  await expect(openai(openaiClient({ error: aborted }).make).ask(KEY, QUESTION, () => undefined, stop.signal)).rejects.toMatchObject(stopped);
+  await expect(openai(photosClient({ error: aborted }).make).photos!.make(KEY, { model: "gpt-image-2", prompt: "x", size: "1024x1024", quality: "low" }, stop.signal)).rejects.toMatchObject(stopped);
+  // Not stopped, the same error is said as what it is.
+  await expect(openai(photosClient({ error: aborted }).make).photos!.make(KEY, { model: "gpt-image-2", prompt: "x", size: "1024x1024", quality: "low" })).rejects.toMatchObject({ kind: "other" });
 });
 
 test("a provider's error is said in a sentence by its status, and never repeats the key", async () => {

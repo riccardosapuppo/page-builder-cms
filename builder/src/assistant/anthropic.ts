@@ -25,7 +25,7 @@ export const PREFERRED = "claude-opus-5-5";
 export interface AnthropicLike {
   models: { list(params?: { limit?: number }, options?: { signal?: AbortSignal | undefined }): AsyncIterable<{ id: string; display_name: string; created_at: string }> };
   messages: {
-    stream(body: Anthropic.MessageStreamParams, options?: { signal?: AbortSignal | undefined }): {
+    stream(body: Anthropic.MessageStreamParams, options?: { signal?: AbortSignal | undefined; maxRetries?: number }): {
       on(event: "text", listener: (delta: string) => void): unknown;
       finalMessage(): Promise<Anthropic.Message>;
     };
@@ -64,7 +64,7 @@ export function anthropic(make: (key: string) => AnthropicLike = client): Provid
         found.sort((a, b) => (a.id === PREFERRED ? -1 : b.id === PREFERRED ? 1 : b.created.localeCompare(a.created)));
         return found.map(({ id, name }) => ({ id, name }));
       } catch (error) {
-        throw said(error, NAME, key);
+        throw said(error, NAME, key, signal);
       }
     },
 
@@ -80,7 +80,7 @@ export function anthropic(make: (key: string) => AnthropicLike = client): Provid
           thinking: { type: "adaptive" },
           output_config: { format: { type: "json_schema", schema: question.schema }, effort: question.effort },
           messages: [{ role: "user", content }],
-        }, { signal });
+        }, question.once ? { signal, maxRetries: 0 } : { signal });
         stream.on("text", (delta) => written(delta));
         const message = await stream.finalMessage();
         const usage = usageOf(message.usage);
@@ -89,7 +89,7 @@ export function anthropic(make: (key: string) => AnthropicLike = client): Provid
         const text = message.content.map((block) => (block.type === "text" ? block.text : "")).join("");
         return { text, usage };
       } catch (error) {
-        throw said(error, NAME, key);
+        throw said(error, NAME, key, signal);
       }
     },
   };

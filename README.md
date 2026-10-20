@@ -74,17 +74,23 @@ can do three things:
 
 - **Write a page from a brief.** The page grows on the canvas section by
   section, and each section is a step in History. It is planned with
-  rhythm: a strong opening, a picture of the library behind it when one
-  fits, bands that alternate, points side by side as icon boxes, one call
-  to action said again at the end, and a little motion.
+  rhythm: a strong opening, a picture behind it, bands that alternate,
+  points side by side as icon boxes, one call to action said again at the
+  end, and a little motion. Its pictures come from the library or are made
+  for it, a few where they matter: photos with an OpenAI key, at a price
+  shown before; illustrations in the site's colours with an Anthropic key,
+  whose models make no photos. Each goes into the library with its alt
+  text, then onto the page as a step of its own.
 - **Write a heading or a text again**: shorter, warmer, in another
   language.
 - **Describe an image** of the library, from the picture itself.
 
 What the model writes is read without trust, and held to the page's schema
-like any edit. After each request the Assistant shows the tokens used and
-estimates their cost at the provider's published list prices. With no key, a
-sample written by hand goes through the same steps.
+like any edit; an illustration's SVG is cleaned by a strict allowlist and
+drawn to a picture, never put on a page. After each request the Assistant
+shows the tokens used and estimates their cost at the provider's published
+list prices, its pictures' too. With no key, a sample written by hand goes
+through the same steps.
 [The Assistant](builder/src/assistant/README.md) and
 [where the key goes](docs/decisions/assistant-key-in-memory.md).
 

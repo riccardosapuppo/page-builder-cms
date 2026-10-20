@@ -3,10 +3,13 @@
 // is chosen, a call borrows the key, and a key forgotten (asked, idle, the
 // page left) takes its models with it. What every call since the key was
 // kept used is added up, priced, a refused answer's too, and forgotten with
-// the key; a call answered after its key went counts toward no other.
+// the key; a call answered after its key went counts toward no other. An
+// OpenAI key keeps the image model its photos are made with; a photo
+// borrows the key and is counted; an illustration counts as one. A run
+// bound to its key asks with it alone, and with no other once it goes.
 import { expect, test } from "vitest";
 import { FakeClock } from "../../test/fake-clock.ts";
-import { createAssistant } from "./context.tsx";
+import { createAssistant, KEY_GONE } from "./context.tsx";
 import { IDLE_MS, type ProviderId } from "./key.ts";
 import { AssistantError, type Answer, type ProviderClient, type Question, type Usage } from "./providers.ts";
 import { tallyOf } from "./tally.ts";
@@ -157,6 +160,98 @@ test("the total is forgotten with the key, however it goes, and starts again wit
   // A key kept anew, over one still kept, starts its own total.
   await spend();
   await store.getState().connect("anthropic", KEY);
+  expect(store.getState().spent).toEqual([]);
+});
+
+// OpenAI's client of the test's own, with photos: the image model its key
+// may use, and one photo, with the key it was lent.
+function photographer(imageModel: string | null = "gpt-image-2") {
+  const lent: Array<[string, unknown]> = [];
+  const client: ProviderClient = {
+    models: async () => [{ id: "gpt-6.1-sol", name: "gpt-6.1-sol" }],
+    ask: async () => ({ text: "{}", usage: USED }),
+    photos: {
+      model: async () => imageModel,
+      async make(key, ask) {
+        lent.push([key, ask]);
+        return { base64: "UklGRg==", usage: { textInput: 50, imageInput: 0, output: 1372 } };
+      },
+    },
+  };
+  return { client, lent };
+}
+
+test("an OpenAI key keeps the image model its photos are made with; a photo borrows the key, comes back priced, and is added to the total; the model goes with the key", async () => {
+  const { client, lent } = photographer();
+  const store = createAssistant(new FakeClock(), async () => client);
+  await expect(store.getState().photo({ prompt: "Rowers", size: "1536x1024", quality: "low" })).rejects.toMatchObject({ kind: "model", message: "This key makes no photos." });
+  await store.getState().connect("openai", KEY);
+  expect(store.getState().imageModel).toBe("gpt-image-2");
+  const photo = await store.getState().photo({ prompt: "Rowers", size: "1536x1024", quality: "low" });
+  expect(lent).toEqual([[KEY, { model: "gpt-image-2", prompt: "Rowers", size: "1536x1024", quality: "low" }]]);
+  // 50 × $5 + 1,372 × $30 a million tokens.
+  expect(photo).toMatchObject({ base64: "UklGRg==", tally: [{ kind: "photo", model: "gpt-image-2", calls: 1, cost: { nano: 41_410_000 } }] });
+  expect(store.getState().spent).toEqual(photo.tally);
+  store.getState().forget();
+  expect([store.getState().imageModel, store.getState().spent]).toEqual([null, []]);
+});
+
+test("a key whose provider makes no photos, or may use no image model, has none; a listing that fails leaves none, and the key is kept", async () => {
+  const { store } = setUp();
+  await store.getState().connect("anthropic", KEY);
+  expect(store.getState().imageModel).toBeNull();
+  const none = createAssistant(new FakeClock(), async () => photographer(null).client);
+  await none.getState().connect("openai", KEY);
+  expect([none.getState().held?.provider, none.getState().imageModel]).toEqual(["openai", null]);
+  const failing = photographer();
+  failing.client.photos!.model = async () => {
+    throw new AssistantError("OpenAI could not be reached from this browser.", "network");
+  };
+  const kept = createAssistant(new FakeClock(), async () => failing.client);
+  expect(await kept.getState().connect("openai", KEY)).toBe(true);
+  expect(kept.getState().imageModel).toBeNull();
+});
+
+test("an illustration drawn for a page is counted as one, apart from the page's words", async () => {
+  const { store } = setUp();
+  await store.getState().connect("anthropic", KEY);
+  await store.getState().ask(QUESTION, () => undefined);
+  const drawn = await store.getState().ask(QUESTION, () => undefined, undefined, "illustration");
+  expect(drawn.tally).toMatchObject([{ kind: "illustration", calls: 1 }]);
+  expect(store.getState().spent.map((line) => [line.kind, line.calls])).toEqual([["words", 1], ["illustration", 1]]);
+});
+
+test("a run bound to its key asks with it alone: once it is forgotten or replaced, the run is told, a call made with it is refused before it is sent, and one answered late counts toward no other key", async () => {
+  const sent: Array<[ProviderId, string, string]> = [];
+  let answer: (value: Answer) => void = () => undefined;
+  const clientOf = (provider: ProviderId): ProviderClient => ({
+    models: async () => [{ id: `${provider}-model`, name: provider }],
+    ask(key, question) {
+      sent.push([provider, key, question.model]);
+      return question.text === "late" ? new Promise<Answer>((done) => (answer = done)) : Promise.resolve({ text: "{}", usage: USED });
+    },
+  });
+  const store = createAssistant(new FakeClock(), async (id) => clientOf(id));
+  expect(store.getState().bind()).toBeNull();
+  await store.getState().connect("anthropic", KEY);
+  const bound = store.getState().bind()!;
+  expect(bound).toMatchObject({ provider: "anthropic", model: "anthropic-model", imageModel: null });
+  // Another model chosen after the run began: the run keeps its own.
+  store.getState().choose("another-model");
+  await store.getState().ask(QUESTION, () => undefined, undefined, "words", bound);
+  expect(sent).toEqual([["anthropic", KEY, "anthropic-model"]]);
+  // A call in flight when the key is replaced: answered late, it says what it used, counted toward no key.
+  const late = store.getState().ask((model) => ({ ...QUESTION(model), text: "late" }), () => undefined, undefined, "illustration", bound);
+  await new Promise((done) => setTimeout(done, 0));
+  await store.getState().connect("openai", "sk-other-not-a-real-key");
+  expect(bound.gone.aborted).toBe(true);
+  answer({ text: "{}", usage: USED });
+  expect((await late).tally).toMatchObject([{ kind: "illustration", calls: 1 }]);
+  expect(store.getState().spent).toEqual([]);
+  // Asked again with the key gone: refused, sent to neither provider.
+  await expect(store.getState().ask(QUESTION, () => undefined, undefined, "words", bound)).rejects.toMatchObject({ kind: "key", message: KEY_GONE });
+  await expect(store.getState().photo({ prompt: "x", size: "1024x1024", quality: "low" }, undefined, { ...bound, imageModel: "gpt-image-2" })).rejects.toMatchObject({ kind: "key", message: KEY_GONE });
+  expect(sent.map(([provider]) => provider)).toEqual(["anthropic", "anthropic"]);
   expect(store.getState().spent).toEqual([]);
 });
 

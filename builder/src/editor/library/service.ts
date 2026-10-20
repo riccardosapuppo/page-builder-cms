@@ -12,7 +12,7 @@
 // Uploads go on with the library closed, and
 // the tab warns before it closes while one is on its way (./context.tsx).
 import { createStore, type StoreApi } from "zustand/vanilla";
-import { isStorageError, type MediaItem, type MediaUse, type StorageAdapter } from "../../storage/adapter.ts";
+import { isStorageError, type MediaItem, type MediaUse, type StorageAdapter, type Upload } from "../../storage/adapter.ts";
 import type { UiStore } from "../ui-store.ts";
 import { uploadRefusal } from "./files.ts";
 import { prepareImage, type Prepare } from "./resize.ts";
@@ -59,9 +59,16 @@ export interface MediaService {
   ensure(ids: ReadonlySet<string>): void;
   setAlt(id: string, alt: string): Promise<AltOutcome>;
   remove(id: string): Promise<RemoveOutcome>;
+  // An image made in this browser (a picture the Assistant made for a
+  // page), uploaded as it is, with its alt text: added to the library
+  // once the storage has it, as an upload's is; or why not, as a clause
+  // ("the CMS refused it: ...").
+  put(upload: Upload): Promise<PutOutcome>;
   // An upload is waiting, being made ready or on its way.
   busy(): boolean;
 }
+
+export type PutOutcome = { ok: true; item: MediaItem } | { ok: false; reason: string };
 
 // The browser's addresses for the files made ready; none in a test's DOM.
 export interface ObjectUrls {
@@ -99,6 +106,8 @@ export function createMediaService(options: { adapter: MediaAdapter; ui: UiStore
   const jobs = new Map<string, Job>();
   let made = 0;
   let running = false;
+  // Images made in the browser on their way up.
+  let putting = 0;
 
   const entries = () => uploads.getState().entries;
   const patch = (key: string, change: Partial<UploadEntry>) =>
@@ -289,6 +298,28 @@ export function createMediaService(options: { adapter: MediaAdapter; ui: UiStore
       drop(id);
       return { ok: true };
     },
-    busy: () => entries().some((entry) => entry.phase !== "failed"),
+    async put(upload) {
+      putting += 1;
+      let outcome;
+      try {
+        outcome = await adapter.uploadMedia(upload);
+      } catch (error) {
+        if (isStorageError(error) && error.failure.kind === "unknown") {
+          await refresh();
+          return { ok: false, reason: `no answer came from ${inBrowser ? "this browser's storage" : "the CMS"} (${error.failure.message}): it may be in the library or not.` };
+        }
+        const own = inBrowser || (isStorageError(error) && error.failure.kind === "refused" && error.failure.status === 0);
+        return { ok: false, reason: own ? `it could not be kept: ${describe(error)}` : `the CMS refused it: ${describe(error)}` };
+      } finally {
+        putting -= 1;
+      }
+      if (!outcome.ok) {
+        const said = uploadRefusal(outcome.problem, upload.file, inBrowser);
+        return { ok: false, reason: `${said.charAt(0).toLowerCase()}${said.slice(1)}` };
+      }
+      add(outcome.value);
+      return { ok: true, item: outcome.value };
+    },
+    busy: () => putting > 0 || entries().some((entry) => entry.phase !== "failed"),
   };
 }

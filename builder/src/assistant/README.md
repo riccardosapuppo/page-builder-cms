@@ -1,10 +1,10 @@
 # The Assistant
 
 A model of the person's own choosing writes for the editor: a whole page
-from a brief, a text written again, the alternative text of an image. The
-person brings the key, Anthropic's or OpenAI's, and the editor talks to that
-provider straight from the browser. No server of this site sees the key or
-the words.
+from a brief, with the pictures it needs made for it, a text written again,
+the alternative text of an image. The person brings the key, Anthropic's or
+OpenAI's, and the editor talks to that provider straight from the browser.
+No server of this site sees the key or the words.
 
 ## The key
 
@@ -23,8 +23,11 @@ the words.
 - **Only two places it can go.** It is lent to one call at a time, which goes
   to the provider and nowhere else. A call takes the keeper's ticket when it
   starts; if another key is kept while the call is being made (an image made
-  smaller first), the new key is not lent to the old provider. The page's Content-Security-Policy lets
-  the editor connect only to its own site and the two providers' APIs.
+  smaller first), the new key is not lent to the old provider. A page's run
+  takes the ticket when it begins, for its plan and its pictures alike (see
+  [Pictures made for a page](#pictures-made-for-a-page)). The page's
+  Content-Security-Policy lets the editor connect only to its own site and
+  the two providers' APIs.
 
 Storing the key encrypted would protect less than it seems: whatever runs on
 the page to decrypt it can be made to decrypt it. Not storing it is the
@@ -42,9 +45,9 @@ guarantee that holds.
    pages and its icons, the forty-eight of the icon box with the words each
    stands for ([`../widgets/iconbox/words.ts`](../widgets/iconbox/words.ts)).
    - **What the model writes.** The plan names only the blocks a model can
-     fill without inventing facts: headings, text, lists, buttons, the
-     library's images, icon boxes, quotations, questions and answers,
-     steps, one form, dividers. Stats and pricing too, but their figures
+     fill without inventing facts: headings, text, lists, buttons, images
+     (the library's, or made for the page), icon boxes, quotations,
+     questions and answers, steps, one form, dividers. Stats and pricing too, but their figures
      and prices only as the brief gives them, which the question says.
    - **A page with rhythm.** The question asks for a strong opening, bands
      that alternate their background and how much they hold, points side
@@ -55,6 +58,15 @@ guarantee that holds.
      of the library behind it, by id, with a veil and the point of it to
      keep in view; at most two on a page. Its rules on facts are the same
      as before.
+   - **Pictures made for it.** Where the person's provider makes pictures
+     and the person wants them, the question says so, and the plan's
+     schema takes them ([`plan.ts`](plan.ts), `planSchema(true)`): a
+     section's picture, or an image, may be made for the page, said as what
+     it shows (a prompt), its alt text and its shape. A few at most, five,
+     where they matter: the opening's, a band that shows what the page
+     offers, cards side by side. Never words inside one, and any people
+     generic, never a real person or a brand. See
+     [Pictures made for a page](#pictures-made-for-a-page).
    - **What it leaves out.** No videos, maps or galleries, because their
      ids and coordinates would be made up. No logo or menu either: those
      belong to the site's header and footer.
@@ -75,17 +87,24 @@ guarantee that holds.
      brief. A plan's button in a pricing block follows the same rules, but
      stays with its plan: where its address cannot be kept, it keeps its
      words and leads to the top of the page (`#`), as a new button does.
-   - **Images and forms.** An image is the library's, by id. A form's
-     fields get names from their labels, and a page takes one form.
-   - **A section's picture** is the library's too, by id, or none: an id
-     the library does not have leaves the picture out, with a note. Its
-     veil must let the section's words read on it, by the same measure as
-     the panel's check (4.5 to 1 where the picture is lightest or
-     darkest, [`../shared/veil.ts`](../shared/veil.ts)): a veil too faint
-     is made strong, and a text-coloured one that still is not enough is
-     made dark and strong, each said in a note. A picture's source is a
-     choice of its own (`none` or `library`), so a picture made for the
-     page can be one more source beside the library's.
+   - **Images and forms.** An image is the library's, by id, or one made
+     for the page. A form's fields get names from their labels, and a page
+     takes one form.
+   - **A section's picture** is the library's too, by id, one made for the
+     page, or none: an id the library does not have leaves the picture
+     out, with a note. Its veil must let the section's words read on it,
+     on the site's own colours, by the same measure as the panel's check
+     (4.5 to 1 where the picture is lightest or darkest,
+     [`../shared/veil.ts`](../shared/veil.ts)): a veil too faint is made
+     strong; one that still is not enough gives way to the first other
+     strong veil the words read through (dark, the text colour's, light),
+     which on a dark site is the text colour's; with none, the picture is
+     left out. Each is said in a note.
+   - **A picture to be made** goes in later: the section goes in under its
+     veil and focus, without it, and a column whose image is still to
+     come is kept for it, empty. A page takes five; one more, one where no
+     picture is made, or one that says nothing of what it shows is left
+     out, said.
    - **Motion** is one of the schema's, or none.
    - **One band.** A heading's section and the points it announces after
      it, side by side on the same background with no picture behind
@@ -96,12 +115,95 @@ guarantee that holds.
      its first twelve features. Stats with no figure, steps with fewer than
      two, or pricing with no plan are left out.
    - **Notes.** What cannot be made to fit is left out and said in a note.
-4. **The end.** However the answer ends, any button whose section never
+4. **Its pictures**, once its section is in, are made, put in the library
+   and put on the page, each as a step of its own (see
+   [Pictures made for a page](#pictures-made-for-a-page)).
+5. **The end.** However the answer ends, any button whose section never
    came is taken out, and a plan's button loses its link, while the page
    made is the one open. A stop, a refusal or another page opened midway
    keeps what is already in, and a stop lets nothing more land, not even
-   sections that came while the page was being made. What the request used
-   is said (see [What a request costs](#what-a-request-costs)).
+   sections that came while the page was being made. The page is written
+   once its pictures are in. What the request used is said (see
+   [What a request costs](#what-a-request-costs)).
+
+## Pictures made for a page
+
+Where the person chooses the provider, the drawer says what each one does
+here: OpenAI writes pages and makes photos for them, each at a cost shown
+before; Anthropic writes pages and draws illustrations for them, as its
+models make no photos ([`pictures.ts`](pictures.ts)). Before a page is
+written, a switch, on by default, makes pictures for it.
+
+- **OpenAI's key: photos.** One Images API request each
+  ([`openai.ts`](openai.ts), `photos`), with the newest GPT Image model the
+  key may use, a dated snapshot left to its model: at its shape's size
+  (1536 by 1024, 1024 by 1024 or 1024 by 1536), as a WebP at compression
+  80, at the quality the person chose (low, medium or high; medium at
+  first). Beside the choice, before anything is made, what a photo costs
+  at that quality: GPT Image 2's price per image, as the image generation
+  guide gives it ([`prices.ts`](prices.ts)); for a model with no price per
+  image on file, that its cost is said after each photo, from the tokens
+  it used. A key that may use no GPT Image model writes its page without
+  photos, and the drawer says so.
+- **Anthropic's key: illustrations.** One request each to the model the
+  person chose ([`prompts.ts`](prompts.ts), `illustrationQuestion`), its
+  answer one SVG in a schema of its own: flat, simple vector art in the
+  site's palette, given as hex, in the viewBox of its shape, a few
+  kilobytes, no words.
+  - **Cleaned.** [`svg.ts`](svg.ts) reads the SVG with a small parser of
+    its own and writes it out anew from a strict allowlist: shapes in
+    groups, gradients with their stops named by a local id, the shapes'
+    geometry, fill, stroke, opacity, a transform of numbers, and the
+    root's viewBox and xmlns. Anything else refuses the whole drawing:
+    script, style, foreignObject, image, use, a link, words, an event
+    handler, href, `url()` of anything but a gradient of its own, a
+    DOCTYPE, an entity or any `&`, CDATA, an instruction, more than 64 KB.
+    Every value is checked token by token, so no check takes longer than
+    the value is long.
+  - **Drawn.** [`draw.ts`](draw.ts) draws the clean SVG as an image, from
+    a `blob:` address (the editor's Content-Security-Policy allows it for
+    images), to a canvas at its shape's size, and keeps the canvas as a
+    WebP, or a PNG where the browser writes no WebP. What goes to the
+    library is that picture, never the SVG.
+- **Asked once.** A photo's request and an illustration's are never tried
+  again by the SDK (`maxRetries: 0`, `Question.once`), within the client's
+  own timeout: one that timed out may still have been billed. One that
+  fails or times out is said in the notes, and nothing is asked again
+  behind the person's back. The page's own question keeps the SDK's retry.
+- **Asked for as its section lands** ([`write.ts`](write.ts)): two at once
+  at most, the others waiting their turn, each line of the drawer's steps
+  saying where its picture stands (waiting, being made, going into the
+  library, in with what it cost, left out, stopped).
+- **Into the library, like an upload** (`../editor/library/service.ts`,
+  `put`): with the plan's alt text, named after the page and what it
+  shows (`gym-a-coach-beside-a-lifter.webp`), into the CMS's library or
+  the browser's. A photo is read for what it is (WebP, PNG or JPEG, by its
+  bytes) and its size, and drawn smaller only past the editor's longest
+  side.
+- **Onto the page, as a step of its own.** Behind its section with the
+  veil it went in with (`makeSetPicture`), or as an image in its column,
+  after the blocks the plan put before it, decorative where its alt text
+  is empty. Each is the Assistant's step in History, undone on its own,
+  and counted as a use of its image where it is placed. It leaves the
+  person's selection where it is: it may come while they work on the page.
+- **One that fails** (refused, not clean, too large, the network, the
+  library's refusal) leaves its section as it was, and is said in a note.
+  A refusal of the key, of the model, for credit or for no network asks
+  for no more pictures: the same would come again.
+- **Stop**, or another page opened, stops the pictures still being made,
+  those in flight too. The page is looked at before each picture is asked
+  for, after each that fails, and every quarter of a second meanwhile
+  (`PAGE_WATCH_MS`), so no request goes out for a page the person has
+  left. One already made was paid for: it goes into the library, not onto
+  the page, and the note says so; the note says too how many were not
+  made, and why.
+- **With the key the page began with.** A page's run is bound to the key
+  kept when it began ([`context.tsx`](context.tsx), `bind`): its provider,
+  the keeper's ticket and the models chosen then. Its plan and each of its
+  pictures are asked with that key alone. Once that key is forgotten or
+  another is kept, the run is told: its pictures in flight are stopped,
+  the rest are never asked, with that key or the new one, and nothing of
+  the run counts toward the new key's total.
 
 ## The providers
 
@@ -118,9 +220,13 @@ called on, so a person who never opens the Assistant downloads neither SDK.
   It offers Claude 4.6 and later, Claude Opus 5.5 first.
 - **[`openai.ts`](openai.ts):** a streamed Chat Completions request with a
   strict JSON schema. It offers the models that take one, newest first.
+  Its photos are one Images API request each (`images.generate`), with the
+  newest GPT Image model the key may use, found when the key is connected.
 
 Errors are said in a sentence, read from the HTTP status, with the key
-taken out of anything the provider repeated of it.
+taken out of anything the provider repeated of it. A call its caller
+stopped is said to be stopped, whatever the SDK threw: neither SDK's abort
+error carries its class's name.
 
 Each call hands back the tokens it used, read from the usage object of the
 provider's SDK, as the provider bills them:
@@ -140,18 +246,26 @@ provider's SDK, as the provider bills them:
     tokens first, and plain input never goes below none. The drawer says
     nothing of it.
 
+- **A photo's:** the Images API's usage, `input_tokens`, of which
+  `input_tokens_details.image_tokens` were pictures sent with the words (a
+  page's photo sends none), the rest words, and `output_tokens`, the
+  picture made.
+
 An answer refused or cut short was billed all the same, and its error
-says what it used.
+says what it used; so was an illustration the cleaner refused.
 
 ## What a request costs
 
 After each request the Assistant says the tokens the provider counted (in,
 cached and out) and what they come to at the model's list price. After a
 page it is said in the drawer, with the price used and the day the prices
-were read. After a text written again or an image described, it is said in
-the block's panel. The drawer's foot keeps the total of every request since
-the key was connected. That total lives in memory with the key, and is
-forgotten with it.
+were read: the page's words, then a line for each kind of picture made for
+it ("4 photos, ≈ $0.16: ...", its tokens and price), then the whole; and
+each picture's own cost in the drawer's steps, as it comes in. After a text
+written again or an image described, it is said in the block's panel. The
+drawer's foot keeps the total of every request since the key was
+connected, the pictures counted by their kind. That total lives in memory
+with the key, and is forgotten with it.
 
 - **The prices.** [`prices.ts`](prices.ts) holds the providers' list prices
   for the models the Assistant offers, as their official pages gave them on
@@ -171,8 +285,15 @@ forgotten with it.
     - **A dash.** Where the page gives one for cached input (the -pro
       models, o3-pro, gpt-4o-2024-05-13) or for cache writes (every other
       model), the estimate counts those tokens at the input price.
-  - **The image models'** are in the table already, for the pictures a
-    later step makes.
+  - **The image models':** text in, image in, image out, per million
+    tokens. A photo is priced from its tokens at them, the page's image
+    in price only for a picture sent with the words (none is), and every
+    token out at the image out price: the page gives no other for what a
+    picture model writes. An illustration is a call to the model that
+    writes, at its own price, counted as an illustration.
+  - **GPT Image 2's price per image**, by quality and size, from the image
+    generation guide, is what the drawer shows before a photo is made. No
+    other model has one on file: its photos' cost is said after each.
 - **No price on file.** A model the table does not hold has no price, and
   only its tokens are said. That includes a dated snapshot of a model it
   holds, since neither page prices a snapshot as its model, and an alias
@@ -186,10 +307,12 @@ forgotten with it.
   and of the total.
 - **Written for a person.** An amount is written to two figures under a
   dollar (≈ $0.021), and one under a cent says so (under $0.01 ($0.0042)).
-- **Updating the prices.** Read the two pages again, then change the rows
-  of `prices.ts`, and its `PRICES_READ` to the day they were read.
+- **Updating the prices.** Read the two pages again, and the image
+  generation guide's price per image, then change the rows of
+  `prices.ts`, and its `PRICES_READ` to the day they were read.
   [`prices.test.ts`](prices.test.ts) holds the rows to a second copy of the
-  pages' tables, typed apart so that a slip in either shows: change both.
+  pages' tables and the guide's, typed apart so that a slip in either
+  shows: change both.
   Two of its tests keep the table current:
   - one fails once the prices are more than 120 days old, to say it is time
     to read the pages again;

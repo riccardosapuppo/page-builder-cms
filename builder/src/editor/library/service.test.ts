@@ -2,7 +2,9 @@
 // uploads one at a time, each made ready first and sent as made ready,
 // with its progress; what the preparation or the CMS refuses, said; an
 // answer that never came, and the library read again; an upload stopped;
-// an image's alt text; a delete the CMS refuses, with who shows the image.
+// an image's alt text; a delete the CMS refuses, with who shows the image;
+// an image the Assistant made in the browser, up as it is with its alt
+// text, a refusal said as a clause.
 import { describe, expect, test } from "vitest";
 import { StorageError, type InUse, type Invalid, type MediaItem, type Outcome, type Upload, type UploadOptions } from "../../storage/adapter.ts";
 import { createUiStore } from "../ui-store.ts";
@@ -276,6 +278,39 @@ describe("alt text and deleting", () => {
 
   test("the storage's word on image variants is the service's", () => {
     expect(rig().service.imageVariants).toBe(false);
+  });
+});
+
+describe("an image made in the browser (a picture the Assistant made)", () => {
+  const made = () => new File(["webp bytes"], "gym-rowers.webp", { type: "image/webp" });
+  const invalid = (keyword: string, message: string): Invalid => ({ kind: "invalid", code: "invalid_request", message: "The request is not valid.", errors: [{ pointer: "/file", keyword, blockPointer: null, message }] });
+
+  test("goes up as it is, with its alt text, not made ready again, and joins the head of the library; the tab warns while it goes", async () => {
+    const r = rig([item("old")]);
+    const put = r.service.put({ file: made(), width: 1536, height: 1024, alt: "Rowers at dawn" });
+    expect(r.service.busy()).toBe(true);
+    expect(r.prepared).toEqual([]);
+    expect(r.sent.map((one) => [one.upload.file.name, one.upload.width, one.upload.height, one.upload.alt])).toEqual([["gym-rowers.webp", 1536, 1024, "Rowers at dawn"]]);
+    r.sent[0]!.answer.resolve({ ok: true, value: item("m-made", "Rowers at dawn") });
+    expect(await put).toEqual({ ok: true, item: item("m-made", "Rowers at dawn") });
+    expect(r.ids()).toEqual(["m-made", "old"]);
+    expect(r.service.busy()).toBe(false);
+  });
+
+  test("a refusal is said as a clause, the CMS's or the browser's own; an answer that never came reads the library again", async () => {
+    const r = rig();
+    const refused = r.service.put({ file: made(), width: 1536, height: 1024, alt: "" });
+    r.sent[0]!.answer.resolve({ ok: false, problem: invalid("contentType", "is not an image the library takes") });
+    expect(await refused).toEqual({ ok: false, reason: "the CMS refused it: it takes JPEG, PNG, WebP and GIF images only." });
+    const lost = r.service.put({ file: made(), width: 1536, height: 1024, alt: "" });
+    r.sent[1]!.answer.reject(new StorageError({ kind: "unknown", cause: "network", status: null, message: "The network failed." }));
+    expect(await lost).toEqual({ ok: false, reason: "no answer came from the CMS (The network failed.): it may be in the library or not." });
+    expect(r.listed()).toBe(1);
+    const browser = rig([], true);
+    const full = browser.service.put({ file: made(), width: 1536, height: 1024, alt: "" });
+    browser.sent[0]!.answer.reject(new StorageError({ kind: "refused", status: 0, code: "quota", message: "This browser's storage is full." }));
+    expect(await full).toEqual({ ok: false, reason: "it could not be kept: This browser's storage is full." });
+    expect(browser.service.busy()).toBe(false);
   });
 });
 

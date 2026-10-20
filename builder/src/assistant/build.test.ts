@@ -3,12 +3,17 @@
 // page's schema and rules decide; and what a model may get wrong is shown
 // left out or mended: headings out of order, links of its own invention,
 // images the library does not have, words too long, forms twice, more
-// figures, steps, plans or features than a widget takes, or too few.
+// figures, steps, plans or features than a widget takes, or too few, a
+// veil the words would not read through on the site's own colours. A
+// picture to be made is asked for once its section is in, the section
+// under its veil, an image's column kept for it; five at most a page.
 import { expect, test } from "vitest";
 import { makeInsert } from "../document/commands.ts";
 import { idDraw } from "../document/ids.ts";
 import { createEditorStore } from "../store/editor-store.ts";
 import type { HeadingBlock, PageDocument, PricingPlan, SectionBlock, StatsItem, StepsItem, WidgetBlock } from "../shared/document.ts";
+import { slotTone } from "../shared/site-tokens.ts";
+import { veilContrast, type SiteInk } from "../shared/veil.ts";
 import { line, PlanBuilder, type SiteFacts } from "./build.ts";
 
 const FACTS: SiteFacts = {
@@ -356,16 +361,94 @@ test("a section's picture is the library's, under the plan's veil; the theme's o
   expect(light.style).toEqual({ base: { veil: "light", focus: "bottom" } });
 });
 
-test("a picture the library has not, or a source the plan has not, is none; a picture's veil and focus not of the plan are its own", () => {
+test("a picture the library has not, or a source the plan has not, is none, and one to be made where none is made, said; a picture's veil and focus not of the plan are its own", () => {
   const { doc, builder } = fill([
     section("Gone", [column([words])], { picture: picture("m-not-there") }),
-    section("Made", [column([words])], { picture: { source: "made", prompt: "A gym at dawn", alt: "A gym" } }),
+    section("Made", [column([words, { kind: "image", source: "made", prompt: "Rowers", alt: "", shape: "square" }])], { picture: { source: "made", prompt: "A gym at dawn", alt: "A gym" } }),
     section("Word", [column([words])], { picture: "m-pier" }),
     section("Odd", [column([words])], { picture: picture("m-pier", { veil: "none", strength: "light", focus: "20% 30%" }) }),
   ]);
   expect(doc.sections.map((s) => s.props.picture ?? null)).toEqual([null, null, null, { mediaId: "m-pier" }]);
   expect(doc.sections.map((s) => s.style.base)).toEqual([{}, {}, {}, { veil: "dark" }]);
-  expect(builder.notes).toEqual(["Left out the picture of the section “Gone”: it is not in the site's library."]);
+  expect(doc.sections[1]!.children[0]!.children.map((b) => b.type)).toEqual(["heading"]);
+  expect(builder.notes).toEqual([
+    "Left out the picture of the section “Gone”: it is not in the site's library.",
+    "Left out the picture of the section “Made”: no picture is made for this page.",
+    "Left out an image to be made for the page: no picture is made for this page.",
+  ]);
+  expect(doc.sections.flatMap((s) => builder.picturesFor(s.id))).toEqual([]);
+});
+
+// A picture to be made, as a model writes one.
+const made = (prompt: string, more: Record<string, unknown> = {}) => ({ source: "made", prompt, alt: `${prompt}, seen close`, shape: "landscape", veil: "dark", strength: "medium", focus: "center", ...more });
+const madeImage = (prompt: string, shape = "square", alt = "") => ({ kind: "image", source: "made", prompt, alt, shape });
+const MADE: SiteFacts = { ...FACTS, made: true };
+
+test("a picture made for the page is asked for once its section is in: the section takes its veil and focus, not the picture, and the picture is handed over once", () => {
+  const { doc, builder, refused } = fill([
+    section("Opening", [column([{ kind: "heading", level: 1, text: "Train with us", display: true }])], { background: "text", picture: made("A gym at dawn", { strength: "strong", focus: "top", shape: "portrait" }) }),
+  ], MADE);
+  expect(refused).toEqual([]);
+  expect(builder.notes).toEqual([]);
+  const [opening] = doc.sections as [SectionBlock];
+  // No picture yet: a veil with no picture draws nothing, and the picture's step comes later.
+  expect(opening.props).toEqual({ label: "Opening" });
+  expect(opening.style.base).toEqual({ background: "text", veil: "dark", veilStrength: "strong", focus: "top" });
+  expect(builder.picturesFor(opening.id)).toEqual([{
+    key: "made-1", sectionId: opening.id, label: "Opening", called: "the section “Opening”",
+    place: { behind: true }, prompt: "A gym at dawn", alt: "A gym at dawn, seen close", shape: "portrait",
+  }]);
+  expect(builder.picturesFor(opening.id)).toEqual([]);
+});
+
+test("an image to be made keeps its place: its column, empty while it is made, kept for it, and the blocks the plan put before it, nearest first", () => {
+  const card = (title: string) => column([madeImage(`${title} class`), { kind: "heading", level: 3, text: title, display: false }]);
+  const { doc, builder, refused } = fill([
+    section("Classes", [card("Strength"), column([madeImage("A rowing machine", "landscape", "Rowers in a row")]), column([words, madeImage("Kettlebells"), madeImage("Mats", "portrait")])], { widths: "equal" }),
+  ], MADE);
+  expect(refused).toEqual([]);
+  const [classes] = doc.sections as [SectionBlock];
+  // Three columns still, the second empty until its image comes.
+  expect(classes.children.map((c) => c.children.map((b) => b.type))).toEqual([["heading"], [], ["heading"]]);
+  const [first, second, third] = classes.children.map((c) => c.id);
+  const strength = classes.children[0]!.children[0]!.id;
+  const words3 = classes.children[2]!.children[0]!.id;
+  expect(builder.picturesFor(classes.id).map((ask) => [ask.key, ask.place, ask.prompt, ask.alt, ask.shape])).toEqual([
+    ["made-1", { behind: false, columnId: first, after: [] }, "Strength class", "", "square"],
+    ["made-2", { behind: false, columnId: second, after: [] }, "A rowing machine", "Rowers in a row", "landscape"],
+    ["made-3", { behind: false, columnId: third, after: [words3] }, "Kettlebells", "", "square"],
+    ["made-4", { behind: false, columnId: third, after: ["made-3", words3] }, "Mats", "", "portrait"],
+  ]);
+  expect(strength).not.toBe(words3);
+});
+
+test("at most five pictures are made for a page, and one with nothing said of what it shows none; each left out is said", () => {
+  const { doc, builder } = fill([
+    section("Opening", [column([words])], { picture: made("One") }),
+    section("Cards", [column([madeImage("Two"), madeImage("Three"), madeImage("  ")]), column([madeImage("Four"), madeImage("Five")])]),
+    section("More", [column([madeImage("Six"), words])], { picture: made("Seven") }),
+  ], MADE);
+  const asks = doc.sections.flatMap((s) => builder.picturesFor(s.id));
+  expect(asks.map((ask) => ask.prompt)).toEqual(["One", "Two", "Three", "Four", "Five"]);
+  expect(new Set(asks.map((ask) => ask.key)).size).toBe(5);
+  expect(doc.sections[2]!.style.base).toEqual({});
+  expect(builder.notes).toEqual([
+    "Left out an image to be made for the page: the plan did not say what it shows.",
+    "Left out the picture of the section “More”: a page has at most 5 pictures made for it.",
+    "Left out an image to be made for the page: a page has at most 5 pictures made for it.",
+  ]);
+});
+
+test("a picture to be made whose words no veil lets read is not asked for; a section left out takes its pictures with it", () => {
+  const grey = fill([section("Fog", [column([words])], { picture: made("Mist") })], { ...MADE, ink: { text: "#777777", background: "#8a8a8a" } });
+  expect(grey.doc.sections.flatMap((s) => [s.style.base, grey.builder.picturesFor(s.id)])).toEqual([{}, []]);
+  expect(grey.builder.notes).toEqual(["Left out the picture of the section “Fog”: no veil lets its words read on this site's colours."]);
+  // A section of nothing but a heading with no words: left out, and what it asked for counts toward nothing.
+  const gone = fill([
+    section("Empty", [column([{ kind: "heading", level: 2, text: " ", display: false }])], { picture: made("Nothing") }),
+    section("Cards", [column([madeImage("A"), madeImage("B"), madeImage("C"), madeImage("D"), madeImage("E")])]),
+  ], MADE);
+  expect(gone.doc.sections.flatMap((s) => gone.builder.picturesFor(s.id)).map((ask) => ask.prompt)).toEqual(["A", "B", "C", "D", "E"]);
 });
 
 test("the words over a picture read through its veil, as the panel measures them: a veil too weak is made strong, and one that cannot be is made dark, said", () => {
@@ -377,6 +460,51 @@ test("the words over a picture read through its veil, as the panel measures them
   const pale = fill([section("Pale", [column([words])], { picture: picture("m-pier", { veil: "text" }) })], { ...FACTS, ink: { text: "#bbbbbb", background: "#ffffff" } });
   expect(pale.doc.sections[0]!.style.base).toEqual({ veil: "dark", veilStrength: "strong" });
   expect(pale.builder.notes).toEqual(["Made the veil over the picture of the section “Pale” dark and strong: its words would not read through the text colour's one."]);
+});
+
+// The dark site of the free colours' contract (contract/free-colors/cases.json):
+// pale words on a near-black page. On a dark veil its words are its
+// Background, near-black too; on a light one its Text, pale too; only the
+// Text tone's veil, pale under dark words, lets them read.
+const DARK_SITE: SiteInk = { text: "#f4f1ea", background: "#101418" };
+// The theme's own light palette, its Text and Background.
+const LIGHT_SITE: SiteInk = { text: slotTone("text").hex, background: slotTone("background").hex };
+
+test("on a dark site, a veil too weak takes the first strong veil its words read through, the plan's kind first; with none, the picture is left out, said", () => {
+  expect(veilContrast("dark", "strong", DARK_SITE).ratio).toBeLessThan(4.5);
+  expect(veilContrast("light", "strong", DARK_SITE).ratio).toBeLessThan(4.5);
+  expect(veilContrast("text", "strong", DARK_SITE).ratio).toBeGreaterThanOrEqual(4.5);
+  const dark = fill([
+    section("Night", [column([words])], { picture: picture("m-pier", { veil: "dark" }) }),
+    section("Moon", [column([words])], { picture: picture("m-buoy", { veil: "light", strength: "strong" }) }),
+    section("Ink", [column([words])], { picture: picture("m-pier", { veil: "text" }) }),
+  ], { ...FACTS, ink: DARK_SITE });
+  expect(dark.refused).toEqual([]);
+  expect(dark.doc.sections.map((s) => [s.props.picture?.mediaId, s.style.base])).toEqual([
+    ["m-pier", { veil: "text", veilStrength: "strong" }],
+    ["m-buoy", { veil: "text", veilStrength: "strong" }],
+    ["m-pier", { veil: "text" }],
+  ]);
+  expect(dark.builder.notes).toEqual([
+    "Made the veil over the picture of the section “Night” the site's text colour and strong: its words would not read through the dark one.",
+    "Made the veil over the picture of the section “Moon” the site's text colour and strong: its words would not read through the light one.",
+  ]);
+
+  // The control: on the theme's light palette the same plan keeps its veils.
+  const light = fill([
+    section("Night", [column([words])], { picture: picture("m-pier", { veil: "dark" }) }),
+    section("Moon", [column([words])], { picture: picture("m-buoy", { veil: "light", strength: "strong" }) }),
+  ], { ...FACTS, ink: LIGHT_SITE });
+  expect(light.doc.sections.map((s) => s.style.base)).toEqual([{ veil: "dark" }, { veil: "light", veilStrength: "strong" }]);
+  expect(light.builder.notes).toEqual([]);
+
+  // Two greys as Text and Background: no veil lets their words read, so
+  // the section goes in without its picture, rather than with unreadable words.
+  const grey: SiteInk = { text: "#777777", background: "#8a8a8a" };
+  expect((["dark", "light", "text"] as const).map((veil) => veilContrast(veil, "strong", grey).ratio < 4.5)).toEqual([true, true, true]);
+  const none = fill([section("Fog", [column([words])], { picture: picture("m-pier") })], { ...FACTS, ink: grey });
+  expect(none.doc.sections.map((s) => [s.props.picture ?? null, s.style.base])).toEqual([[null, {}]]);
+  expect(none.builder.notes).toEqual(["Left out the picture of the section “Fog”: no veil lets its words read on this site's colours."]);
 });
 
 test("a section comes into view by its plan's motion, none written as nothing; a plan with neither picture nor motion builds as it did", () => {

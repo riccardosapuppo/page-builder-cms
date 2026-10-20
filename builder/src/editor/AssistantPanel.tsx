@@ -1,18 +1,27 @@
 // The Assistant's drawer (../assistant/README.md): a key of the person's
 // own, then a brief, then a new page written section by section while the
 // person watches it grow on the canvas. Without a key, a sample written by
-// hand goes through the same steps. Which provider, what is kept of the key
-// and where it goes are said where the key is asked for. After a page, the
-// tokens it used and what they come to at the model's list price are said
-// (../assistant/tally.ts); the drawer's foot keeps the total since the key
-// was connected, and says it is an estimate.
-import { useId, useState } from "react";
+// hand goes through the same steps. Which provider, what each one does,
+// what is kept of the key and where it goes are said where the key is
+// asked for. Before writing, a switch makes pictures for the page: photos
+// with an OpenAI key, at the quality chosen, its price per photo said
+// beside it; illustrations with an Anthropic key. While the page is
+// written, each picture's progress is in the list of steps, and its cost
+// once it is made. After a page, the tokens it used and what they come to
+// at the model's list price are said (../assistant/tally.ts), a line for
+// each kind of picture, then the whole; the drawer's foot keeps the total
+// since the key was connected, and says it is an estimate.
+import { Fragment, useId, useState } from "react";
 import { useAssistant, useAssistantStore, type AssistantStore, type ShownWriting } from "../assistant/context.tsx";
 import { PROVIDER_NAMES, PROVIDERS, type ProviderId } from "../assistant/key.ts";
+import { illustrationMaker, photoMaker } from "../assistant/makers.ts";
+import { PICTURE_KINDS, type PictureKind } from "../assistant/pictures.ts";
+import { PLAN_MADE_MOST } from "../assistant/plan.ts";
+import { about, dollars, IMAGE_QUALITIES, imagePrice, PRICES_DAY, type ImageQuality } from "../assistant/prices.ts";
 import { pageQuestion, type SiteWords } from "../assistant/prompts.ts";
 import { sampleAnswer, samplePlan, SAMPLE_BRIEF } from "../assistant/sample.ts";
-import { ESTIMATE_NOTE, estimateWords, totalWords, usedWords, type Tally } from "../assistant/tally.ts";
-import { writePage, type PageHooks } from "../assistant/write.ts";
+import { addTallies, allWords, ESTIMATE_NOTE, estimateWords, pictureWords, totalWords, usedWords, type Tally } from "../assistant/tally.ts";
+import { writePage, type PageHooks, type PictureWritten } from "../assistant/write.ts";
 import type { SiteFacts } from "../assistant/build.ts";
 import { PALETTE_SLOTS, type PaletteSlot } from "../shared/document.ts";
 import { isFreeColor } from "../shared/free-colors.ts";
@@ -21,6 +30,8 @@ import type { MediaItem, SiteStyle } from "../storage/adapter.ts";
 import { afterRender } from "./act.ts";
 import { runMade, useEnv, useUi, type EditorEnv } from "./context.tsx";
 import { Icon } from "./icons.tsx";
+import { useMediaService } from "./library/context.tsx";
+import type { MediaService } from "./library/service.ts";
 import { slugFrom, useSession, type Session } from "./session.tsx";
 import "./assistant.css";
 
@@ -28,6 +39,15 @@ const KEY_PAGES: Readonly<Record<ProviderId, string>> = {
   anthropic: "https://console.anthropic.com/settings/keys",
   openai: "https://platform.openai.com/api-keys",
 };
+
+// What each provider does here, said where the person chooses one.
+export const PROVIDER_DOES: Readonly<Record<ProviderId, string>> = {
+  anthropic: "Writes pages, and draws illustrations for them in the site's colours, as its models make no photos.",
+  openai: "Writes pages, and makes photos for them, each at a cost shown before you write.",
+};
+
+const QUALITY_NAMES: Readonly<Record<ImageQuality, string>> = { low: "Low", medium: "Medium", high: "High" };
+const KIND_NAMES: Readonly<Record<PictureKind, string>> = { photo: "Photo", illustration: "Illustration" };
 
 // The palette's tones as hex, for the question: a free colour as it is, a
 // curated tone by its name.
@@ -38,6 +58,11 @@ function paletteHex(style: SiteStyle | null): Record<PaletteSlot, string> {
     return [slot, hex];
   })) as Record<PaletteSlot, string>;
 }
+
+// The palette's colours, each as hex, the theme's own where the site's
+// style has none: an illustration is drawn in them.
+const paletteTones = (style: SiteStyle | null): Record<PaletteSlot, string> =>
+  Object.fromEntries(PALETTE_SLOTS.map((slot) => [slot, slotTone(slot, style?.palette).hex])) as Record<PaletteSlot, string>;
 
 const pathOf = (page: { home: boolean; slug: string | null }): string => (page.home ? "/" : `/${page.slug ?? ""}`);
 
@@ -57,8 +82,8 @@ function siteFacts(session: Session, media: ReadonlyMap<string, MediaItem>, brie
 // The steps of ../assistant/write.ts done by this editor: a page made from
 // the plan's title (its address made free if it is taken), each command
 // applied to it while it is the page open, each new section brought into
-// view as it lands.
-function pageHooks(env: EditorEnv, session: Session): PageHooks {
+// view as it lands, and a picture made for it put in the library.
+function pageHooks(env: EditorEnv, session: Session, library: MediaService | null): PageHooks {
   let opened: number | null = null;
   return {
     async open(title) {
@@ -75,11 +100,14 @@ function pageHooks(env: EditorEnv, session: Session): PageHooks {
     },
     still: () => opened !== null && session.isOpen(opened),
     document: () => env.store.getState().document,
-    apply(made) {
+    apply(made, options) {
+      const selected = env.store.getState().selection;
       const result = runMade(env, made);
       if (!result.ok) return result.error.message;
+      // A picture put in leaves the person's selection, and their panel, as they were.
+      if (options?.quiet) env.store.getState().select(selected);
       const last = env.store.getState().document.sections.at(-1);
-      if (made.ok && made.command.kind === "insert" && last) {
+      if (made.ok && made.command.kind === "insert" && made.command.subject?.id === last?.id && last) {
         afterRender(() => {
           const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
           document.querySelector(`.canvas [data-block-id="${last.id}"]`)?.scrollIntoView?.({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
@@ -87,6 +115,12 @@ function pageHooks(env: EditorEnv, session: Session): PageHooks {
       }
       return null;
     },
+    ...(library === null ? {} : {
+      async upload(file: File, picture: { width: number; height: number; alt: string }) {
+        const put = await library.put({ file, width: picture.width, height: picture.height, alt: picture.alt });
+        return put.ok ? { ok: true as const, mediaId: put.item.id } : put;
+      },
+    }),
   };
 }
 
@@ -114,11 +148,16 @@ export function AssistantPanel() {
   );
 }
 
-// What the page written says it used, once it has ended: nothing while it
-// is being written, for a sample, or when the provider said nothing.
-function shownTally(writing: ShownWriting | null): Tally | null {
-  if (writing === null || writing.sample || writing.phase === "asking" || writing.phase === "writing") return null;
-  return writing.tally !== null && writing.tally.length > 0 ? writing.tally : null;
+const going = (writing: ShownWriting): boolean => writing.phase === "asking" || writing.phase === "writing" || writing.phase === "pictures";
+
+// What the page written says it used, once it has ended: the page's words
+// and its pictures; nothing while it is being written, for a sample, or
+// when the provider said nothing.
+function shownTally(writing: ShownWriting | null): { words: Tally | null; pictures: Tally } | null {
+  if (writing === null || writing.sample || going(writing)) return null;
+  const words = writing.tally !== null && writing.tally.length > 0 ? writing.tally : null;
+  const pictures = addTallies(...writing.pictures.map((one) => one.tally ?? []));
+  return words === null && pictures.length === 0 ? null : { words, pictures };
 }
 
 // The drawer's foot: the total since the key was connected, while it is
@@ -159,11 +198,20 @@ function Connect() {
       )}
       <div className="field as-first">
         <span className="label" id={`${id}-provider`}>Provider</span>
-        <div className="seg seg-fill" role="radiogroup" aria-labelledby={`${id}-provider`}>
+        <div className="seg seg-fill" role="radiogroup" aria-labelledby={`${id}-provider`} aria-describedby={`${id}-compare`}>
           {PROVIDERS.map((which) => (
             <button key={which} type="button" role="radio" aria-checked={provider === which} onClick={() => setProvider(which)}>{PROVIDER_NAMES[which]}</button>
           ))}
         </div>
+        {/* What each one does, side by side, the one chosen marked. */}
+        <dl className="as-compare" id={`${id}-compare`}>
+          {PROVIDERS.map((which) => (
+            <div key={which} className={which === provider ? "as-compare-on" : undefined}>
+              <dt>{PROVIDER_NAMES[which]}</dt>
+              <dd>{PROVIDER_DOES[which]}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
       <div className={`field${problem ? " field-error" : ""}`}>
         <label className="label" htmlFor={`${id}-key`}>Your {name} key</label>
@@ -212,7 +260,7 @@ function Sample() {
     const facts = siteFacts(session, media, SAMPLE_BRIEF, style);
     void run(assistant, (signal, tell) => writePage({
       ask: sampleAnswer(samplePlan(facts.media), env.clock, signal),
-      facts, newId: env.newId, hooks: pageHooks(env, session), tell, signal,
+      facts, newId: env.newId, hooks: pageHooks(env, session, null), tell, signal,
     }), { sample: true });
   };
   return (
@@ -224,19 +272,44 @@ function Sample() {
   );
 }
 
+// A photo's price before it is made, at the quality chosen: the guide's
+// price per image where it gives one, else that its cost is said after.
+function photoPriceWords(model: string, quality: ImageQuality): string {
+  const landscape = imagePrice(model, quality, "1536x1024");
+  const portrait = imagePrice(model, quality, "1024x1536");
+  const square = imagePrice(model, quality, "1024x1024");
+  if (landscape === null || portrait === null || square === null) {
+    return `${model} has no published price per image: each photo's cost is said once it is made, from the tokens it used.`;
+  }
+  const each = landscape === portrait
+    ? `${dollars(landscape)} a photo, landscape or portrait, ${dollars(square)} a square one`
+    : `${dollars(landscape)} a landscape photo, ${dollars(portrait)} a portrait one, ${dollars(square)} a square one`;
+  return `${each}, at ${model}'s price per image of ${PRICES_DAY}. Up to ${PLAN_MADE_MOST} on a page: ${dollars(Math.max(landscape, portrait, square) * PLAN_MADE_MOST)} at most.`;
+}
+
 function Brief() {
   const env = useEnv();
   const session = useSession();
   const assistant = useAssistantStore();
+  const library = useMediaService();
   const held = useAssistant((a) => a.held)!;
   const models = useAssistant((a) => a.models);
   const model = useAssistant((a) => a.model);
+  const imageModel = useAssistant((a) => a.imageModel);
   const busy = useAssistant((a) => a.running !== null);
   const media = useUi((u) => u.media);
   const style = useUi((u) => u.siteStyle);
   const [brief, setBrief] = useState("");
   const [missing, setMissing] = useState(false);
+  const [wanted, setWanted] = useState(true);
+  const [quality, setQuality] = useState<ImageQuality>("medium");
   const id = useId();
+  const kind = PICTURE_KINDS[held.provider];
+  const name = models.find((choice) => choice.id === model)?.name ?? model ?? "the model";
+  // Pictures can be made where there is a library to keep them and, for
+  // photos, an image model the key may use.
+  const can = library !== null && (kind === "illustration" || imageModel !== null);
+  const pictures = wanted && can;
 
   const write = () => {
     if (busy) return;
@@ -245,14 +318,24 @@ function Brief() {
       return;
     }
     setMissing(false);
-    const facts = siteFacts(session, media, brief, style);
+    // The run is bound to the key kept now: its plan and its pictures go
+    // with that key alone, and stop once it is forgotten or replaced.
+    const bound = assistant.getState().bind();
+    if (bound === null) return;
+    const facts = { ...siteFacts(session, media, brief, style), made: pictures };
     const words: SiteWords = { palette: paletteHex(style), media: facts.media, pages: facts.pages };
-    const name = models.find((choice) => choice.id === model)?.name ?? model ?? "the model";
+    const maker = !pictures ? undefined : kind === "photo" ? photoMaker(assistant, bound, quality) : illustrationMaker(assistant, bound, paletteTones(style));
     void run(assistant, (signal, tell) => writePage({
-      ask: (written) => assistant.getState().ask((chosen) => pageQuestion(chosen, brief, words), written, signal),
-      facts, newId: env.newId, hooks: pageHooks(env, session), tell, signal,
+      ask: (written) => assistant.getState().ask((chosen) => pageQuestion(chosen, brief, words, pictures ? kind : null), written, signal, "words", bound),
+      facts, newId: env.newId, hooks: pageHooks(env, session, library), tell, signal, ...(maker ? { pictures: maker } : {}),
     }), { model: name });
   };
+
+  const hint = library === null ? "This editor has no library to keep pictures in."
+    : kind === "photo"
+      ? imageModel === null ? "This key may use no GPT Image model, so the page is written without photos."
+        : `${imageModel} makes them where the page needs them, ${PLAN_MADE_MOST} at most, each kept in your library with its alt text.`
+      : `${name} draws them in the site's colours where the page needs them, ${PLAN_MADE_MOST} at most, each kept in your library with its alt text. Each is a request of its own, its tokens counted with the page's.`;
 
   return (
     <>
@@ -287,6 +370,25 @@ function Brief() {
         {missing && <p className="error" id={`${id}-brief-missing`}><Icon name="error" />Say what the page is for first.</p>}
         <p className="hint" id={`${id}-brief-hint`}>Who it is for, what it should say, what readers should do next. The facts you give are the only facts it uses. It writes into a new page.</p>
       </div>
+      <div className="field as-make">
+        <label className="toggle">
+          <input type="checkbox" role="switch" checked={pictures} disabled={!can} aria-describedby={`${id}-pictures`} onChange={(event) => setWanted(event.target.checked)} />
+          <span className="toggle-ui" aria-hidden="true" />
+          <span>{kind === "photo" ? "Make photos for the page" : "Draw illustrations for the page"}</span>
+        </label>
+        <p className="hint" id={`${id}-pictures`}>{hint}</p>
+        {pictures && kind === "photo" && imageModel !== null && (
+          <>
+            <span className="label as-quality-label" id={`${id}-quality`}>Photo quality</span>
+            <div className="seg seg-fill" role="radiogroup" aria-labelledby={`${id}-quality`} aria-describedby={`${id}-price`}>
+              {IMAGE_QUALITIES.map((which) => (
+                <button key={which} type="button" role="radio" aria-checked={quality === which} onClick={() => setQuality(which)}>{QUALITY_NAMES[which]}</button>
+              ))}
+            </div>
+            <p className="hint as-price" id={`${id}-price`}>{photoPriceWords(imageModel, quality)}</p>
+          </>
+        )}
+      </div>
       <button className="btn btn-dark btn-block as-go" type="button" aria-disabled={busy ? true : undefined} onClick={write}>Write the page</button>
     </>
   );
@@ -295,66 +397,113 @@ function Brief() {
 const PHASE_WORDS: Readonly<Record<ShownWriting["phase"], string>> = {
   asking: "Asking",
   writing: "Writing",
+  pictures: "Making pictures",
   done: "Written",
   stopped: "Stopped",
   failed: "Not written",
 };
 
 const count = (n: number): string => `${n} ${n === 1 ? "section" : "sections"}`;
+const pictureCount = (n: number, kind: PictureKind): string => `${n} ${n === 1 ? kind : `${kind}s`}`;
+
+// Where a picture stands, after its name in the list.
+function pictureState(one: PictureWritten): string {
+  switch (one.state) {
+    case "waiting":
+      return "waiting";
+    case "making":
+      return one.kind === "photo" ? "being made…" : "being drawn…";
+    case "placing":
+      return "going into the library…";
+    case "placed": {
+      const tally = one.tally ?? [];
+      const priced = tally.filter((line) => line.cost.price !== null);
+      if (tally.length === 0) return "in";
+      if (priced.length === 0) return "in, no list price on file";
+      return `in, ${about(priced.reduce((nano, line) => nano + (line.cost.price === null ? 0 : line.cost.nano), 0))}`;
+    }
+    case "failed":
+      return "left out";
+    case "stopped":
+      return "stopped";
+  }
+}
+
+const PICTURE_ICONS: Readonly<Record<PictureWritten["state"], "clock" | "spinner" | "check" | "warning">> = {
+  waiting: "clock", making: "spinner", placing: "spinner", placed: "check", failed: "warning", stopped: "warning",
+};
 
 function Progress({ writing }: { writing: ShownWriting }) {
   const assistant = useAssistantStore();
-  const going = writing.phase === "asking" || writing.phase === "writing";
-  const tally = shownTally(writing);
+  const moving = going(writing);
+  const shown = shownTally(writing);
   const kept = writing.sections.filter((section) => section.kept).length;
+  const placed = writing.pictures.filter((one) => one.state === "placed");
+  const kind = writing.pictures[0]?.kind;
   const page = writing.title ? `“${writing.title}”` : "the new page";
+  const onPage = placed.length > 0 && kind ? `${count(kept)} and ${pictureCount(placed.length, kind)}` : count(kept);
   const line = writing.phase === "asking"
     ? writing.sample ? "Reading the sample plan…" : `Asking ${writing.model ?? "the model"}…`
     : writing.phase === "writing"
       ? `Writing ${page}: ${count(kept)} so far.`
-      : writing.phase === "done"
-        ? `${count(kept)} on ${page}. Each is a step in History: undo takes them back one at a time.`
-        : writing.phase === "stopped"
-          ? `Stopped. The ${count(kept)} on ${page} stay.`
-          : writing.error ?? "The page was not written.";
+      : writing.phase === "pictures"
+        ? `Making the pictures for ${page}: ${placed.length} of ${writing.pictures.length} in.`
+        : writing.phase === "done"
+          ? `${onPage} on ${page}. Each is a step in History: undo takes them back one at a time.`
+          : writing.phase === "stopped"
+            ? `Stopped. The ${onPage} on ${page} stay.`
+            : writing.error ?? "The page was not written.";
+  const kinds = shown ? (["photo", "illustration"] as const).map((which) => pictureWords(shown.pictures, which)).filter((words) => words !== null) : [];
+  const all = shown ? allWords(addTallies(shown.words ?? [], shown.pictures)) : null;
   return (
-    <section className={`as-progress as-${writing.phase}`} aria-labelledby="as_progress_title" aria-busy={going ? true : undefined}>
+    <section className={`as-progress as-${writing.phase}`} aria-labelledby="as_progress_title" aria-busy={moving ? true : undefined}>
       <div className="as-progress-head">
         <h3 className="group-title" id="as_progress_title">{PHASE_WORDS[writing.phase]}{writing.sample ? " · sample" : ""}</h3>
-        {going
+        {moving
           ? <button className="btn btn-small btn-secondary" type="button" onClick={() => assistant.getState().stop()}>Stop</button>
           : <button className="ibtn" type="button" aria-label="Clear this summary" title="Clear" onClick={() => assistant.getState().setWriting(null)}><Icon name="close" /></button>}
       </div>
       <p className={writing.phase === "failed" ? "error as-line" : "as-line"} role="status">
-        {going && <Icon name="spinner" className="i spin" />}{writing.phase === "failed" && <Icon name="error" />}<span>{line}</span>
+        {moving && <Icon name="spinner" className="i spin" />}{writing.phase === "failed" && <Icon name="error" />}<span>{line}</span>
       </p>
       {writing.sections.length > 0 && (
         <ol className="as-sections">
           {writing.sections.map((section, index) => (
-            <li key={index} className={section.kept ? undefined : "as-left"}>
-              <Icon name={section.kept ? "check" : "warning"} />
-              <span>{section.label}</span>
-              {!section.kept && <span className="visually-hidden">, left out</span>}
-            </li>
+            <Fragment key={index}>
+              <li className={section.kept ? undefined : "as-left"}>
+                <Icon name={section.kept ? "check" : "warning"} />
+                <span>{section.label}</span>
+                {!section.kept && <span className="visually-hidden">, left out</span>}
+              </li>
+              {writing.pictures.map((one, at) => one.section !== index ? null : (
+                <li key={`picture-${at}`} className={`as-picture as-picture-${one.state}`}>
+                  {one.state === "making" || one.state === "placing" ? <Icon name="spinner" className="i spin" /> : <Icon name={PICTURE_ICONS[one.state]} />}
+                  <span>{KIND_NAMES[one.kind]} {one.behind ? "behind" : "in"} {section.label}</span>
+                  <span className="as-picture-state"><span className="visually-hidden">, </span>{pictureState(one)}</span>
+                </li>
+              ))}
+            </Fragment>
           ))}
         </ol>
       )}
-      {!going && writing.notes.length > 0 && (
+      {!moving && writing.notes.length > 0 && (
         <details className="as-notes">
           <summary>{writing.notes.length === 1 ? "One thing was left out" : `${writing.notes.length} things were left out`}</summary>
           <ul>{writing.notes.map((note, index) => <li key={index}>{note}</li>)}</ul>
         </details>
       )}
-      {tally && (
+      {shown?.words && (
         <>
-          <p className="hint as-used">{usedWords(tally)}</p>
-          <p className="hint as-cost">{estimateWords(tally)}</p>
+          <p className="hint as-used">{usedWords(shown.words)}</p>
+          <p className="hint as-cost">{estimateWords(shown.words)}</p>
         </>
       )}
-      {writing.phase === "stopped" && !writing.sample && tally === null && (
+      {kinds.map((words) => <p key={words} className="hint as-pictures-cost">{words}</p>)}
+      {all && <p className="hint as-all">{all}</p>}
+      {writing.phase === "stopped" && !writing.sample && (shown?.words ?? null) === null && (
         <p className="hint as-used">Its tokens are not known: the provider counts them when a request ends, and this one was stopped.</p>
       )}
-      {!going && writing.sample && <p className="hint">A sample written by hand: no model was asked.</p>}
+      {!moving && writing.sample && <p className="hint">A sample written by hand: no model was asked.</p>}
     </section>
   );
 }

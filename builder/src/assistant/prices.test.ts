@@ -3,13 +3,13 @@
 // Claude Haiku 5.5's dearer price past 100,000 tokens and no price past
 // OpenAI's 272,000, no price for a model the tables do not hold, amounts
 // written for a person to read, every model the drawer offers priced or
-// said to have no price, and the tables read again before they are 120
-// days old.
+// said to have no price, GPT Image 2's price per image as the guide gives
+// it, and the tables read again before they are 120 days old.
 import { expect, test } from "vitest";
 import { anthropic, type AnthropicLike } from "./anthropic.ts";
 import { PROVIDERS, type ProviderId } from "./key.ts";
 import { openai, type OpenAILike } from "./openai.ts";
-import { about, costAt, dayWords, IMAGE_PRICES, listPrice, perMillion, perToken, PRICE_PAGES, PRICES_DAY, PRICES_READ, pricedModels } from "./prices.ts";
+import { about, costAt, dayWords, dollars, IMAGE_PRICES, IMAGE_QUALITIES, imagePrice, listPrice, PER_IMAGE_MODELS, perImage, perMillion, perToken, PRICE_PAGES, PRICES_DAY, PRICES_READ, pricedModels } from "./prices.ts";
 import type { Usage } from "./providers.ts";
 import { addTallies, estimateWords, tallyOf, type Tally } from "./tally.ts";
 
@@ -82,7 +82,7 @@ test("the tables are the pages', model by model and price by price", () => {
   })).toEqual(rows(OPENAI_PAGE));
   // Claude Haiku 5.5 past 100,000 tokens: $0.50 in, $0.625 to write the cache, $0.05 to read it, $2.50 out.
   expect(listPrice("anthropic", "claude-haiku-5-5", 100_001)).toEqual({ name: "Claude Haiku 5.5", price: { input: 500, cacheWrite: 625, cacheRead: 50, output: 2500 }, band: { over: true, tokens: 100_000 } });
-  // The image models, for a later step: text in, image in where the page gives it, image out.
+  // The image models, which price a photo from its tokens: text in, image in where the page gives it, image out.
   expect(Object.fromEntries(IMAGE_PRICES)).toEqual({
     "gpt-image-2": { textInput: 5000, imageInput: 8000, imageOutput: 30_000 },
     "gpt-image-2.5-sunburst": { textInput: 5000, imageInput: 8000, imageOutput: 30_000 },
@@ -90,6 +90,26 @@ test("the tables are the pages', model by model and price by price", () => {
     "gpt-image-1.5": { textInput: 5000, imageInput: null, imageOutput: 32_000 },
     "gpt-image-1-mini": { textInput: 2000, imageInput: null, imageOutput: 8000 },
   });
+});
+
+// GPT Image 2's price per image as the image generation guide writes it,
+// typed again from the guide: quality, then 1024x1024, 1024x1536, 1536x1024.
+const PER_IMAGE_GUIDE = `
+gpt-image-2  low     $0.006  $0.005  $0.005
+gpt-image-2  medium  $0.053  $0.041  $0.041
+gpt-image-2  high    $0.211  $0.165  $0.165
+`;
+
+test("a photo's price per image is the guide's, GPT Image 2's alone; another model has none, and its cost is known from its tokens", () => {
+  const sizes = ["1024x1024", "1024x1536", "1536x1024"] as const;
+  expect(PER_IMAGE_MODELS.flatMap((model) => IMAGE_QUALITIES.map((quality) => [model, quality, ...sizes.map((size) => dollars(imagePrice(model, quality, size)!))].join(" | ")))).toEqual(rows(PER_IMAGE_GUIDE));
+  expect(PER_IMAGE_MODELS).toEqual(["gpt-image-2"]);
+  expect(IMAGE_QUALITIES).toEqual(["low", "medium", "high"]);
+  for (const model of ["gpt-image-2.5-flare", "gpt-image-1.5", "gpt-image-1-mini", "gpt-image-2-2026-04-21", "toString"]) expect(imagePrice(model, "medium", "1024x1024"), model).toBeNull();
+  // Whole billionths of a dollar, written exactly.
+  expect(["0.006", "0.053", "0.211", "1", "0.000000001"].map(perImage)).toEqual([6_000_000, 53_000_000, 211_000_000, 1_000_000_000, 1]);
+  for (const wrong of ["$0.04", "0.0000000001", "-1", ""]) expect(() => perImage(wrong)).toThrow();
+  expect([5_000_000, 41_000_000, 265_000_000, 1_050_000_000, 30_000_000].map(dollars)).toEqual(["$0.005", "$0.041", "$0.265", "$1.05", "$0.03"]);
 });
 
 test("a price is a whole number of nano-dollars per token, the page's dollars per million times a thousand", () => {

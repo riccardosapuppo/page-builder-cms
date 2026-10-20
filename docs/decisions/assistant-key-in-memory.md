@@ -58,7 +58,12 @@ where may it go? There were three ways to hold it:
   command that the store holds to the page's schema like any other.
   - **Links** go only to the plan's own sections, the site's pages, or
     addresses written in the person's brief.
-  - **Images** come only from the site's library.
+  - **Images** come from the site's library, or are made for the page with
+    the person's key (since 20 October 2026): a photo of OpenAI's image
+    model, or an illustration the model draws as SVG, cleaned by a strict
+    allowlist and drawn to a picture in the browser
+    ([`builder/src/assistant/svg.ts`](../../builder/src/assistant/svg.ts)).
+    No SVG a model wrote is ever put on a page.
 
 ## What it costs
 
@@ -77,8 +82,8 @@ where may it go? There were three ways to hold it:
   call and dropped afterwards.
 - **Each call costs the person money.** The drawer says what each page
   used, tokens in, cached and out, and estimates their cost at the
-  provider's list price. Its foot keeps the total since the key was
-  connected, in memory with the key, and forgotten with it.
+  provider's list price, its pictures' too. Its foot keeps the total since
+  the key was connected, in memory with the key, and forgotten with it.
 
 ## The proof
 
@@ -104,7 +109,9 @@ npm run e2e:demo
     cookies, every IndexedDB record, the caches and the address;
   - a reload forgets it.
 - **The third** runs on the built demo: the page's own code asks to send a
-  key to another site, and the browser refuses it under `connect-src`.
+  key to another site, and the browser refuses it under `connect-src`; an
+  illustration the Assistant drew is drawn from a `blob:` address to a
+  canvas under the same policy, with no line of it broken.
 
 On 14 October 2026 the Assistant's unit tests, the policy's and the rest of
 the editor's passed, 1,113 in all, as did the 7 browser tests and the 11 of

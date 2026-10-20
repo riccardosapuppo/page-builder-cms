@@ -400,7 +400,7 @@ CMS serves carries neither.
 | [`src/storage/`](src/storage/README.md) | The storage adapter, the only code that talks to a server. |
 | [`src/render/`](src/render/README.md) | The React renderer, held to the server's by the render contract. |
 | [`src/editor/`](src/editor/README.md) | The interface, on the approved design. |
-| [`src/assistant/`](src/assistant/README.md) | The Assistant: the visitor's model key kept in memory only, a page's plan in a schema of its own streamed and built section by section, a text written again, an image described; Anthropic and OpenAI behind one interface, each SDK loaded on first use. |
+| [`src/assistant/`](src/assistant/README.md) | The Assistant: the visitor's model key kept in memory only, a page's plan in a schema of its own streamed and built section by section, the pictures it asks for made (OpenAI's photos, or illustrations the model draws as SVG, cleaned by an allowlist and drawn to a picture in the browser) and put on it as steps of their own, a text written again, an image described; Anthropic and OpenAI behind one interface, each SDK loaded on first use. |
 | [`src/demo/`](src/demo/README.md) | The browser demo's entry point, the pages it draws where the CMS would serve them, and its bottom line. |
 | `build/` | The Vite plugins (compiled validator and nesting rule, font licences, bundle check), the tests of the package itself, and `measure.config.ts`, the configuration measurements run under, apart from the tests. |
 | `e2e/` | The Playwright tests, their pages, and `harness/`, which starts and stops the servers and gives every browser of the runs the first-run note already seen (`welcome.ts`). |

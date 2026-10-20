@@ -39,12 +39,15 @@
 //   at once if nothing was changed here, and offered it otherwise, the
 //   changes kept until they choose;
 // - the page's Content-Security-Policy refuses a connection anywhere but
-//   its own site and the Assistant's two providers;
+//   its own site and the Assistant's two providers, and lets an
+//   illustration the Assistant has drawn be drawn from a blob: address to
+//   a canvas and kept in this browser's library;
 // - and no request leaves the demo's own path: no CMS, no other site.
 // With DEMO_SHOTS set to a folder, each screen is photographed there.
 import { join } from "node:path";
 import { test as base, expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { DEMO_BASE } from "../../build/demo.ts";
+import { welcomeSeen } from "../harness/welcome.ts";
 import { axe } from "../helpers/axe.ts";
 import { block } from "../helpers/canvas.ts";
 import { saveState } from "../helpers/heading.ts";
@@ -869,6 +872,74 @@ test("the notice that says how Publish went can be closed from the keyboard, and
   }
 });
 
+
+// A picture made for a page under the page's own policy: an illustration
+// Anthropic's model draws (answered here, in the browser) is drawn from a
+// blob: address to a canvas, kept as a WebP in this browser's library,
+// and put behind its section, with no line of the policy broken.
+test("under the page's policy, an illustration is drawn from a blob: address and kept as a WebP in this browser's library, behind its section", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL: baseURL ?? "", viewport: { width: 1440, height: 900 }, storageState: welcomeSeen(baseURL ?? ""), locale: "en-US", timezoneId: "UTC" });
+  try {
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    const plan = JSON.stringify({
+      title: "Dawn swim",
+      description: "",
+      sections: [{ label: "Opening", anchor: "", background: "text", motion: "none", widths: "equal",
+        picture: { source: "made", prompt: "A swimmer at dawn.", alt: "A swimmer at dawn", shape: "landscape", veil: "dark", strength: "strong", focus: "center" },
+        columns: [{ align: "left", blocks: [{ kind: "heading", level: 1, text: "Swim at dawn", display: true }] }] }],
+    });
+    const drawing = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 400\"><rect width=\"600\" height=\"400\" fill=\"#e6efea\"/><circle cx=\"420\" cy=\"220\" r=\"70\" fill=\"#f2a541\"/><path d=\"M0 260 C 200 240, 400 280, 600 255 L600 400 L0 400 Z\" fill=\"#1d4e6f\"/></svg>";
+    const sse = (events: Array<[string, unknown]>) => events.map(([event, data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join("");
+    const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "GET, POST, OPTIONS" };
+    await page.route("https://api.anthropic.com/**", async (route) => {
+      const request = route.request();
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+      if (request.url().includes("/v1/models")) {
+        return route.fulfill({ headers: cors, contentType: "application/json", body: JSON.stringify({ data: [{ type: "model", id: "claude-opus-5-5", display_name: "Claude Opus 5.5", created_at: "2026-08-01T00:00:00Z" }], has_more: false, first_id: "claude-opus-5-5", last_id: "claude-opus-5-5" }) });
+      }
+      const body = request.postDataJSON() as { output_config: { format: { schema: { required: string[] } } } };
+      const text = body.output_config.format.schema.required.includes("svg") ? JSON.stringify({ svg: drawing }) : plan;
+      return route.fulfill({ headers: { ...cors, "content-type": "text/event-stream" }, body: sse([
+        ["message_start", { type: "message_start", message: { id: "msg_demo", type: "message", role: "assistant", model: "claude-opus-5-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 100, output_tokens: 1 } } }],
+        ["content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }],
+        ["content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text } }],
+        ["content_block_stop", { type: "content_block_stop", index: 0 }],
+        ["message_delta", { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null }, usage: { output_tokens: 200 } }],
+        ["message_stop", { type: "message_stop" }],
+      ]) });
+    });
+    await openDemo(page);
+    await page.evaluate(() => {
+      (window as unknown as { refused: string[] }).refused = [];
+      document.addEventListener("securitypolicyviolation", (event) => (window as unknown as { refused: string[] }).refused.push(`${event.effectiveDirective} ${event.blockedURI}`));
+    });
+    await page.locator(".topbar").getByRole("button", { name: "Assistant", exact: true }).click();
+    const box = page.getByRole("complementary", { name: "Assistant", exact: true });
+    await box.getByLabel("Your Anthropic key").fill("sk-ant-demo-not-a-real-key-e5f6");
+    await box.getByRole("button", { name: "Connect Anthropic" }).click();
+    await expect(box.getByText("key …e5f6")).toBeVisible();
+    await box.getByLabel("What is the page for?").fill("A morning swim at dawn.");
+    await box.getByRole("button", { name: "Write the page" }).click();
+    await expect(box.getByRole("status").filter({ hasText: "1 section and 1 illustration on “Dawn swim”" })).toBeVisible({ timeout: 30_000 });
+    const picture = page.locator(".canvas [data-block-type='section']:not([data-theme-part] *)").first().locator(":scope > picture.sw-picture > img");
+    await expect(picture).toHaveJSProperty("complete", true);
+    expect(await picture.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([1536, 1024]);
+    // In this browser's library, as a WebP drawn at the shape's size.
+    await page.getByRole("button", { name: "Page Builder CMS menu" }).click();
+    await page.getByRole("menuitem", { name: "Media library" }).click();
+    const library = page.getByRole("dialog", { name: "Media library" });
+    await expect(library.getByRole("radio", { name: /^dawn-swim-a-swimmer-at-dawn\.webp/ })).toBeVisible();
+    expect(await page.evaluate(() => (window as unknown as { refused: string[] }).refused)).toEqual([]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
 
 // The Assistant's promise (src/assistant/README.md), as the browser keeps
 // it: the page's policy lets it connect to its own site and the two
