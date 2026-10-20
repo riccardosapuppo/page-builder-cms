@@ -23,10 +23,11 @@
 // the CMS's job puts it live. It settles a conflict the person's way
 // (reload, keep mine), and sends the site style's changes, one request at
 // a time, the latest change last. For the Assistant's new site it waits
-// for such a change (applySiteStyle), replaces a part's draft, the one it
-// replaces kept as a version first (replacePart), makes a page the home
-// page (setHome) and publishes pages and parts one after the other
-// (publishAll).
+// for such a change (applySiteStyle), replaces a part's draft, every draft
+// it saves over kept as a version first (replacePart), changes a page's
+// draft without losing a save from elsewhere (changeDraft), makes a page
+// the home page (setHome) and publishes pages and parts one after the
+// other (publishAll).
 //
 // The page's versions: the list the history panel shows (./HistoryPanel.tsx),
 // "Save version" and restore, each after the edits waiting are saved. A
@@ -1046,51 +1047,108 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     void applySiteStyle(change);
   }, [applySiteStyle]);
 
-  // A part's draft replaced (the Assistant's new site): the draft as it was
-  // kept as a version first, where `keep` names one, then the new document
-  // saved, read again just before so that a save from elsewhere is not
-  // overwritten unseen (a conflict is met once more, then given up). A part
-  // open in the editor takes the new document as a step of the
-  // Assistant's, which its autosave saves, its own edits saved first.
-  const replacePart = useCallback(async (kind: PartKind, document: PageDocument, keep: string | null): Promise<string | null> => {
-    const said = (problem: { message: string; errors?: readonly FieldError[] }) => problem.errors?.[0]?.message ?? problem.message;
+  // A part's draft replaced (the Assistant's new site), and no draft saved
+  // over that a version does not hold: the draft is read first, kept as a
+  // version named `keep` unless it is `ours` (the document the Assistant
+  // saved there itself), then saved over at the very revision read. A save
+  // from elsewhere in between meets a conflict: the newer draft is read and
+  // kept as a version too before it is replaced in turn, REPLACE_TRIES
+  // times at most, after which the part is left as it is, said. A part open
+  // in the editor takes the new document as a step of the Assistant's: its
+  // own edits saved and kept first, its autosave then saves the new one at
+  // the revision it holds, and a save from elsewhere meets the editor's own
+  // conflict, Reload or Keep mine (which keeps the other one as a version).
+  // Resolves with the document it replaced, or why not.
+  const replacePart = useCallback(async (kind: PartKind, document: PageDocument, keep: string, ours: PageDocument | null = null): Promise<{ ok: true; replaced: PageDocument } | { ok: false; why: string }> => {
+    const said = problemWords;
+    const failed = (why: string) => ({ ok: false as const, why });
     try {
       const part = (await adapter.listParts()).find((one) => one.kind === kind);
-      if (!part) return `the site has no ${kind}.`;
+      if (!part) return failed(`the site has no ${kind}.`);
+      // The draft about to be saved over, kept first unless it is the Assistant's own.
+      const keepFirst = async (draft: PageDocument): Promise<string | null> => {
+        if (ours !== null && sameJson(draft, ours)) return null;
+        const version = await adapter.saveVersion(part.id, { name: keep });
+        return version.ok ? null : `the ${kind} as it was could not be kept first: ${said(version.problem)}`;
+      };
       const saving = opened.current?.id === part.id ? live.current.autosave : null;
+      for (let attempt = 0; saving && live.current.autosave === saving && attempt < REPLACE_TRIES; attempt += 1) {
+        const refused = held();
+        if (refused) return failed(refused);
+        const settled = await saving.flush();
+        if (settled.phase !== "saved") return failed(unsavedWhy(settled.phase, words.server));
+        const was = store.getState().document;
+        const why = await keepFirst(was);
+        if (why !== null) return failed(why);
+        // Closed meanwhile: replaced as a draft, below. Edited while it was
+        // kept: saved and kept again, as it is now.
+        if (live.current.autosave !== saving) break;
+        if (!sameJson(store.getState().document, was)) continue;
+        const made = makeReplacePage(was, document, `Assistant replaced the ${kind}`);
+        if (!made.ok) return { ok: true, replaced: was };
+        const outcome = store.getState().dispatch(made.command);
+        if (!outcome.ok) return failed(outcome.error.message);
+        const after = await saving.flush();
+        if (after.phase === "saved") return { ok: true, replaced: was };
+        return failed(after.phase === "conflict"
+          ? `the ${kind} was saved in another tab meanwhile: Reload takes that one, Keep mine saves the Assistant's over it, keeping that one as a version.`
+          : unsavedWhy(after.phase, words.server));
+      }
+      if (saving && live.current.autosave === saving) return failed(`the ${kind} was edited each time the Assistant went to replace it: it is left as it is.`);
+      for (let attempt = 0; attempt < REPLACE_TRIES; attempt += 1) {
+        const draft = await adapter.getDraft(part.id);
+        const why = await keepFirst(draft.document);
+        if (why !== null) return failed(why);
+        const saved = await adapter.saveDraft(part.id, { revision: draft.revision, saveId: `assistant-${kind}-${clock.now().toString(36)}-${attempt}`, document });
+        if (saved.ok) {
+          ui.getState().setParts({ [kind]: document });
+          await refreshPages().catch(() => undefined);
+          return { ok: true, replaced: draft.document };
+        }
+        if (saved.problem.kind !== "conflict") return failed(said(saved.problem));
+      }
+      return failed(`the ${kind} was saved somewhere else each time the Assistant went to replace it: it is left as it is there, each draft it met kept as a version, “${keep}”.`);
+    } catch (error) {
+      return failed(describe(error));
+    }
+  }, [adapter, clock, held, refreshPages, store, ui, words.server]);
+
+  // A page's draft changed by `change` (the Assistant's new site, its
+  // buttons to pages not made), nothing saved meanwhile lost: while the
+  // page is open, as one step of the Assistant's, given the page as the
+  // canvas has it, which its autosave saves; else the draft read, changed
+  // and saved at the revision read, read and changed again where a save
+  // from elsewhere came in between, REPLACE_TRIES times at most. Null once
+  // saved, or nothing to change; else why not.
+  const changeDraft = useCallback(async (id: number, change: (doc: PageDocument) => { document: PageDocument; label: string } | null): Promise<string | null> => {
+    try {
+      const saving = opened.current?.id === id ? live.current.autosave : null;
       if (saving) {
         const refused = held();
         if (refused) return refused;
-        const settled = await saving.flush();
-        if (settled.phase !== "saved") return unsavedWhy(settled.phase, words.server);
-      }
-      if (keep !== null) {
-        const version = await adapter.saveVersion(part.id, { name: keep });
-        if (!version.ok) return `the ${kind} as it was could not be kept first: ${said(version.problem)}`;
-      }
-      if (saving && live.current.autosave === saving) {
-        const made = makeReplacePage(store.getState().document, document, `Assistant replaced the ${kind}`);
+        const now = store.getState().document;
+        const next = change(now);
+        if (next === null) return null;
+        const made = makeReplacePage(now, next.document, next.label);
         if (!made.ok) return null;
         const outcome = store.getState().dispatch(made.command);
         if (!outcome.ok) return outcome.error.message;
         const settled = await saving.flush();
         return settled.phase === "saved" ? null : unsavedWhy(settled.phase, words.server);
       }
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const draft = await adapter.getDraft(part.id);
-        const saved = await adapter.saveDraft(part.id, { revision: draft.revision, saveId: `assistant-${kind}-${clock.now().toString(36)}-${attempt}`, document });
-        if (saved.ok) {
-          ui.getState().setParts({ [kind]: document });
-          await refreshPages().catch(() => undefined);
-          return null;
-        }
-        if (saved.problem.kind !== "conflict") return said(saved.problem);
+      for (let attempt = 0; attempt < REPLACE_TRIES; attempt += 1) {
+        const draft = await adapter.getDraft(id);
+        const next = change(draft.document);
+        if (next === null) return null;
+        const saved = await adapter.saveDraft(id, { revision: draft.revision, saveId: `assistant-change-${id}-${clock.now().toString(36)}-${attempt}`, document: next.document });
+        if (saved.ok) return null;
+        if (saved.problem.kind !== "conflict") return problemWords(saved.problem);
       }
-      return `the ${kind} was saved somewhere else meanwhile.`;
+      return "it was saved somewhere else each time the Assistant went to change it.";
     } catch (error) {
       return describe(error);
     }
-  }, [adapter, clock, held, refreshPages, store, ui, words.server]);
+  }, [adapter, clock, held, store, words.server]);
 
   // The page of `id` made the home page, at once.
   const setHome = useCallback(async (id: number): Promise<string | null> => {
@@ -1172,9 +1230,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   const session = useMemo<Session>(() => ({
     pages, parts, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, entryView, publishing, styleSave,
     openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
-    applySiteStyle, replacePart, setHome, publishAll, startOver,
+    applySiteStyle, replacePart, changeDraft, setHome, publishAll, startOver,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, entryView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, applySiteStyle, replacePart, setHome, publishAll, startOver, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, entryView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, applySiteStyle, replacePart, changeDraft, setHome, publishAll, startOver, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
   // them (./responses/context.ts), and the collections' screen and the
   // shop's the same way (./collections/context.ts, ./shop/context.ts).
@@ -1249,6 +1307,13 @@ const UNDO_AGAIN = "Undo starts again from here: its steps belonged to the page 
 
 // The name of the version Keep mine keeps of the page it saves over.
 export const KEPT_BEFORE_OVERWRITE = "Before Keep mine";
+
+// How many times the Assistant's change of a draft is tried, a save from
+// elsewhere having come in between each time, before it is left as it is.
+export const REPLACE_TRIES = 3;
+
+// A storage's refusal, as the end of a sentence: its first finding, or its message.
+const problemWords = (problem: { message: string; errors?: readonly FieldError[] }): string => problem.errors?.[0]?.message ?? problem.message;
 
 // The autosave takes the restored draft, unless a save went out after all
 // (it refuses then): the caller falls back on the conflict's way.

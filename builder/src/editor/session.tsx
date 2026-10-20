@@ -122,12 +122,20 @@ export interface Session {
   // Assistant's new site): resolves once the storage has kept it, with
   // null, or with why not.
   applySiteStyle(change: SiteStyleChange): Promise<string | null>;
-  // A part's draft replaced by `document`, the draft as it was kept first
-  // as a version named `keep` where one is named, so History brings it
-  // back; the canvas draws the new one at once. A part open in the editor
-  // takes it as a step of the Assistant's, its edits saved first. Resolves
-  // with null once saved, or with why not.
-  replacePart(kind: PartKind, document: PageDocument, keep: string | null): Promise<string | null>;
+  // A part's draft replaced by `document`, every draft it saves over kept
+  // first as a version named `keep`, so History brings it back, unless it
+  // is `ours` (the document the Assistant saved there itself): the draft is
+  // read, kept, then saved over at the revision read, and a save from
+  // elsewhere in between is kept in turn. The canvas draws the new one at
+  // once. A part open in the editor takes it as a step of the Assistant's,
+  // its edits saved and kept first. Resolves with the document it replaced,
+  // or with why not.
+  replacePart(kind: PartKind, document: PageDocument, keep: string, ours?: PageDocument | null): Promise<{ ok: true; replaced: PageDocument } | { ok: false; why: string }>;
+  // A page's draft changed by `change`, given the page as it is (null:
+  // nothing to change): while it is open, as one step of the Assistant's
+  // named by `label`; else read and saved at the revision read, a save from
+  // elsewhere in between read and changed again. Null once saved, or why not.
+  changeDraft(id: number, change: (doc: PageDocument) => { document: PageDocument; label: string } | null): Promise<string | null>;
   // Makes the page of `id` the one the site's root address serves: null,
   // or why not.
   setHome(id: number): Promise<string | null>;
@@ -221,7 +229,8 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     keepMine: () => {},
     saveSiteStyle: () => {},
     applySiteStyle: async () => null,
-    replacePart: async () => null,
+    replacePart: async (_kind, document) => ({ ok: true, replaced: document }),
+    changeDraft: async () => null,
     setHome: async () => null,
     publishAll: async (ids) => ids.map((id) => ({ id, why: null })),
     startOver: null,

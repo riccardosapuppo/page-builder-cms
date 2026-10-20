@@ -152,11 +152,13 @@ function pageHooks(env: EditorEnv, session: Session, library: MediaService | nul
 // What a new site does through this editor (../assistant/site.ts): its
 // style saved as Site style saves it, the old one kept to be put back; its
 // header and footer saved as the parts' drafts, the drafts they replace
-// kept as versions; its pages made and written as a page is.
+// kept as versions; its pages made and written as a page is, and their
+// buttons to a page not made changed once it ends.
 function siteHooks(env: EditorEnv, session: Session, library: MediaService | null): SiteHooks {
   return {
     applyStyle: (style) => session.applySiteStyle({ ...style, kept: "now" }),
-    savePart: (kind, document, keep) => session.replacePart(kind, document, keep),
+    savePart: (kind, document, keep, ours) => session.replacePart(kind, document, keep, ours),
+    changePage: (id, change) => session.changeDraft(id, change),
     taken: () => session.pages.flatMap((page) => (page.slug === null ? [] : [page.slug])),
     header: () => env.ui.getState().parts.header,
     isOpen: (id) => session.isOpen(id),
@@ -745,7 +747,8 @@ const and = (words: readonly string[]): string => (words.length < 2 ? words.join
 function madeWords(site: ShownSite): string {
   const parts: string[] = [];
   if (site.steps.style === "done") parts.push("a new style");
-  const frame = (["header", "footer"] as const).filter((kind) => site.steps[kind] === "done");
+  // A part put back as it was is not one the site made.
+  const frame = (["header", "footer"] as const).filter((kind) => site.steps[kind] === "done" && site.frame[kind] !== "back");
   if (frame.length > 0) parts.push(`a new ${frame.join(" and ")}`);
   const pages = site.pages.filter((page) => page.id !== null);
   const placed = pages.flatMap((page) => page.writing?.pictures ?? []).filter((one) => one.state === "placed");
@@ -772,8 +775,14 @@ function siteLine(site: ShownSite): string {
       if (writing?.phase === "pictures") return `Making the pictures for ${where}: ${writing.pictures.filter((one) => one.state === "placed").length} of ${writing.pictures.length} in.`;
       return writing && writing.phase !== "asking" ? `Writing ${where}: ${count(writing.sections.filter((section) => section.kept).length)} so far.` : `Asking for ${where}…`;
     }
-    case "done":
-      return `${name}: ${madeWords(site)}. The header and footer it replaced are kept in their versions, as “${BEFORE_NEW_SITE}”.`;
+    case "done": {
+      const kept = (["header", "footer"] as const).filter((kind) => site.frame[kind] === "new" || site.frame[kind] === "stale");
+      const back = (["header", "footer"] as const).filter((kind) => site.frame[kind] === "back");
+      const one = (kinds: readonly string[], single: string, many: string) => (kinds.length === 1 ? single : many);
+      return `${name}: ${madeWords(site)}.`
+        + (kept.length > 0 ? ` The ${and(kept)} it replaced ${one(kept, "is kept in its", "are kept in their")} versions, as “${BEFORE_NEW_SITE}”.` : "")
+        + (back.length > 0 ? ` The ${and(back)} ${one(back, "is back as it was", "are back as they were")}: no page was made.` : "");
+    }
     case "stopped":
       return `${site.error ? `${site.error} ` : "Stopped. "}What was made stays: ${madeWords(site)}.`;
     case "failed":
@@ -838,8 +847,8 @@ function SiteProgress({ site }: { site: ShownSite }) {
               )}
               <span className="as-picture-state"><span className="visually-hidden">, </span>{site.steps.style === "done" ? "applied" : STEP_WORDS[site.steps.style]}</span>
             </li>
-            {step("Header", site.steps.header, site.steps.header === "done" ? "draft" : "")}
-            {step("Footer", site.steps.footer, site.steps.footer === "done" ? "draft" : "")}
+            {step("Header", site.steps.header, site.frame.header === "back" ? "put back" : site.steps.header === "done" ? "draft" : "")}
+            {step("Footer", site.steps.footer, site.frame.footer === "back" ? "put back" : site.steps.footer === "done" ? "draft" : "")}
           </ol>
         </li>
         {site.pages.map((page) => (
@@ -906,10 +915,18 @@ function SiteOffer({ site }: { site: ShownSite }) {
   const home = first && first.id !== null ? { title: first.title, id: first.id } : null;
   const isHome = home !== null && session.pages.some((page) => page.id === home.id && page.home);
   const homeNow = session.pages.find((page) => page.home);
-  const parts = (["header", "footer"] as const).filter((kind) => site.steps[kind] === "done").flatMap((kind) => {
+  // The new parts, each leading only to pages made: one put back as it
+  // was is the site's own again.
+  const parts = (["header", "footer"] as const).filter((kind) => site.frame[kind] === "new").flatMap((kind) => {
     const part = session.parts.find((one) => one.kind === kind);
     return part ? [{ kind, id: part.id }] : [];
   });
+  // What still leads to a page not made, its clean-up not saved: while
+  // anything does, Publish all is not offered.
+  const dangling = [
+    ...made.filter((page) => page.dangling).map((page) => `“${page.title}”`),
+    ...(["header", "footer"] as const).filter((kind) => site.frame[kind] === "stale").map((kind) => `the ${kind}`),
+  ];
   const old = style?.kept ?? site.before;
   const styled = site.steps.style === "done" && !outcome.styleBack && old !== null;
   const madeAll = and([...(made.length > 0 ? [`the ${plural(made.length, "new page", "new pages")}`] : []), ...parts.map((part) => `the ${part.kind}`)]);
@@ -957,7 +974,7 @@ function SiteOffer({ site }: { site: ShownSite }) {
               onNo={no(homeNo)}
             />
           : <button ref={homeKey} className="btn btn-small btn-secondary" type="button" aria-disabled={busy ? true : undefined} onClick={() => !busy && setAsking("home")}>Make “{home.title}” the home page</button>)}
-        {session.capabilities.publish && (made.length > 0 || parts.length > 0) && !outcome.published && (asking === "publish"
+        {session.capabilities.publish && dangling.length === 0 && (made.length > 0 || parts.length > 0) && !outcome.published && (asking === "publish"
           ? <Ask
               label="Publish all"
               question={`Publish ${madeAll}? ${live ? "Visitors see them at once." : "This browser shows them as published."}`}
@@ -981,6 +998,9 @@ function SiteOffer({ site }: { site: ShownSite }) {
             />
           : <button ref={startKey} className="btn btn-small btn-secondary" type="button" aria-disabled={busy ? true : undefined} onClick={() => !busy && setAsking("start")}>Start over with the example site</button>)}
       </div>
+      {session.capabilities.publish && dangling.length > 0 && (
+        <p className="hint as-offer-held">Publish all is not offered: {and(dangling)} still {dangling.length === 1 ? "leads" : "lead"} to a page that was not made, as the things to know say.</p>
+      )}
       <p ref={said} className="hint as-offer-said" role="status" tabIndex={-1}>{outcome.said ?? ""}</p>
     </div>
   );

@@ -6,16 +6,21 @@
 // asked with the direction and the site's pages, their pictures through
 // one queue, two at a time, within one budget shared among the pages; the
 // frame settled at the end on the pages made, its call to action leading
-// to the home page's form. A stop, another page opened, a refused key end
-// it; a page the model refused is said and the next written; a direction
-// that is none, or a style the storage refuses, change nothing more.
+// to the home page's form, however the run ends: put back as it was where
+// no page was made, a Stop during its first save included; the buttons of
+// the pages made that lead to a page not made losing their links. A stop,
+// another page opened, a refused key end it; a page the model refused is
+// said and the next written; a direction that is none, or a style the
+// storage refuses, change nothing more.
 import { expect, test } from "vitest";
-import type { Made } from "../document/commands.ts";
+import { makeReplacePage, type Made } from "../document/commands.ts";
+import { sameJson } from "../document/json.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { defaultSiteStyle, siteStyleChoices } from "../shared/site-tokens.ts";
 import type { PartKind } from "../storage/adapter.ts";
 import { createEditorStore, type EditorStore } from "../store/editor-store.ts";
 import type { PictureAsk } from "./build.ts";
+import { KEY_GONE } from "./context.tsx";
 import type { DirectionStyle } from "./direction.ts";
 import { AssistantError, type Answer, type Usage } from "./providers.ts";
 import { BEFORE_NEW_SITE, LEFT_SITE, SITE_PICTURES_MOST, writeSite, type SiteHooks, type SitePagePlan, type SiteWriting } from "./site.ts";
@@ -64,20 +69,53 @@ function planOf(page: SitePagePlan, pictures = 0): string {
   });
 }
 
+// A page that leads to the others: a button to each other page of the
+// site, and a plan's button to the last of them; the home page's form.
+function linkedPlan(page: SitePagePlan): string {
+  const others = page.pages.filter((one) => one.path !== page.path);
+  const offer = { name: "Monthly", price: "€39", period: "a month", text: "", features: ["Every class"], buttonLabel: "Join", buttonTarget: others.at(-1)!.path, featured: false, badge: "" };
+  return JSON.stringify({
+    title: page.title,
+    description: "",
+    sections: [
+      band("Opening", "", [{ kind: "heading", level: 1, text: page.title, display: true }, ...others.map((one) => ({ kind: "button", label: one.title, target: one.path }))]),
+      band("Plans", "", [{ kind: "heading", level: 2, text: "Plans", display: false }, { kind: "pricing", plans: [offer] }]),
+      ...(page.home ? [band("Join", "join", [{ kind: "heading", level: 2, text: "Join", display: false }, { kind: "form", fields: [{ type: "email", label: "Email", required: true }], submitLabel: "Book", confirmation: "Thanks." }])] : []),
+    ],
+  });
+}
+
+// Where the buttons of a page lead: each button block's, then each plan's.
+function buttonsOf(document: PageDocument): string[] {
+  const opening = document.sections[0]!.children[0]!.children.filter((block) => block.type === "button").map((block) => `${(block.props as { label: string }).label} ${(block.props as { href: string }).href}`);
+  const plans = document.sections[1]!.children[0]!.children.flatMap((block) => (block.type === "pricing" ? block.props.plans.map((plan) => `${plan.name}: ${plan.button.label} ${plan.button.href}`) : []));
+  return [...opening, ...plans];
+}
+
 const answered = (text: string) => async (written: (piece: string) => void): Promise<Answer & { tally?: Tally }> => {
   written(text);
   await Promise.resolve();
   return { text, usage: USED, tally: TALLY };
 };
 
+// The parts' drafts as the site had them before the new site.
+const ORIGINAL: Record<PartKind, PageDocument> = {
+  header: { schemaVersion: 1, title: "Header", sticky: true, sections: [] },
+  footer: { schemaVersion: 1, title: "Footer", sections: [] },
+};
+
 // The editor and the storage, faked: pages made at an address, opened one
-// at a time, the person on a page of their own (id 1) to begin with.
-function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: string | null } = {}) {
+// at a time, the person on a page of their own (id 1) to begin with; the
+// parts' drafts, each one saved over kept as a version unless it is the
+// run's own; a page's draft changed as the editor changes it.
+function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: string | null; onSave?: (kind: PartKind) => void; refuseChange?: string } = {}) {
   const pages = new Map<number, { slug: string; store: EditorStore }>();
   let open = 1;
   let next = 100;
   const calls: string[] = [];
   const parts: Record<PartKind, PageDocument[]> = { header: [], footer: [] };
+  const drafts: Record<PartKind, PageDocument> = structuredClone(ORIGINAL);
+  const versions: Record<PartKind, PageDocument[]> = { header: [], footer: [] };
   const styles: unknown[] = [];
   const hooks: SiteHooks = {
     async applyStyle(style) {
@@ -85,9 +123,26 @@ function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: s
       styles.push(style);
       return options.style ?? null;
     },
-    async savePart(kind, document, keep) {
-      calls.push(keep === null ? kind : `${kind}, “${keep}” kept`);
+    async savePart(kind, document, keep, ours) {
+      options.onSave?.(kind);
+      await Promise.resolve();
+      const was = drafts[kind];
+      const mine = ours !== null && sameJson(was, ours);
+      if (!mine) versions[kind].push(was);
+      calls.push(mine ? kind : `${kind}, “${keep}” kept`);
+      drafts[kind] = document;
       parts[kind].push(document);
+      return { ok: true, replaced: was };
+    },
+    async changePage(id, change) {
+      const page = pages.get(id)!;
+      calls.push(`change /${page.slug}`);
+      if (options.refuseChange === page.slug) return "the storage did not answer.";
+      const doc = page.store.getState().document;
+      const changed = change(doc);
+      if (changed === null) return null;
+      const made = makeReplacePage(doc, changed.document, changed.label);
+      if (made.ok) page.store.getState().dispatch(made.command);
       return null;
     },
     taken: () => [...(options.taken ?? []), ...[...pages.values()].map((page) => page.slug)],
@@ -117,8 +172,13 @@ function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: s
       };
     },
   };
-  return { hooks, calls, parts, styles, pages, leave: () => (open = -1) };
+  return { hooks, calls, parts, drafts, versions, styles, pages, leave: () => (open = -1) };
 }
+
+// The page made at `slug`, as its store has it now.
+const pageAt = (site: ReturnType<typeof fakeSite>, slug: string): PageDocument => [...site.pages.values()].find((page) => page.slug === slug)!.store.getState().document;
+// The menu's links of a part as saved last.
+const menuOf = (document: PageDocument): string[] => (document.sections[0]!.children[1]!.children[0]!.props as { items: Array<{ href: string }> }).items.map((item) => item.href);
 
 let ids = 0;
 const newId = () => `x${++ids}`;
@@ -313,6 +373,136 @@ test("Stop while the second page is written: the first stays, the third is never
   expect((settled.sections[0]!.children[1]!.children[0]!.props as { items: Array<{ label: string }> }).items.map((item) => item.label)).toEqual(["Home", "Classes"]);
 });
 
+test("Stop while the header's first save is on its way: that save lands, then the header is put back as it was, said; the footer is never saved, no page is made, and no part is the new site's", async () => {
+  const stop = new AbortController();
+  const site = fakeSite({ onSave: (kind) => kind === "header" && stop.abort() });
+  const asked: string[] = [];
+  const result = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: (page) => {
+      asked.push(page.title);
+      return answered(linkedPlan(page));
+    },
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: site.hooks,
+    newId,
+    tell: () => undefined,
+    signal: stop.signal,
+  });
+  expect(result.phase).toBe("stopped");
+  // Saved, the draft it replaced kept; then put back, the run's own header not kept.
+  expect(site.calls).toEqual(["style", `header, “${BEFORE_NEW_SITE}” kept`, "header"]);
+  expect(site.drafts).toEqual(ORIGINAL);
+  expect(site.versions).toEqual({ header: [ORIGINAL.header], footer: [] });
+  expect(asked).toEqual([]);
+  expect(result.steps).toEqual({ direction: "done", style: "done", header: "done", footer: "stopped" });
+  expect(result.frame).toEqual({ header: "back", footer: null });
+  expect(result.pages.map((page) => [page.state, page.id])).toEqual([["stopped", null], ["stopped", null], ["stopped", null]]);
+  expect(result.notes).toContain("Put the header back as it was: no page of the new site was made.");
+});
+
+test("Stop between two pages: the frame leads only to the page made, and that page's buttons to the pages never made lose their links, a plan's too, each said", async () => {
+  const stop = new AbortController();
+  const site = fakeSite();
+  const result = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: (page) => answered(linkedPlan(page)),
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: site.hooks,
+    newId,
+    tell: (writing) => {
+      if (writing.pages[0]?.state === "done" && !stop.signal.aborted) stop.abort();
+    },
+    signal: stop.signal,
+  });
+  expect(result.phase).toBe("stopped");
+  expect(result.pages.map((page) => page.state)).toEqual(["done", "stopped", "stopped"]);
+  expect(site.calls).toEqual(["style", `header, “${BEFORE_NEW_SITE}” kept`, `footer, “${BEFORE_NEW_SITE}” kept`, "page /iron-forge", "header", "footer", "change /iron-forge"]);
+  expect(menuOf(site.drafts.header)).toEqual(["/iron-forge"]);
+  expect(menuOf(site.drafts.footer)).toEqual(["/iron-forge"]);
+  expect(site.drafts.header.sections[0]!.children[2]!.children[0]!.props).toEqual({ label: "Book a free session", href: "/iron-forge#join" });
+  expect(result.frame).toEqual({ header: "new", footer: "new" });
+  expect(buttonsOf(pageAt(site, "iron-forge"))).toEqual(["Classes #", "Membership #", "Monthly: Join #"]);
+  expect(result.notes).toEqual(expect.arrayContaining([
+    "“Home”: Took the link out of the button “Classes”: the page it led to, /classes, was not made.",
+    "“Home”: Took the link out of the button “Membership”: the page it led to, /membership, was not made.",
+    "“Home”: Took the link out of the button “Join” of the plan “Monthly”: the page it led to, /membership, was not made.",
+  ]));
+  expect(result.pages[0]!.dangling).toBe(false);
+});
+
+test("a run whose every page is refused: none is made, the header and the footer are put back as they were, each said; the style stays", async () => {
+  const site = fakeSite();
+  const result = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: () => async () => {
+      throw new AssistantError("Anthropic refused the request.", "other");
+    },
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: site.hooks,
+    newId,
+    tell: () => undefined,
+  });
+  expect(result.phase).toBe("done");
+  expect(result.pages.map((page) => [page.state, page.id])).toEqual([["failed", null], ["failed", null], ["failed", null]]);
+  expect(site.calls).toEqual(["style", `header, “${BEFORE_NEW_SITE}” kept`, `footer, “${BEFORE_NEW_SITE}” kept`, "header", "footer"]);
+  expect(site.drafts).toEqual(ORIGINAL);
+  expect(result.frame).toEqual({ header: "back", footer: "back" });
+  expect(result.steps.style).toBe("done");
+  expect(result.notes).toEqual(expect.arrayContaining([
+    "The page “Home” was not written: Anthropic refused the request.",
+    "Put the header back as it was: no page of the new site was made.",
+    "Put the footer back as it was: no page of the new site was made.",
+  ]));
+});
+
+test("once the run ends, a button of a page made that leads to a page not made loses its link, and one to a page made at another address leads there, each said; a page whose change is not saved is marked, and said", async () => {
+  const refuse = (page: SitePagePlan) => (page.index === 1 ? async () => {
+    throw new AssistantError("Anthropic refused the request.", "other");
+  } : answered(linkedPlan(page)));
+  const site = fakeSite({ madeElsewhere: "membership" });
+  const result = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: refuse,
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: site.hooks,
+    newId,
+    tell: () => undefined,
+  });
+  expect(result.phase).toBe("done");
+  expect(result.pages.map((page) => [page.path, page.state])).toEqual([["/iron-forge", "done"], ["/classes", "failed"], ["/membership-2", "done"]]);
+  expect(buttonsOf(pageAt(site, "iron-forge"))).toEqual(["Classes #", "Membership /membership-2", "Monthly: Join /membership-2"]);
+  expect(buttonsOf(pageAt(site, "membership-2"))).toEqual(["Home /iron-forge", "Classes #", "Monthly: Join #"]);
+  expect(menuOf(site.drafts.header)).toEqual(["/iron-forge", "/membership-2"]);
+  expect(result.notes).toEqual(expect.arrayContaining([
+    "“Home”: Took the link out of the button “Classes”: the page it led to, /classes, was not made.",
+    "“Home”: Led the button “Membership” to /membership-2, where its page was made, in place of /membership.",
+    "“Home”: Led the button “Join” of the plan “Monthly” to /membership-2, where its page was made, in place of /membership.",
+    "“Membership”: Took the link out of the button “Classes”: the page it led to, /classes, was not made.",
+    "“Membership”: Took the link out of the button “Join” of the plan “Monthly”: the page it led to, /classes, was not made.",
+  ]));
+  expect(result.pages.map((page) => page.dangling)).toEqual([false, false, false]);
+
+  // The storage does not take the home page's change: its links stay, said, and it is marked.
+  const refusing = fakeSite({ refuseChange: "iron-forge" });
+  const held = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: refuse,
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: refusing.hooks,
+    newId,
+    tell: () => undefined,
+  });
+  expect(buttonsOf(pageAt(refusing, "iron-forge"))).toEqual(["Classes /classes", "Membership /membership", "Monthly: Join /membership"]);
+  expect(held.pages.map((page) => page.dangling)).toEqual([true, false, false]);
+  expect(held.notes).toContain("“Home”: Its buttons that lead to pages not made keep their links, as the change was not saved: the storage did not answer.");
+});
+
 test("another page opened by the person between two pages stops the site there, said; nothing is asked after", async () => {
   const site = fakeSite();
   const asked: string[] = [];
@@ -335,6 +525,9 @@ test("another page opened by the person between two pages stops the site there, 
   expect(result.phase).toBe("stopped");
   expect(result.error).toBe(LEFT_SITE);
   expect(result.pages.map((page) => page.state)).toEqual(["done", "stopped", "stopped"]);
+  // The frame settled all the same, on the page made, and its button to a page not made gone.
+  expect(menuOf(site.drafts.header)).toEqual(["/iron-forge"]);
+  expect(result.notes).toContain("“Home”: Took the link out of the button “Classes”: the page it led to, /classes, was not made.");
 });
 
 test("another page opened while the next page's plan comes: it is not made, and the site stops there, said", async () => {
@@ -356,7 +549,7 @@ test("another page opened while the next page's plan comes: it is not made, and 
   expect(result.pages.map((page) => page.state)).toEqual(["done", "failed", "stopped"]);
 });
 
-test("a page the model refuses is said and the next one written; a key no longer accepted stops the site", async () => {
+test("a page the model refuses is said and the next one written; a key no longer accepted, or forgotten, stops the site, its frame settled on the page made", async () => {
   const refusing = fakeSite();
   const once = await writeSite({
     askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
@@ -384,6 +577,23 @@ test("a page the model refuses is said and the next one written; a key no longer
   expect(halted.phase).toBe("failed");
   expect(halted.error).toBe("Anthropic did not accept this key.");
   expect(halted.pages.map((page) => page.state)).toEqual(["done", "failed", "stopped"]);
+  expect(menuOf(keyless.drafts.header)).toEqual(["/iron-forge"]);
+  expect(buttonsOf(pageAt(keyless, "iron-forge")).slice(0, 1)).toEqual(["Classes #"]);
+
+  // A key forgotten while the run goes: what was asked with it is refused the same way.
+  const forgotten = fakeSite();
+  const gone = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: (page) => (page.index === 1 ? async () => { throw new AssistantError(KEY_GONE, "key"); } : answered(planOf(page))),
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: forgotten.hooks,
+    newId,
+    tell: () => undefined,
+  });
+  expect([gone.phase, gone.error]).toEqual(["failed", KEY_GONE]);
+  expect(menuOf(forgotten.drafts.header)).toEqual(["/iron-forge"]);
+  expect(gone.notes).toContain("“Home”: Took the link out of the button “Classes”: the page it led to, /classes, was not made.");
 });
 
 test("a direction that is none changes nothing; a style the storage refuses stops the site before its frame", async () => {

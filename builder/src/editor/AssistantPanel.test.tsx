@@ -17,7 +17,7 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { describedText, editorKit } from "../../test/editor-kit.tsx";
-import type { ModelChoice, ProviderClient, Usage } from "../assistant/providers.ts";
+import { AssistantError, type ModelChoice, type ProviderClient, type Usage } from "../assistant/providers.ts";
 import type { SiteStyle } from "../storage/adapter.ts";
 import { AssistantPanel } from "./AssistantPanel.tsx";
 import { createMediaService, type MediaAdapter, type MediaService } from "./library/service.ts";
@@ -267,17 +267,20 @@ const DIRECTION = JSON.stringify({
   pages: [{ title: "Home", address: "iron-forge", purpose: "The gym." }, { title: "Classes", address: "classes", purpose: "Classes." }, { title: "Join", address: "join", purpose: "Joining." }],
 });
 
+// A page's plan: its title as its heading, and the blocks after it.
+const pagePlan = (title: string, after: unknown[] = []) => JSON.stringify({
+  title, description: "", sections: [{ label: "Opening", anchor: "", background: "none", picture: { source: "none" }, motion: "none", widths: "equal", columns: [{ align: "left", blocks: [{ kind: "heading", level: 1, text: title, display: true }, ...after] }] }],
+});
+
 // A provider that answers a direction, then each page's plan, its title
-// read from the question.
-function siteWriter(models: ModelChoice[] = [{ id: "claude-opus-5-5", name: "Claude Opus 5.5" }], asked: string[] = []): ProviderClient {
+// read from the question; a plan that throws is a refusal.
+function siteWriter(models: ModelChoice[] = [{ id: "claude-opus-5-5", name: "Claude Opus 5.5" }], asked: string[] = [], plan: (title: string) => string = (title) => pagePlan(title)): ProviderClient {
   return {
     models: async () => models,
     ask: async (_key, question, written) => {
       asked.push(question.name);
       const title = /This page: “([^”]+)”/.exec(question.system)?.[1] ?? "Page";
-      const text = question.name === "site_direction" ? DIRECTION : JSON.stringify({
-        title, description: "", sections: [{ label: "Opening", anchor: "", background: "none", picture: { source: "none" }, motion: "none", widths: "equal", columns: [{ align: "left", blocks: [{ kind: "heading", level: 1, text: title, display: true }] }] }],
-      });
+      const text = question.name === "site_direction" ? DIRECTION : plan(title);
       written(text);
       return { text, usage: USED };
     },
@@ -285,8 +288,10 @@ function siteWriter(models: ModelChoice[] = [{ id: "claude-opus-5-5", name: "Cla
 }
 
 // The editor's session for a new site: pages made one after the other,
-// the style and the parts kept, what the person chooses after recorded.
-function siteSession(kit: () => ReturnType<typeof editorKit>, calls: string[]) {
+// the style and the parts kept (a part's draft kept first unless it is the
+// run's own), a page's change answered `changed`, what the person chooses
+// after recorded.
+function siteSession(kit: () => ReturnType<typeof editorKit>, calls: string[], changed: string | null = null) {
   let next = 10;
   let open = 1;
   return {
@@ -306,9 +311,13 @@ function siteSession(kit: () => ReturnType<typeof editorKit>, calls: string[]) {
       calls.push(`style ${change.kept ?? ""} ${change.palette.primary}`);
       return null;
     },
-    replacePart: async (kind: string, _document: unknown, keep: string | null) => {
-      calls.push(`${kind}${keep ? ` (${keep})` : ""}`);
-      return null;
+    replacePart: async (kind: string, _document: unknown, keep: string, ours?: unknown) => {
+      calls.push(`${kind}${ours ? "" : ` (${keep})`}`);
+      return { ok: true as const, replaced: { schemaVersion: 1 as const, title: kind, sections: [] } };
+    },
+    changeDraft: async (id: number) => {
+      calls.push(`change ${id}`);
+      return changed;
     },
     setHome: async (id: number) => {
       calls.push(`home ${id}`);
@@ -435,6 +444,55 @@ test("Write the new site asks twice: Cancel asks nothing and gives the focus bac
   expect(screen.queryByRole("button", { name: "Put the old style back" })).toBeNull();
   // Not the demo: no Start over.
   expect(screen.queryByRole("button", { name: "Start over with the example site" })).toBeNull();
+});
+
+// A new site written from the drawer, asked and answered yes, with no pictures.
+async function writeNewSite(plan: (title: string) => string, changed: string | null = null) {
+  const calls: string[] = [];
+  let kitRef: ReturnType<typeof editorKit> | null = null;
+  const kit = editorKit({ document: KIT_DOC, session: siteSession(() => kitRef!, calls, changed), providers: async () => siteWriter(undefined, [], plan) });
+  kitRef = kit;
+  kit.ui.getState().setSiteStyle(STYLE_NOW);
+  kit.render(<AssistantPanel />);
+  await act(async () => {
+    await kit.assistant.getState().connect("anthropic", "sk-ant-not-a-real-key");
+  });
+  fireEvent.click(screen.getByRole("radio", { name: "A new site" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Draw illustrations for the site" }));
+  fireEvent.change(screen.getByLabelText("What is the site for?"), { target: { value: "A modern fitness gym." } });
+  fireEvent.click(screen.getByRole("button", { name: "Write the new site" }));
+  fireEvent.click(within(screen.getByRole("group", { name: "Write the new site" })).getByRole("button", { name: "Write the new site" }));
+  await act(async () => {
+    await new Promise((done) => setTimeout(done, 50));
+  });
+  return calls;
+}
+
+const refused = (): never => {
+  throw new AssistantError("Anthropic refused the request.", "other");
+};
+
+test("a new site none of whose pages is made: its header and footer are put back as they were, said in its steps; nothing is offered to publish, and the old style is still put back in one click", async () => {
+  const calls = await writeNewSite(refused);
+  // Each saved, the drafts they replaced kept; then each put back, the run's own not kept.
+  expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "header", "footer"]);
+  expect([...document.querySelectorAll(".as-group:first-child .as-sections > li")].map((li) => li.textContent)).toEqual(["Direction, 3 pages", "Style, applied", "Header, put back", "Footer, put back"]);
+  expect(screen.getAllByRole("status")[0]!.textContent).toBe("“Iron Forge”: a new style. The header and footer are back as they were: no page was made.");
+  expect(screen.queryByRole("button", { name: "Publish all" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /the home page$/ })).toBeNull();
+  expect(screen.getByRole("button", { name: "Put the old style back" })).toBeTruthy();
+});
+
+test("a page made whose buttons to a page not made could not be changed: Publish all is not offered, and the drawer says why", async () => {
+  // Classes is refused; Home and Join each lead to it, and their change is not saved.
+  const calls = await writeNewSite((title) => (title === "Classes" ? refused() : pagePlan(title, [{ kind: "button", label: "Classes", target: "/classes" }])), "the storage did not answer.");
+  expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "make /iron-forge", "make /join", "header", "footer", "change 10", "change 11"]);
+  expect(screen.queryByRole("button", { name: "Publish all" })).toBeNull();
+  expect(document.querySelector(".as-offer-held")?.textContent).toBe("Publish all is not offered: “Home” and “Join” still lead to a page that was not made, as the things to know say.");
+  fireEvent.click(screen.getByText(/things to know$/));
+  expect(document.querySelector(".as-notes")?.textContent).toContain("“Home”: Its buttons that lead to pages not made keep their links, as the change was not saved: the storage did not answer.");
+  // What else becomes of it is offered as ever.
+  expect(screen.getByRole("button", { name: "Make “Home” the home page" })).toBeTruthy();
 });
 
 test("the sample written by hand says no model was asked, and adds nothing to any total", async () => {

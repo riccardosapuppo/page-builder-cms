@@ -57,7 +57,8 @@ where may it go? There were three ways to hold it:
   answer as the page's schema wants it, and puts each section in with a
   command that the store holds to the page's schema like any other.
   - **Links** go only to the plan's own sections, the site's pages, or
-    addresses written in the person's brief.
+    addresses written in the person's brief; once a new site's run ends,
+    a button that leads to one of its pages never made loses its link.
   - **A new site's header and footer** are built by the editor from the
     model's direction, in the site's own blocks, never written by the
     model; its colours are held to WCAG's AA before they are used.

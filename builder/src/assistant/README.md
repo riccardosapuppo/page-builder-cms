@@ -265,7 +265,12 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
    and the call to action as a button in the primary colour; the footer on
    the text's band, the name, the tagline and the pages again. Each is
    saved as its part's draft, the draft it replaces kept first as a version
-   named "Before the new site", so History brings the old one back. A
+   named "Before the new site", so History brings the old one back. No
+   draft is saved over that a version does not hold, unless it is the
+   run's own: the editor reads the draft first, keeps it, then saves over
+   it at the revision it read; a save from another tab in between meets a
+   conflict, and that draft is read and kept in turn before it is
+   replaced (`replacePart`, [`../editor/App.tsx`](../editor/App.tsx)). A
    header that stayed at the top of the window keeps doing so.
 4. **The pages**, one after the other, each written as a page is (above),
    with the direction in its question (`pageQuestion` with a
@@ -282,11 +287,23 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
      (`SiteFacts.most`). The imagery sentence goes with every photo's
      prompt and every illustration's question. A page waits for its
      pictures before the next one opens.
-5. **The frame settled**: once the pages are through, or the run has ended
-   early, the header and the footer are built again from the pages made,
-   at the addresses they were made at, and the header's call to action
-   leads to the home page's form, by the anchor of its section, or else to
-   its first section; each is saved again where it changed.
+5. **The frame settled**, however the run ends once a part is saved:
+   through, stopped (during the frame's own saves too), refused, another
+   page opened, the key forgotten. The header and the footer are built
+   again from the pages made, at the addresses they were made at, and the
+   header's call to action leads to the home page's form, by the anchor of
+   its section, or else to its first section; each is saved again where it
+   changed. Where no page was made, each is put back as it was, said, and
+   its step says so.
+   - **The pages' links.** A button of a page made that leads to a page of
+     the site not made loses its link: it leads to the top of its own page
+     (`#`), as a plan's button whose section never came; one that leads to
+     a page made at another address leads there. Each is said. A page not
+     open is changed on its draft, read again and changed again where
+     another tab saved it meanwhile (`changeDraft`).
+   - **Never a link to nowhere.** A part or a page left leading to a page
+     not made, its clean-up not saved, is said, and the drawer then offers
+     no Publish all.
 
 - **The home page** becomes the site's home only when the person says so,
   once the site is written: nothing takes it from the site behind their
@@ -297,12 +314,12 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
 - **Stop** stops all of it: the request on its way, the pictures in flight,
   the pages still to come. A page the model refuses is said and the next
   one written; a key refused, a model gone, no credit or no network stops
-  the run. What was made stays and is said.
+  the run. What was made stays and is said, the frame settled as above.
 - **At the end**, one offer, each asked: make the new home page the site's
-  home page, and publish all it made (its pages, the header and the
-  footer); and Put the old style back. In the browser demo, Start over with
-  the example site brings the example site back whole, as the demo's line
-  does for a newer edition.
+  home page, and publish all it made (its pages, and the header and the
+  footer where they are the new site's); and Put the old style back. In
+  the browser demo, Start over with the example site brings the example
+  site back whole, as the demo's line does for a newer edition.
 
 ## The providers
 

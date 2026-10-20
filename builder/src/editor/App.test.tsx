@@ -15,11 +15,14 @@
 // and comes back when the CMS refuses it. The site's header and footer
 // open as pages do, the page left drawn dimmed around them, and are saved
 // and published as pages are; their drafts are what the canvas draws
-// around every page. An editor that cannot start says why, with the one
-// button that can help.
+// around every page. The Assistant's new site replaces a part keeping
+// every draft it saves over as a version, another tab's save in between
+// too, and changes a page's draft without losing a save from elsewhere.
+// An editor that cannot start says why, with the one button that can help.
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { render } from "@testing-library/react";
+import { useEffect, type ReactNode } from "react";
 import { expect, test, vi } from "vitest";
 import { page } from "../../test/document-page.ts";
 import { newsCollection, newsEntry } from "../../test/site-entries.ts";
@@ -34,7 +37,17 @@ import { StorageError, type DraftSave, type FieldError, type Page, type PageKind
 import { createEditorStore } from "../store/editor-store.ts";
 import { App, NO_PAGE, type PageAddress, type TabOpener } from "./App.tsx";
 import { thisTab } from "./SaveStatus.tsx";
+import { useSession, type Session } from "./session.tsx";
 import { createUiStore } from "./ui-store.ts";
+
+// The session the shell gives what it draws, handed to a test to call.
+function Grab({ onSession }: { onSession: (session: Session) => void }) {
+  const session = useSession();
+  useEffect(() => {
+    onSession(session);
+  }, [onSession, session]);
+  return null;
+}
 
 const T = "2026-10-02T08:00:00.000Z";
 // The site's header and footer, by their ids.
@@ -85,6 +98,8 @@ class FakeSite {
   refuseNext: FieldError[] | null = null;
   // Called as a version is kept, before it answers: another tab at work.
   onVersion: (() => void) | null = null;
+  // The same as a draft is read, once.
+  onDraft: (() => void) | null = null;
   refuseStyle = false;
   // While set, a change of the site style waits for it before it is
   // answered: one on its way.
@@ -197,7 +212,13 @@ class FakeSite {
         if (!this.drafts.has(id)) throw new StorageError({ kind: "not-found", message: "There is nothing at this address." });
         return this.page(id);
       },
-      getDraft: async (id) => this.page(id).draft,
+      getDraft: async (id) => {
+        const draft = this.page(id).draft;
+        const elsewhere = this.onDraft;
+        this.onDraft = null;
+        elsewhere?.();
+        return draft;
+      },
       listMedia: async () => [],
       getSiteStyle: async () => this.style,
       getSite: async () => ({ timeZone: "Europe/London" }),
@@ -280,7 +301,7 @@ function outline(): HTMLElement {
   return screen.getByRole("tree", { name: "Page structure" });
 }
 
-function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError; collections?: boolean; refuseCollections?: StorageError; refusePageOnce?: StorageError; shop?: ShopSettings } = {}) {
+function start(wanted: number | null, options: { schedule?: boolean; demo?: boolean; refuseStart?: StorageError; collections?: boolean; refuseCollections?: StorageError; refusePageOnce?: StorageError; shop?: ShopSettings; foot?: ReactNode } = {}) {
   const clock = new FakeClock(Date.UTC(2026, 9, 2, 9));
   const env = { store: createEditorStore({ document: NO_PAGE, now: () => clock.now() }), ui: createUiStore(), clock, newId: counter("n") };
   const site = new FakeSite();
@@ -298,7 +319,7 @@ function start(wanted: number | null, options: { schedule?: boolean; demo?: bool
   const opener: TabOpener = { open: (href) => (tabs.push(href), true) };
   // The browser demo: no CMS, and the page as published drawn by the demo.
   const where = options.demo ? { cmsOrigin: null, publishedView: (id: number) => `?published=${id}` } : { cmsOrigin: "http://127.0.0.1:3900" };
-  render(<App env={env} adapter={site.adapter()} address={address} {...where} tabs={opener} />);
+  render(<App env={env} adapter={site.adapter()} address={address} {...where} tabs={opener} {...(options.foot ? { foot: options.foot } : {})} />);
   return { env, site, clock, written, tabs };
 }
 
@@ -700,6 +721,89 @@ test("Keep mine saves over the page on the server now, keeps each page it saves 
   await keepMine();
   await waitFor(() => expect(onServer()).toBe("Mine at last"));
   expect(kept()).toEqual(["Third", "Fourth", "Fifth"]);
+});
+
+// The versions a page or part keeps, by name and document, oldest first.
+const keptOf = (site: FakeSite, id: number) => site.versions.filter((v) => v.id === id).map((v) => [v.name, v.document]);
+
+test("the Assistant's new site replaces a part keeping every draft it saves over: another tab's save between the version kept and the replacement is kept too, so nothing of it is lost", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const theirs: PageDocument = { ...structuredClone(original), title: "Header, from another tab" };
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  // The other tab saves once the draft read is kept, before the Assistant saves over it.
+  site.onVersion = () => site.savedElsewhere(HEADER, theirs);
+  let outcome: Awaited<ReturnType<Session["replacePart"]>> | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: true, replaced: theirs });
+  expect(site.drafts.get(HEADER)!.document).toEqual(mine);
+  // History holds both: the draft first read, and the other tab's, read after the conflict.
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original], ["Before the new site", theirs]]);
+});
+
+test("replaced again over its own draft, a part keeps no version of it; a draft saved elsewhere since is kept first", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const first: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  const second: PageDocument = { schemaVersion: 1, title: "Header", sticky: true, sections: [] };
+  const replace = (document: PageDocument, ours: PageDocument | null) => act(async () => {
+    await grab.session!.replacePart("header", document, "Before the new site", ours);
+  });
+  await replace(first, null);
+  await replace(second, first);
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original]]);
+  const theirs: PageDocument = { ...second, title: "Header, from another tab" };
+  site.savedElsewhere(HEADER, theirs);
+  await replace(first, second);
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original], ["Before the new site", theirs]]);
+  expect(site.drafts.get(HEADER)!.document).toEqual(first);
+});
+
+test("a part open in the editor takes the Assistant's document as a step; another tab's save meanwhile meets the editor's conflict, and Keep mine keeps that one as a version", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site, env, clock } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  fireEvent.click(screen.getByRole("button", { name: "Header" }));
+  await screen.findByRole("button", { name: "Switch page. Open: Header" });
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const theirs: PageDocument = { ...structuredClone(original), title: "Header, from another tab" };
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.onVersion = () => site.savedElsewhere(HEADER, theirs);
+  let outcome: Awaited<ReturnType<Session["replacePart"]>> | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: false, why: "the header was saved in another tab meanwhile: Reload takes that one, Keep mine saves the Assistant's over it, keeping that one as a version." });
+  expect(env.store.getState().past.at(-1)?.command.label).toBe("Assistant replaced the header");
+  // Nothing of the other tab's is lost: it is the draft still.
+  expect(site.drafts.get(HEADER)!.document).toEqual(theirs);
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original]]);
+  await act(async () => fireEvent.click(within(await screen.findByRole("alert")).getByRole("button", { name: "Keep mine" })));
+  await act(() => clock.advance(1_000));
+  await waitFor(() => expect(site.drafts.get(HEADER)!.document).toEqual(mine));
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original], ["Before Keep mine", theirs]]);
+});
+
+test("the Assistant's change of a page not open: its draft read, changed and saved at the revision read; a save from elsewhere before it is read and changed again, nothing of it lost", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const theirs: PageDocument = { ...structuredClone(site.drafts.get(2)!.document), title: "Home, from another tab" };
+  site.onDraft = () => site.savedElsewhere(2, theirs);
+  let why: string | null | undefined;
+  await act(async () => {
+    why = await grab.session!.changeDraft(2, (doc) => ({ document: { ...doc, description: "Changed by the Assistant." }, label: "Assistant changed the page" }));
+  });
+  expect(why).toBeNull();
+  expect(site.drafts.get(2)!.document).toEqual({ ...theirs, description: "Changed by the Assistant." });
+  // Saved at the revision first read, which met the conflict; then at the other tab's.
+  expect(site.saves.map((save) => [save.revision, save.document.title])).toEqual([[1, "Home"], [2, "Home, from another tab"]]);
 });
 
 test("a site style change shows on the canvas at once and goes to the CMS; refused, the canvas goes back", async () => {

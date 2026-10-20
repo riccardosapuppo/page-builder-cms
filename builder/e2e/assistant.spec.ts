@@ -1053,7 +1053,8 @@ test.describe("a new site", () => {
         ["button", { label: "Book a free session", href: `${home}#join` }],
       ]);
       const versions = ((await (await request.get(`${cms()}/api/pages/${header.id}/versions`)).json()) as { versions: Array<{ name: string | null }> }).versions;
-      expect(versions.map((version) => version.name)).toContain("Before the new site");
+      // Kept once: the header saved again once the pages were made was the run's own.
+      expect(versions.filter((version) => version.name === "Before the new site")).toHaveLength(1);
       await expect(page.locator(".canvas .sw-header .w-logo-word")).toHaveText("Iron Forge");
       await expect(page.locator(".canvas .sw-header .w-menu-links a")).toHaveText(["Home", "Classes", "Membership"]);
 
