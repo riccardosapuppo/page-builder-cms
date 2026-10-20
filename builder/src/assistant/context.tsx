@@ -1,13 +1,16 @@
 // The Assistant as the interface knows it (./README.md): what it may see
 // of the key (./key.ts: the provider and four characters, never the key),
-// the models the key may use and the one chosen, and the page being
-// written. One per editor, made by the shell (../editor/App.tsx) or a
-// test, which gives the clock and, for a test, the providers.
+// the models the key may use and the one chosen, the page being written,
+// and what the requests since the key was kept used, priced at list price
+// (./tally.ts): kept in memory like the key, and forgotten with it. One per
+// editor, made by the shell (../editor/App.tsx) or a test, which gives the
+// clock and, for a test, the providers.
 import { createContext, useContext, type ReactNode } from "react";
 import { createStore, useStore, type StoreApi } from "zustand";
 import type { Clock } from "../storage/clock.ts";
 import { createKeyKeeper, type ForgetReason, type Held, type KeyKeeper, type ProviderId } from "./key.ts";
-import { AssistantError, providerClient, type Answer, type ModelChoice, type ProviderClient, type Question } from "./providers.ts";
+import { AssistantError, providerClient, type Answer, type ModelChoice, type ProviderClient, type Question, type Usage } from "./providers.ts";
+import { addTallies, tallyOf, type Tally } from "./tally.ts";
 import type { Writing } from "./write.ts";
 
 // The page being written as the drawer shows it: a sample written by hand
@@ -26,14 +29,19 @@ export interface AssistantState {
   writing: ShownWriting | null;
   // The page being written can be stopped.
   running: AbortController | null;
+  // Every request since the key was kept: its tokens and what they come to
+  // at list price. Emptied when a key is kept and when it is forgotten.
+  spent: Tally;
   // Checks the key with its provider (the models it may use) and keeps it
   // only then.
   connect(provider: ProviderId, key: string): Promise<boolean>;
   forget(): void;
   choose(model: string): void;
   // Asks the chosen model; the key is lent for the call and nothing else.
-  // The question may take a moment to make (an image made smaller).
-  ask(question: (model: string) => Question | Promise<Question>, written: (piece: string) => void, signal?: AbortSignal): Promise<Answer>;
+  // The question may take a moment to make (an image made smaller). What
+  // the call used comes back priced (tally), and is added to `spent`; an
+  // answer refused or cut short says it in its error's tally.
+  ask(question: (model: string) => Question | Promise<Question>, written: (piece: string) => void, signal?: AbortSignal): Promise<Answer & { tally: Tally }>;
   setWriting(writing: ShownWriting | null): void;
   // A run starts, to be stopped with stop(); its end lets it go.
   begin(): AbortSignal;
@@ -55,6 +63,7 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     problem: null,
     writing: null,
     running: null,
+    spent: [],
     async connect(provider, key) {
       const given = key.trim();
       if (given === "") {
@@ -87,7 +96,21 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
       const client = await load(held.provider);
       const asked = await question(model);
       if (keeper.ticket() !== ticket) throw new AssistantError("The key changed while the question was being made. Ask again.", "key");
-      return keeper.lend((key) => client.ask(key, asked, written, signal), ticket);
+      // What the call used, priced, and added to the key's total while that
+      // key is still the one kept: a call answered after it went counts
+      // toward no other key's.
+      const counted = (usage: Usage): Tally => {
+        const tally = tallyOf(held.provider, asked.model, usage);
+        if (keeper.ticket() === ticket) set((state) => ({ spent: addTallies(state.spent, tally) }));
+        return tally;
+      };
+      try {
+        const answer = await keeper.lend((key) => client.ask(key, asked, written, signal), ticket);
+        return { ...answer, tally: counted(answer.usage) };
+      } catch (error) {
+        if (error instanceof AssistantError && error.usage !== null) throw new AssistantError(error.message, error.kind, error.usage, counted(error.usage));
+        throw error;
+      }
     },
     setWriting: (writing) => set({ writing }),
     begin() {
@@ -100,8 +123,8 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     end: () => set({ running: null }),
   }));
   keeper.subscribe((held, why) => {
-    if (held === null) store.setState({ held: null, forgotten: why, models: [], model: null });
-    else store.setState({ held });
+    if (held === null) store.setState({ held: null, forgotten: why, models: [], model: null, spent: [] });
+    else store.setState({ held, spent: [] });
   });
   return Object.assign(store, { watch: (page: EventTarget) => keeper.watch(page) });
 }

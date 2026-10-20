@@ -4,7 +4,9 @@
 // on the page only when the person takes it: one step of the Assistant's
 // in History, undoable. A suggestion is for what it was asked of: the words
 // written over, or the image replaced, it goes, and a question still on its
-// way stops. With no key, each says where one is connected.
+// way stops. With no key, each says where one is connected. Under what the
+// model wrote, or why nothing came of it, the tokens the request used and
+// what they come to at the model's list price (../assistant/tally.ts).
 import { useEffect, useId, useRef, useState } from "react";
 import { makeSetProps, REMOVE, type Updates } from "../document/commands.ts";
 import type { Json } from "../document/json.ts";
@@ -13,6 +15,7 @@ import { useAssistant, useAssistantStore, type AssistantState } from "../assista
 import { describeQuestion, REWRITES, rewriteQuestion } from "../assistant/prompts.ts";
 import { AssistantError } from "../assistant/providers.ts";
 import { hasMarks, headingFrom, imageTextFrom, textFrom, textWords } from "../assistant/rewrite.ts";
+import { briefWords, type Tally } from "../assistant/tally.ts";
 import { asAssistants } from "../assistant/write.ts";
 import { blockImage } from "../render/media.tsx";
 import type { HeadingBlock, ImageBlock, PageDocument, RichTextDoc, TextBlock } from "../shared/document.ts";
@@ -23,12 +26,13 @@ import { mediaResolver } from "./media.ts";
 import { picture } from "./picture.ts";
 import "./assistant.css";
 
-// Each step is for what it was asked of (`source`: the words, the image).
+// Each step is for what it was asked of (`source`: the words, the image),
+// and an answer says what asking for it used (`tally`).
 type Step<T> =
   | { phase: "idle" }
   | { phase: "asking"; source: string }
-  | { phase: "shown"; source: string; result: T }
-  | { phase: "failed"; source: string; error: string };
+  | { phase: "shown"; source: string; result: T; tally: Tally }
+  | { phase: "failed"; source: string; error: string; tally: Tally | null };
 
 // A question to the model about `source`, stoppable, its answer read by
 // `read`: what the tool shows, or why there is nothing to show. When the
@@ -57,11 +61,12 @@ function useAsk<T>(source: string) {
         // read below gives nothing
       }
       const result = read(parsed);
-      if (running.current === controller) setStep(result === null ? { phase: "failed", source: asked, error: nothing } : { phase: "shown", source: asked, result });
+      if (running.current === controller) setStep(result === null ? { phase: "failed", source: asked, error: nothing, tally: answer.tally } : { phase: "shown", source: asked, result, tally: answer.tally });
     } catch (error) {
       if (running.current !== controller) return;
       const stopped = error instanceof AssistantError && error.kind === "stopped";
-      setStep(stopped ? { phase: "idle" } : { phase: "failed", source: asked, error: error instanceof Error ? error.message : String(error) });
+      const tally = error instanceof AssistantError ? error.tally : null;
+      setStep(stopped ? { phase: "idle" } : { phase: "failed", source: asked, error: error instanceof Error ? error.message : String(error), tally });
     }
   };
   const stop = () => {
@@ -93,13 +98,19 @@ function Asking({ onStop }: { onStop: () => void }) {
   );
 }
 
-function Failed({ error, onAgain }: { error: string; onAgain: () => void }) {
+function Failed({ error, tally, onAgain }: { error: string; tally: Tally | null; onAgain: () => void }) {
   return (
     <div className="as-tool-failed">
       <p className="error" role="alert"><Icon name="error" />{error}</p>
       <button className="btn btn-small btn-secondary" type="button" onClick={onAgain}>Try again</button>
+      <Spent tally={tally} />
     </div>
   );
+}
+
+// What the request used and what it comes to, when the provider said it.
+function Spent({ tally }: { tally: Tally | null }) {
+  return tally !== null && tally.length > 0 ? <p className="hint as-spent">{briefWords(tally)}</p> : null;
 }
 
 function Choices({ onUse, onAgain, onDiscard }: { onUse: () => void; onAgain: () => void; onDiscard: () => void }) {
@@ -162,7 +173,7 @@ export function RewriteTool({ block }: { block: HeadingBlock | TextBlock }) {
       <span className="label" id={`${id}-title`}><Icon name="sparkles" />Write it again</span>
       {held === null ? <NoKey what={`Write the ${what} again`} />
         : step.phase === "asking" ? <Asking onStop={stop} />
-        : step.phase === "failed" ? <Failed error={step.error} onAgain={() => write(last.current)} />
+        : step.phase === "failed" ? <Failed error={step.error} tally={step.tally} onAgain={() => write(last.current)} />
         : step.phase === "shown" ? (
           <div className="as-suggestion">
             <div className="as-suggested" aria-label={`The ${what} written again`}>
@@ -170,6 +181,7 @@ export function RewriteTool({ block }: { block: HeadingBlock | TextBlock }) {
             </div>
             {block.type === "text" && hasMarks(block.props.doc) && <p className="hint">Its bold, italic and links are not kept.</p>}
             <Choices onUse={() => use(step.result, step.source)} onAgain={() => write(last.current)} onDiscard={reset} />
+            <Spent tally={step.tally} />
           </div>
         ) : (
           <>
@@ -259,13 +271,14 @@ export function DescribeTool({ block }: { block: ImageBlock }) {
       {held === null ? <NoKey what="Write its alt text" />
         : !item ? <p className="hint">Only an image of the library can be described.</p>
         : step.phase === "asking" ? <Asking onStop={stop} />
-        : step.phase === "failed" ? <Failed error={step.error} onAgain={describe} />
+        : step.phase === "failed" ? <Failed error={step.error} tally={step.tally} onAgain={describe} />
         : step.phase === "shown" ? (
           <div className="as-suggestion">
             <div className="as-suggested" aria-label="The alt text proposed">
               <p>{"alt" in step.result ? step.result.alt : "Decorative: it adds nothing the page needs, so screen readers skip it."}</p>
             </div>
             <Choices onUse={() => use(step.result, step.source)} onAgain={describe} onDiscard={reset} />
+            <Spent tally={step.tally} />
           </div>
         ) : (
           <>

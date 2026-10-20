@@ -3,13 +3,16 @@
 // machine. A key is checked with its provider and kept; a brief becomes a
 // new page, section by section, each a step of the Assistant's in History;
 // the key goes to its provider and nowhere else, is found in no storage of
-// the browser's, and a reload forgets it. Stats, steps and pricing land as
-// blocks of their own, a plan's button whose address the brief does not
-// give leading to the top of the page, said. A key the provider refuses is
-// said and not kept; Forget key forgets it; with no key, the sample builds
-// its page the same way; the drawer passes axe. In a block's panel, a
-// heading is written again and an image of the library described, each
-// shown before it is taken and taken as one step of the Assistant's.
+// the browser's, and a reload forgets it. After the page, the tokens the
+// provider counted and what they come to at the model's list price, and at
+// the drawer's foot the total since the key was connected, forgotten with
+// it. Stats, steps and pricing land as blocks of their own, a plan's button
+// whose address the brief does not give leading to the top of the page,
+// said. A key the provider refuses is said and not kept; Forget key
+// forgets it; with no key, the sample builds its page the same way; the
+// drawer passes axe. In a block's panel, a heading is written again and an
+// image of the library described, each shown before it is taken, with what
+// it used, and taken as one step of the Assistant's.
 import type { Page, Route } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { block } from "./helpers/canvas.ts";
@@ -119,7 +122,7 @@ async function openai(page: Page): Promise<Asked[]> {
     return route.fulfill({ headers: { ...CORS, "content-type": "text/event-stream" }, body: sse([
       ...pieces(PLAN).map((content): [null, unknown] => [null, chunk({ content })]),
       [null, chunk({}, "stop")],
-      [null, { id: "c1", object: "chat.completion.chunk", created: 1, model: "gpt-5", choices: [], usage: { prompt_tokens: 900, completion_tokens: 400, total_tokens: 1300 } }],
+      [null, { id: "c1", object: "chat.completion.chunk", created: 1, model: "gpt-5", choices: [], usage: { prompt_tokens: 900, completion_tokens: 400, total_tokens: 1300, prompt_tokens_details: { cached_tokens: 300, cache_write_tokens: 200 } } }],
       [null, "[DONE]"],
     ]) });
   });
@@ -185,6 +188,15 @@ test("a key kept in this tab's memory writes a page from a brief, each section a
   await expect(pageSections(page)).toHaveCount(3);
   await expect(box.getByRole("listitem")).toHaveText(["Hero", "The morning", "Book"]);
 
+  // What it used, as the provider counted it, and what that comes to at
+  // Claude Opus 5.5's list price: 1,234 × $4 + 567 × $20 a million tokens.
+  await expect(box.locator(".as-used")).toHaveText("Used 1,234 tokens in and 567 out, on your key.");
+  await expect(box.locator(".as-cost")).toHaveText("≈ $0.016 at Claude Opus 5.5's list price ($4 in, $20 out per million tokens; prices of 20 Oct 2026).");
+  await expect(box.locator(".drawer-foot > p")).toHaveText([
+    "Since you connected this key: 1 request, 1,234 tokens in and 567 out, ≈ $0.016.",
+    "An estimate from the providers' list prices. The provider's bill is what counts: taxes, discounts and regional uplift are not included.",
+  ]);
+
   const history = page.getByRole("complementary", { name: "History", exact: true });
   await page.locator(".topbar").getByRole("button", { name: "History", exact: true }).click();
   // The newest step first, as History lists them.
@@ -208,6 +220,8 @@ test("a key kept in this tab's memory writes a page from a brief, each section a
   const again = await assistant(page);
   await expect(again.getByLabel("Your Anthropic key")).toBeVisible();
   await expect(again.getByText(/key …/)).toHaveCount(0);
+  // The total went with the key.
+  await expect(again.getByText(/Since you connected this key/)).toHaveCount(0);
 });
 
 test("stats, steps and pricing land as blocks of their own; a plan's button whose address the brief does not give keeps its words, leads to the top of the page, and is said", async ({ page, request }) => {
@@ -254,7 +268,12 @@ test("OpenAI: the same page, asked with a strict schema; models it cannot use ar
   const completion = asked.find((call) => call.url.endsWith("/v1/chat/completions"))!;
   expect(completion.headers.authorization).toBe(`Bearer ${OPENAI_KEY}`);
   expect(completion.body).toMatchObject({ model: "gpt-5", stream: true, response_format: { type: "json_schema", json_schema: { name: "page_plan", strict: true } } });
-  await expect(box.getByText("Used 900 tokens in and 400 out, on your key.")).toBeVisible();
+  // 400 × $1.25 + 300 cached × $0.125 + 200 written to the cache × $1.25
+  // (gpt-5's page gives a dash for cache writes) + 400 × $10 a million
+  // tokens: under a cent.
+  await expect(box.locator(".as-used")).toHaveText("Used 900 tokens in, 300 of them cached and 200 written to the cache, and 400 out, on your key.");
+  await expect(box.locator(".as-cost")).toHaveText("Under $0.01 ($0.0048) at gpt-5's list price ($1.25 in, $0.125 cached, $1.25 written to the cache, $10 out per million tokens; prices of 20 Oct 2026).");
+  await expect(box.locator(".as-total")).toHaveText("Since you connected this key: 1 request, 900 tokens in, 300 of them cached and 200 written to the cache, and 400 out, under $0.01 ($0.0048).");
 });
 
 test.describe("a refused key", () => {
@@ -286,7 +305,7 @@ test("with no key, the sample written by hand builds its page the same way, sect
   await expect(pageSections(page)).toHaveCount(4);
 });
 
-test("the Assistant's drawer passes axe, asking for a key and with one kept", async ({ page, request }) => {
+test("the Assistant's drawer passes axe, asking for a key, with one kept, and after a page, with what it used and the total", async ({ page, request }) => {
   await anthropic(page);
   await startOn(page, request, "Axe");
   const box = await assistant(page);
@@ -294,6 +313,10 @@ test("the Assistant's drawer passes axe, asking for a key and with one kept", as
   await box.getByLabel("Your Anthropic key").fill(ANTHROPIC_KEY);
   await box.getByRole("button", { name: "Connect Anthropic" }).click();
   await expect(box.getByText("key …a1b2")).toBeVisible();
+  expect((await axe(page, { include: ".drawer-assistant" })).serious).toEqual([]);
+  await box.getByLabel("What is the page for?").fill("An open day at the club.");
+  await box.getByRole("button", { name: "Write the page" }).click();
+  await expect(box.locator(".as-total")).toBeVisible();
   expect((await axe(page, { include: ".drawer-assistant" })).serious).toEqual([]);
 });
 
@@ -315,10 +338,13 @@ test("a heading written again is shown first, then taken as one step of the Assi
   await block(page, "h1").click();
   await tool.getByRole("button", { name: "Shorter" }).click();
   await expect(tool.getByLabel("The heading written again")).toHaveText("Swim at first light");
+  await expect(tool.locator(".as-spent")).toHaveText("Used 1,234 tokens in and 567 out, on your key: ≈ $0.016 at Claude Opus 5.5's list price.");
   // Nothing has changed yet.
   await expect(block(page, "h1").getByRole("heading")).toHaveText("Start");
   await tool.getByRole("button", { name: "Use it" }).click();
   await expect(block(page, "h1").getByRole("heading")).toHaveText("Swim at first light");
+  // The drawer's total holds it.
+  await expect((await assistant(page)).locator(".as-total")).toHaveText("Since you connected this key: 1 request, 1,234 tokens in and 567 out, ≈ $0.016.");
   const history = await drawer(page, "History");
   await expect(history.locator(".hist-what").first()).toHaveText(/^Assistant changed/);
 });

@@ -1,10 +1,11 @@
 // The two providers (./anthropic.ts, ./openai.ts) on clients of the test's
-// own: what a question sends, how its answer streams back, a refusal and a
-// cut answer, which models are offered and in which order, and a
-// provider's error said in a sentence with the key taken out.
+// own: what a question sends, how its answer streams back and the tokens it
+// used, read from each SDK's usage object, a refusal and a cut answer, which
+// still say what they used, which models are offered and in which order,
+// and a provider's error said in a sentence with the key taken out.
 import { expect, test } from "vitest";
-import { anthropic, versionOf, type AnthropicLike } from "./anthropic.ts";
-import { offered, openai, type OpenAILike } from "./openai.ts";
+import { anthropic, usageOf as usageOfAnthropic, versionOf, type AnthropicLike } from "./anthropic.ts";
+import { offered, openai, usageOf as usageOfOpenAI, type OpenAILike } from "./openai.ts";
 import { AssistantError, said, type Question } from "./providers.ts";
 
 const KEY = "sk-test-not-a-real-key-9z8y";
@@ -49,7 +50,7 @@ function anthropicClient(answer: { stop_reason?: string; pieces?: string[]; erro
               id: "msg_1", type: "message", role: "assistant", model: "the-model", stop_sequence: null, stop_details: null, container: null,
               stop_reason: answer.stop_reason ?? "end_turn",
               content: [{ type: "thinking", thinking: "…", signature: "s" }, { type: "text", text: pieces.join(""), citations: null }],
-              usage: { input_tokens: 120, output_tokens: 34 },
+              usage: { input_tokens: 120, cache_read_input_tokens: 50, cache_creation_input_tokens: null, output_tokens: 34, output_tokens_details: { thinking_tokens: 20 } },
             } as never;
           },
         };
@@ -76,7 +77,7 @@ function openaiClient(answer: { chunks?: unknown[]; error?: unknown } = {}) {
           const chunks = answer.chunks ?? [
             { choices: [{ delta: { content: "{\"title\":" } }] },
             { choices: [{ delta: { content: "\"Open day\"}" }, finish_reason: "stop" }] },
-            { choices: [], usage: { prompt_tokens: 90, completion_tokens: 12 } },
+            { choices: [], usage: { prompt_tokens: 90, completion_tokens: 12, total_tokens: 102, prompt_tokens_details: { cached_tokens: 40, cache_write_tokens: 30 }, completion_tokens_details: { reasoning_tokens: 8 } } },
           ];
           return (async function* () {
             yield* chunks as never[];
@@ -93,7 +94,8 @@ test("Anthropic: one streamed Messages request, adaptive thinking, the answer he
   const pieces: string[] = [];
   const signal = new AbortController().signal;
   const answer = await anthropic(make).ask(KEY, QUESTION, (piece) => pieces.push(piece), signal);
-  expect(answer).toEqual({ text: "{\"title\":\"Open day\"}", usage: { input: 120, output: 34 } });
+  // input_tokens, cache_read_input_tokens, cache_creation_input_tokens (none) and output_tokens, the thinking in them.
+  expect(answer).toEqual({ text: "{\"title\":\"Open day\"}", usage: { input: 120, cacheRead: 50, cacheWrite: 0, output: 34 } });
   expect(pieces).toEqual(["{\"title\":", "\"Open day\"}"]);
   expect(asked).toEqual([{
     key: KEY,
@@ -112,9 +114,15 @@ test("Anthropic: one streamed Messages request, adaptive thinking, the answer he
   }]);
 });
 
-test("Anthropic: a refusal and an answer cut short are said", async () => {
-  await expect(anthropic(anthropicClient({ stop_reason: "refusal" }).make).ask(KEY, QUESTION, () => undefined)).rejects.toMatchObject({ kind: "refused" });
-  await expect(anthropic(anthropicClient({ stop_reason: "max_tokens" }).make).ask(KEY, QUESTION, () => undefined)).rejects.toMatchObject({ kind: "cut" });
+test("Anthropic: a refusal and an answer cut short are said, with the tokens they used", async () => {
+  const used = { input: 120, cacheRead: 50, cacheWrite: 0, output: 34 };
+  await expect(anthropic(anthropicClient({ stop_reason: "refusal" }).make).ask(KEY, QUESTION, () => undefined)).rejects.toMatchObject({ kind: "refused", usage: used });
+  await expect(anthropic(anthropicClient({ stop_reason: "max_tokens" }).make).ask(KEY, QUESTION, () => undefined)).rejects.toMatchObject({ kind: "cut", usage: used });
+});
+
+test("Anthropic: the tokens are the usage object's, a count the stream never gave being none", () => {
+  expect(usageOfAnthropic({ input_tokens: 1234, cache_read_input_tokens: 1000, cache_creation_input_tokens: 2000, output_tokens: 567 })).toEqual({ input: 1234, cacheRead: 1000, cacheWrite: 2000, output: 567 });
+  expect(usageOfAnthropic({ input_tokens: 1234, output_tokens: 567 } as never)).toEqual({ input: 1234, cacheRead: 0, cacheWrite: 0, output: 567 });
 });
 
 test("Anthropic: the models offered take adaptive thinking and a schema (4.6 and later), Opus 5.5 first, then the newest", async () => {
@@ -130,7 +138,8 @@ test("OpenAI: one streamed Chat Completions request with a strict schema; the us
   const { asked, make } = openaiClient();
   const pieces: string[] = [];
   const answer = await openai(make).ask(KEY, QUESTION, (piece) => pieces.push(piece));
-  expect(answer).toEqual({ text: "{\"title\":\"Open day\"}", usage: { input: 90, output: 12 } });
+  // prompt_tokens, 40 of them cached_tokens and 30 cache_write_tokens, and completion_tokens, the reasoning in them.
+  expect(answer).toEqual({ text: "{\"title\":\"Open day\"}", usage: { input: 20, cacheRead: 40, cacheWrite: 30, output: 12 } });
   expect(pieces).toEqual(["{\"title\":", "\"Open day\"}"]);
   expect(asked[0]).toEqual({
     key: KEY,
@@ -148,11 +157,29 @@ test("OpenAI: one streamed Chat Completions request with a strict schema; the us
   });
 });
 
-test("OpenAI: a refusal, a filtered answer and one cut short are said", async () => {
+test("OpenAI: a refusal, a filtered answer and one cut short are said, with the tokens they used", async () => {
   const ask = (chunks: unknown[]) => openai(openaiClient({ chunks }).make).ask(KEY, QUESTION, () => undefined);
-  await expect(ask([{ choices: [{ delta: { refusal: "I can't help with that." } }] }])).rejects.toMatchObject({ kind: "refused", message: "The model would not write this. It said: I can't help with that." });
-  await expect(ask([{ choices: [{ delta: {}, finish_reason: "content_filter" }] }])).rejects.toMatchObject({ kind: "refused" });
-  await expect(ask([{ choices: [{ delta: { content: "{" }, finish_reason: "length" }] }])).rejects.toMatchObject({ kind: "cut" });
+  const counted = { choices: [], usage: { prompt_tokens: 90, completion_tokens: 8000, total_tokens: 8090 } };
+  const used = { input: 90, cacheRead: 0, cacheWrite: 0, output: 8000 };
+  await expect(ask([{ choices: [{ delta: { refusal: "I can't help with that." } }] }, counted])).rejects.toMatchObject({ kind: "refused", message: "The model would not write this. It said: I can't help with that.", usage: used });
+  await expect(ask([{ choices: [{ delta: {}, finish_reason: "content_filter" }] }, counted])).rejects.toMatchObject({ kind: "refused", usage: used });
+  await expect(ask([{ choices: [{ delta: { content: "{" }, finish_reason: "length" }] }, counted])).rejects.toMatchObject({ kind: "cut", usage: used });
+  // With no piece that counts, nothing is said to be used.
+  await expect(ask([{ choices: [{ delta: { content: "{" }, finish_reason: "length" }] }])).rejects.toMatchObject({ kind: "cut", usage: { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 } });
+});
+
+test("OpenAI: the tokens are the usage object's: of prompt_tokens, cached_tokens read from the cache and cache_write_tokens written to it, the rest input", () => {
+  // With the field.
+  expect(usageOfOpenAI({ prompt_tokens: 3144, completion_tokens: 1415, prompt_tokens_details: { cached_tokens: 1024, cache_write_tokens: 2000 } })).toEqual({ input: 120, cacheRead: 1024, cacheWrite: 2000, output: 1415 });
+  // Without it, and without the prompt's details at all.
+  expect(usageOfOpenAI({ prompt_tokens: 900, completion_tokens: 400, prompt_tokens_details: { cached_tokens: 300 } })).toEqual({ input: 600, cacheRead: 300, cacheWrite: 0, output: 400 });
+  expect(usageOfOpenAI({ prompt_tokens: 900, completion_tokens: 400 })).toEqual({ input: 900, cacheRead: 0, cacheWrite: 0, output: 400 });
+});
+
+test("OpenAI: parts that add up to more than the prompt are cut to it, the cached tokens first, and none goes below nothing", () => {
+  expect(usageOfOpenAI({ prompt_tokens: 100, completion_tokens: 10, prompt_tokens_details: { cached_tokens: 80, cache_write_tokens: 50 } })).toEqual({ input: 0, cacheRead: 80, cacheWrite: 20, output: 10 });
+  expect(usageOfOpenAI({ prompt_tokens: 100, completion_tokens: 10, prompt_tokens_details: { cached_tokens: 150, cache_write_tokens: 30 } })).toEqual({ input: 0, cacheRead: 100, cacheWrite: 0, output: 10 });
+  expect(usageOfOpenAI({ prompt_tokens: 100, completion_tokens: 10, prompt_tokens_details: { cache_write_tokens: 130 } })).toEqual({ input: 0, cacheRead: 0, cacheWrite: 100, output: 10 });
 });
 
 test("OpenAI: the models offered take a strict schema; newest first, a full model before its mini", async () => {

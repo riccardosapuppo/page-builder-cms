@@ -8,8 +8,14 @@
 // answer held to the question's JSON schema (structured outputs,
 // output_config.format), and an effort that fits the task. Only models
 // that take both are offered: Claude 4.6 and later.
+//
+// What it used is the message's usage, which the stream adds up as it
+// comes: input_tokens (not read from the cache, not written to it),
+// cache_read_input_tokens, cache_creation_input_tokens and output_tokens,
+// the thinking included. The Assistant asks for no cache: a write, should
+// one come, is priced as the five-minute cache's.
 import Anthropic from "@anthropic-ai/sdk";
-import { AssistantError, said, type ModelChoice, type ProviderClient, type Question } from "./providers.ts";
+import { AssistantError, said, type ModelChoice, type ProviderClient, type Question, type Usage } from "./providers.ts";
 
 export const NAME = "Anthropic";
 // The model a key that may use it starts with.
@@ -33,6 +39,17 @@ const client = (key: string): AnthropicLike => new Anthropic({ apiKey: key, dang
 export function versionOf(id: string): number | null {
   const found = /^claude-[a-z]+-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?$/.exec(id);
   return found ? Number(found[1]) + Number(found[2] ?? 0) / 10 : null;
+}
+
+// The tokens a message used, from the SDK's usage object. A count the
+// stream never gave is none.
+export function usageOf(usage: Pick<Anthropic.Usage, "input_tokens" | "cache_read_input_tokens" | "cache_creation_input_tokens" | "output_tokens">): Usage {
+  return {
+    input: usage.input_tokens,
+    cacheRead: usage.cache_read_input_tokens ?? 0,
+    cacheWrite: usage.cache_creation_input_tokens ?? 0,
+    output: usage.output_tokens,
+  };
 }
 
 export function anthropic(make: (key: string) => AnthropicLike = client): ProviderClient {
@@ -66,10 +83,11 @@ export function anthropic(make: (key: string) => AnthropicLike = client): Provid
         }, { signal });
         stream.on("text", (delta) => written(delta));
         const message = await stream.finalMessage();
-        if (message.stop_reason === "refusal") throw new AssistantError("Claude would not write this. Try other words.", "refused");
-        if (message.stop_reason === "max_tokens") throw new AssistantError("The answer was longer than the Assistant allows, and was cut. Ask for less.", "cut");
+        const usage = usageOf(message.usage);
+        if (message.stop_reason === "refusal") throw new AssistantError("Claude would not write this. Try other words.", "refused", usage);
+        if (message.stop_reason === "max_tokens") throw new AssistantError("The answer was longer than the Assistant allows, and was cut. Ask for less.", "cut", usage);
         const text = message.content.map((block) => (block.type === "text" ? block.text : "")).join("");
-        return { text, usage: { input: message.usage.input_tokens, output: message.usage.output_tokens } };
+        return { text, usage };
       } catch (error) {
         throw said(error, NAME, key);
       }

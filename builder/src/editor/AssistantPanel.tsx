@@ -2,14 +2,17 @@
 // own, then a brief, then a new page written section by section while the
 // person watches it grow on the canvas. Without a key, a sample written by
 // hand goes through the same steps. Which provider, what is kept of the key
-// and where it goes are said where the key is asked for.
+// and where it goes are said where the key is asked for. After a page, the
+// tokens it used and what they come to at the model's list price are said
+// (../assistant/tally.ts); the drawer's foot keeps the total since the key
+// was connected, and says it is an estimate.
 import { useId, useState } from "react";
 import { useAssistant, useAssistantStore, type AssistantStore, type ShownWriting } from "../assistant/context.tsx";
 import { PROVIDER_NAMES, PROVIDERS, type ProviderId } from "../assistant/key.ts";
 import { pageQuestion, type SiteWords } from "../assistant/prompts.ts";
 import { sampleAnswer, samplePlan, SAMPLE_BRIEF } from "../assistant/sample.ts";
+import { ESTIMATE_NOTE, estimateWords, totalWords, usedWords, type Tally } from "../assistant/tally.ts";
 import { writePage, type PageHooks } from "../assistant/write.ts";
-import type { Answer } from "../assistant/providers.ts";
 import type { SiteFacts } from "../assistant/build.ts";
 import { PALETTE_SLOTS, type PaletteSlot } from "../shared/document.ts";
 import { isFreeColor } from "../shared/free-colors.ts";
@@ -93,9 +96,35 @@ export function AssistantPanel() {
   const held = useAssistant((a) => a.held);
   const writing = useAssistant((a) => a.writing);
   return (
-    <div className="drawer-body as-body">
-      {writing && <Progress writing={writing} />}
-      {held === null ? <Connect /> : <Brief />}
+    <>
+      <div className="drawer-body as-body">
+        {writing && <Progress writing={writing} />}
+        {held === null ? <Connect /> : <Brief />}
+      </div>
+      <Total />
+    </>
+  );
+}
+
+// What the page written says it used, once it has ended: nothing while it
+// is being written, for a sample, or when the provider said nothing.
+function shownTally(writing: ShownWriting | null): Tally | null {
+  if (writing === null || writing.sample || writing.phase === "asking" || writing.phase === "writing") return null;
+  return writing.tally !== null && writing.tally.length > 0 ? writing.tally : null;
+}
+
+// The drawer's foot: the total since the key was connected, while it is
+// kept, and, under it, what every estimate here leaves out.
+function Total() {
+  const held = useAssistant((a) => a.held);
+  const spent = useAssistant((a) => a.spent);
+  const writing = useAssistant((a) => a.writing);
+  const total = held !== null && spent.length > 0;
+  if (!total && shownTally(writing) === null) return null;
+  return (
+    <div className="drawer-foot as-foot">
+      {total && <p className="as-total">{totalWords(spent)}</p>}
+      <p>{ESTIMATE_NOTE}</p>
     </div>
   );
 }
@@ -211,7 +240,7 @@ function Brief() {
     const words: SiteWords = { palette: paletteHex(style), media: facts.media, pages: facts.pages };
     const name = models.find((choice) => choice.id === model)?.name ?? model ?? "the model";
     void run(assistant, (signal, tell) => writePage({
-      ask: (written): Promise<Answer> => assistant.getState().ask((chosen) => pageQuestion(chosen, brief, words), written, signal),
+      ask: (written) => assistant.getState().ask((chosen) => pageQuestion(chosen, brief, words), written, signal),
       facts, newId: env.newId, hooks: pageHooks(env, session), tell, signal,
     }), { model: name });
   };
@@ -267,6 +296,7 @@ const count = (n: number): string => `${n} ${n === 1 ? "section" : "sections"}`;
 function Progress({ writing }: { writing: ShownWriting }) {
   const assistant = useAssistantStore();
   const going = writing.phase === "asking" || writing.phase === "writing";
+  const tally = shownTally(writing);
   const kept = writing.sections.filter((section) => section.kept).length;
   const page = writing.title ? `“${writing.title}”` : "the new page";
   const line = writing.phase === "asking"
@@ -306,8 +336,14 @@ function Progress({ writing }: { writing: ShownWriting }) {
           <ul>{writing.notes.map((note, index) => <li key={index}>{note}</li>)}</ul>
         </details>
       )}
-      {!going && !writing.sample && writing.usage && writing.usage.input + writing.usage.output > 0 && (
-        <p className="hint">Used {writing.usage.input.toLocaleString("en-US")} tokens in and {writing.usage.output.toLocaleString("en-US")} out, on your key.</p>
+      {tally && (
+        <>
+          <p className="hint as-used">{usedWords(tally)}</p>
+          <p className="hint as-cost">{estimateWords(tally)}</p>
+        </>
+      )}
+      {writing.phase === "stopped" && !writing.sample && tally === null && (
+        <p className="hint as-used">Its tokens are not known: the provider counts them when a request ends, and this one was stopped.</p>
       )}
       {!going && writing.sample && <p className="hint">A sample written by hand: no model was asked.</p>}
     </section>

@@ -9,15 +9,33 @@
 // the usage counted in the last piece. The models offered are the ones
 // that take such a schema, newest first: GPT-4o and later, the o3 and o4
 // reasoning models; not the audio, image, search and other special ones.
+//
+// What it used is that last piece's usage: prompt_tokens, of which
+// prompt_tokens_details.cached_tokens were read from the cache and
+// prompt_tokens_details.cache_write_tokens written to it, and
+// completion_tokens, the reasoning included. That both are parts of
+// prompt_tokens is read from the SDK's description of the fields; the
+// prices are the pricing page's (./prices.ts).
 import OpenAI from "openai";
-import { AssistantError, said, type ModelChoice, type ProviderClient, type Question } from "./providers.ts";
+import { AssistantError, NO_USAGE, said, type ModelChoice, type ProviderClient, type Question, type Usage } from "./providers.ts";
 
 export const NAME = "OpenAI";
 
 type Chunk = {
   choices: Array<{ delta?: { content?: string | null; refusal?: string | null }; finish_reason?: string | null }>;
-  usage?: { prompt_tokens: number; completion_tokens: number } | null;
+  usage?: OpenAI.CompletionUsage | null;
 };
+
+// The tokens a completion used, from the SDK's usage object: the prompt's
+// tokens read from the cache and written to it, as parts of prompt_tokens,
+// the rest of it plain input. Parts that would add up to more than the
+// prompt are cut to it, the cached tokens first, so none goes below nothing.
+export function usageOf(usage: Pick<OpenAI.CompletionUsage, "prompt_tokens" | "completion_tokens" | "prompt_tokens_details">): Usage {
+  const prompt = Math.max(0, usage.prompt_tokens);
+  const cacheRead = Math.min(Math.max(0, usage.prompt_tokens_details?.cached_tokens ?? 0), prompt);
+  const cacheWrite = Math.min(Math.max(0, usage.prompt_tokens_details?.cache_write_tokens ?? 0), prompt - cacheRead);
+  return { input: prompt - cacheRead - cacheWrite, cacheRead, cacheWrite, output: usage.completion_tokens };
+}
 
 // The parts of the SDK's client the Assistant uses: a test gives its own.
 export interface OpenAILike {
@@ -65,7 +83,7 @@ export function openai(make: (key: string) => OpenAILike = client): ProviderClie
         let text = "";
         let refusal = "";
         let finish: string | null = null;
-        let usage = { input: 0, output: 0 };
+        let usage = NO_USAGE;
         for await (const chunk of stream) {
           const choice = chunk.choices[0];
           const piece = choice?.delta?.content ?? "";
@@ -75,10 +93,10 @@ export function openai(make: (key: string) => OpenAILike = client): ProviderClie
           }
           refusal += choice?.delta?.refusal ?? "";
           finish = choice?.finish_reason ?? finish;
-          if (chunk.usage) usage = { input: chunk.usage.prompt_tokens, output: chunk.usage.completion_tokens };
+          if (chunk.usage) usage = usageOf(chunk.usage);
         }
-        if (refusal || finish === "content_filter") throw new AssistantError(`The model would not write this.${refusal ? ` It said: ${refusal}` : ""}`, "refused");
-        if (finish === "length") throw new AssistantError("The answer was longer than the Assistant allows, and was cut. Ask for less.", "cut");
+        if (refusal || finish === "content_filter") throw new AssistantError(`The model would not write this.${refusal ? ` It said: ${refusal}` : ""}`, "refused", usage);
+        if (finish === "length") throw new AssistantError("The answer was longer than the Assistant allows, and was cut. Ask for less.", "cut", usage);
         return { text, usage };
       } catch (error) {
         throw said(error, NAME, key);

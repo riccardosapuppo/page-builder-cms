@@ -2,6 +2,8 @@
 // the test's own: a suggestion is for what it was asked of. The heading's
 // words written over, or the image replaced, the suggestion goes and is
 // never taken; a question still on its way stops, and its answer is let go.
+// Under a suggestion, or an answer that held none, what the request used and
+// what it comes to at the model's list price.
 // @vitest-environment jsdom
 import { act, fireEvent, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
@@ -32,12 +34,13 @@ const DOC: PageDocument = {
 
 const item = (id: string): MediaItem => ({ id, alt: id, width: 10, height: 10, contentType: "image/png", byteSize: 1, filename: `${id}.png`, url: `/media/${id}.png`, createdAt: "2026-10-14T00:00:00Z" });
 
-// A provider whose answers the test gives, one per question, when it likes.
+// A provider whose answers the test gives, one per question, when it likes,
+// each having used 812 tokens in and 46 out.
 function setUp() {
   const waiting: Array<{ answer: (text: string) => void; signal: AbortSignal | undefined }> = [];
   const client: ProviderClient = {
-    models: async () => [{ id: "m", name: "M" }],
-    ask: (_key, _question, _written, signal) => new Promise<Answer>((done) => waiting.push({ answer: (text) => done({ text, usage: { input: 1, output: 1 } }), signal })),
+    models: async () => [{ id: "claude-opus-5-5", name: "Claude Opus 5.5" }],
+    ask: (_key, _question, _written, signal) => new Promise<Answer>((done) => waiting.push({ answer: (text) => done({ text, usage: { input: 812, cacheRead: 0, cacheWrite: 0, output: 46 } }), signal })),
   };
   const kit = editorKit({ document: structuredClone(DOC), providers: async () => client });
   kit.ui.getState().setMedia([item("m1"), item("m2")]);
@@ -67,6 +70,21 @@ const connect = async (kit: ReturnType<typeof editorKit>) => {
     await kit.assistant.getState().connect("anthropic", "sk-not-a-real-key");
   });
 };
+
+test("under a suggestion, and under an answer that held none, what the request used and what it comes to at the model's list price; the drawer's total holds both", async () => {
+  const { kit, answer } = setUp();
+  await connect(kit);
+  const used = "Used 812 tokens in and 46 out, on your key: under $0.01 ($0.0042) at Claude Opus 5.5's list price.";
+  fireEvent.click(screen.getByRole("button", { name: "Shorter" }));
+  await answer(JSON.stringify({ text: "Begin" }));
+  expect(screen.getByLabelText("The heading written again").textContent).toBe("Begin");
+  expect(screen.getByText(used).closest(".as-suggestion")).not.toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Again" }));
+  await answer(JSON.stringify({ nothing: true }));
+  expect(screen.getByRole("alert").textContent).toBe("The model's answer held no heading. Try again.");
+  expect(screen.getByText(used).closest(".as-tool-failed")).not.toBeNull();
+  expect(kit.assistant.getState().spent).toMatchObject([{ model: "claude-opus-5-5", calls: 2, usage: { input: 1624, output: 92 } }]);
+});
 
 test("a heading written again is not taken once its words are written over: the suggestion goes, the words written stay", async () => {
   const { kit, answer, set } = setUp();

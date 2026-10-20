@@ -3,13 +3,18 @@
 // plan's title, each section goes in as a command of the Assistant's, a
 // button whose section never came goes (a plan's loses its link), and a
 // stop, a failure or another page opened midway keep what is in and add
-// nothing more.
+// nothing more. What the answer used, priced, is said at the end, an
+// answer cut short's too.
 import { expect, test } from "vitest";
 import type { Made } from "../document/commands.ts";
 import { createEditorStore, type EditorStore } from "../store/editor-store.ts";
 import type { PageDocument } from "../shared/document.ts";
-import { AssistantError, type Answer } from "./providers.ts";
+import { AssistantError, type Answer, type Usage } from "./providers.ts";
+import { tallyOf, type Tally } from "./tally.ts";
 import { writePage, type PageHooks, type Writing } from "./write.ts";
+
+const USED: Usage = { input: 10, cacheRead: 0, cacheWrite: 0, output: 20 };
+const TALLY = tallyOf("anthropic", "claude-opus-5-5", USED);
 
 const FACTS = { media: [], paths: ["/"], brief: "An open day." };
 
@@ -52,8 +57,8 @@ let ids = 0;
 const newId = () => `x${++ids}`;
 
 // An answer that writes `text` in pieces of `size`, then ends as asked.
-function answer(text: string, size = 7, end: (written: number) => Answer | Error = () => ({ text, usage: { input: 10, output: 20 } }), between?: (at: number) => void) {
-  return async (written: (piece: string) => void): Promise<Answer> => {
+function answer(text: string, size = 7, end: (written: number) => (Answer & { tally?: Tally }) | Error = () => ({ text, usage: USED, tally: TALLY }), between?: (at: number) => void) {
+  return async (written: (piece: string) => void): Promise<Answer & { tally?: Tally }> => {
     let at = 0;
     for (; at < text.length; at += size) {
       written(text.slice(at, at + size));
@@ -93,7 +98,7 @@ test("the page is made from the plan's title; each section goes in as the Assist
       "Left out the section “Empty”: nothing in it could be kept.",
       "Took out the button “Prices”: the section it leads to was not written.",
     ],
-    usage: { input: 10, output: 20 },
+    tally: TALLY,
     error: null,
   });
   expect(told[0]).toBe("asking");
@@ -111,7 +116,20 @@ test("stopped while writing: the sections that had come stay, nothing more is as
   });
   expect(result.phase).toBe("stopped");
   expect(result.error).toBeNull();
+  // Stopped before its end, the provider never said what it used.
+  expect(result.tally).toBeNull();
   expect(page()!.getState().document.sections.map((s) => s.props.label)).toEqual(["Hero"]);
+});
+
+test("an answer cut short says what it used all the same; an answer with no tally, as a sample's, says none", async () => {
+  const text = JSON.stringify(PLAN);
+  const cut = await writePage({
+    ask: answer(text.slice(0, 40), 7, () => new AssistantError("The answer was longer than the Assistant allows, and was cut. Ask for less.", "cut", USED, TALLY)),
+    facts: FACTS, newId, hooks: editor().hooks, tell: () => undefined,
+  });
+  expect(cut).toMatchObject({ phase: "failed", error: "The answer was longer than the Assistant allows, and was cut. Ask for less.", tally: TALLY });
+  const sample = await writePage({ ask: answer(text, 7, () => ({ text, usage: USED })), facts: FACTS, newId, hooks: editor().hooks, tell: () => undefined });
+  expect(sample).toMatchObject({ phase: "done", tally: null });
 });
 
 test("refused before a word: no page is made, and the reason is said", async () => {

@@ -74,7 +74,8 @@ guarantee that holds.
    came is taken out, and a plan's button loses its link, while the page
    made is the one open. A stop, a refusal or another page opened midway
    keeps what is already in, and a stop lets nothing more land, not even
-   sections that came while the page was being made.
+   sections that came while the page was being made. What the request used
+   is said (see [What a request costs](#what-a-request-costs)).
 
 ## The providers
 
@@ -94,3 +95,84 @@ called on, so a person who never opens the Assistant downloads neither SDK.
 
 Errors are said in a sentence, read from the HTTP status, with the key
 taken out of anything the provider repeated of it.
+
+Each call hands back the tokens it used, read from the usage object of the
+provider's SDK, as the provider bills them:
+
+- **Anthropic's:** `input_tokens` at the base price,
+  `cache_read_input_tokens`, `cache_creation_input_tokens` and
+  `output_tokens`, the thinking included. The Assistant asks for no cache,
+  so a cache write, should one come, is priced as the five-minute cache's.
+- **OpenAI's:** `prompt_tokens`, of which `prompt_tokens_details.cached_tokens`
+  were read from the cache and `prompt_tokens_details.cache_write_tokens`
+  written to it, the rest plain input, and `completion_tokens`, the
+  reasoning included.
+  - **An assumption.** That both are parts of `prompt_tokens` is read from
+    the SDK's description of the fields. The pricing page gives the prices,
+    not how the fields add up.
+  - **Parts that add up to more than the prompt** are cut to it, cached
+    tokens first, and plain input never goes below none. The drawer says
+    nothing of it.
+
+An answer refused or cut short was billed all the same, and its error
+says what it used.
+
+## What a request costs
+
+After each request the Assistant says the tokens the provider counted (in,
+cached and out) and what they come to at the model's list price. After a
+page it is said in the drawer, with the price used and the day the prices
+were read. After a text written again or an image described, it is said in
+the block's panel. The drawer's foot keeps the total of every request since
+the key was connected. That total lives in memory with the key, and is
+forgotten with it.
+
+- **The prices.** [`prices.ts`](prices.ts) holds the providers' list prices
+  for the models the Assistant offers, as their official pages gave them on
+  20 October 2026: Anthropic's,
+  <https://platform.claude.com/docs/en/about-claude/pricing>, and OpenAI's,
+  <https://developers.openai.com/api/docs/pricing>. They are in US dollars
+  per million tokens, at the standard tier.
+  - **Anthropic's:** base input, five-minute cache write, cache read,
+    output. Claude Haiku 5.5 has a second, dearer price for a prompt over
+    100,000 tokens, its cache reads and writes counted in the prompt. That
+    price covers every token of such a call. Claude Mythos 5.1 and Mythos 5
+    are of limited availability, offered when a key may use them.
+  - **OpenAI's:** input, cached input, cache writes, output, for a prompt
+    of up to 272,000 tokens. Past that no list price is on file here.
+    - **Cache writes** have a price of their own on the GPT-6 and GPT-5.6
+      models.
+    - **A dash.** Where the page gives one for cached input (the -pro
+      models, o3-pro, gpt-4o-2024-05-13) or for cache writes (every other
+      model), the estimate counts those tokens at the input price.
+  - **The image models'** are in the table already, for the pictures a
+    later step makes.
+- **No price on file.** A model the table does not hold has no price, and
+  only its tokens are said. That includes a dated snapshot of a model it
+  holds, since neither page prices a snapshot as its model, and an alias
+  such as `gpt-5-chat-latest`. A snapshot the page prices by its own id,
+  as OpenAI's does `gpt-4o-2024-05-13`, has its row.
+- **Exact arithmetic.** Each price is a whole number of nano-dollars per
+  token, the page's dollars per million times a thousand. A cost is whole
+  numbers multiplied and added, exact, and is rounded only when it is
+  written. Each call is priced on its own, since a prompt's length sets its
+  own call's price; [`tally.ts`](tally.ts) adds up the calls of a request,
+  and of the total.
+- **Written for a person.** An amount is written to two figures under a
+  dollar (≈ $0.021), and one under a cent says so (under $0.01 ($0.0042)).
+- **Updating the prices.** Read the two pages again, then change the rows
+  of `prices.ts`, and its `PRICES_READ` to the day they were read.
+  [`prices.test.ts`](prices.test.ts) holds the rows to a second copy of the
+  pages' tables, typed apart so that a slip in either shows: change both.
+  Two of its tests keep the table current:
+  - one fails once the prices are more than 120 days old, to say it is time
+    to read the pages again;
+  - one holds the models the Assistant offers to the table: each is priced,
+    or is listed as having no price on file.
+- **What it leaves out.** It is an estimate from the list prices: the
+  provider's bill is what counts. It leaves out:
+  - taxes, discounts and credits;
+  - US-only routing, which Anthropic bills at 1.1 times (`inference_geo`,
+    which the Assistant does not set), and any other regional uplift;
+  - a service tier other than the standard one;
+  - a request stopped midway, whose tokens the provider never said.

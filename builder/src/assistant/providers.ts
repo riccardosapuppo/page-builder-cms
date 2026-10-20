@@ -9,7 +9,13 @@
 // own key: no server of this site is in between. What goes wrong is said
 // in a sentence (AssistantError), with the key taken out of anything a
 // provider's message might have repeated of it.
+//
+// Each call hands back the tokens it used (Usage), read from the provider's
+// own count in its SDK's usage object, as it bills them: input at the base
+// price, input read from the prompt cache, input written to it, and output,
+// thinking and reasoning included. ./tally.ts prices them.
 import type { ProviderId } from "./key.ts";
+import type { Tally } from "./tally.ts";
 
 export interface ModelChoice {
   id: string;
@@ -17,9 +23,14 @@ export interface ModelChoice {
 }
 
 export interface Usage {
+  // Input tokens at the base price: neither read from the cache nor written to it.
   input: number;
+  cacheRead: number;
+  cacheWrite: number;
   output: number;
 }
+
+export const NO_USAGE: Usage = { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
 
 export interface Question {
   model: string;
@@ -51,11 +62,18 @@ export type AssistantErrorKind = "key" | "model" | "limit" | "busy" | "refused" 
 
 export class AssistantError extends Error {
   readonly kind: AssistantErrorKind;
+  // An answer refused or cut short was billed all the same: the tokens it
+  // used, as the provider said them, and what they come to, priced by the
+  // Assistant's state (./context.tsx).
+  readonly usage: Usage | null;
+  readonly tally: Tally | null;
 
-  constructor(message: string, kind: AssistantErrorKind) {
+  constructor(message: string, kind: AssistantErrorKind, usage: Usage | null = null, tally: Tally | null = null) {
     super(message);
     this.name = "AssistantError";
     this.kind = kind;
+    this.usage = usage;
+    this.tally = tally;
   }
 }
 

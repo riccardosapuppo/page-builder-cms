@@ -76,7 +76,9 @@ where may it go? There were three ways to hold it:
 - **The SDK holds the key while a call lasts.** Its client is made for one
   call and dropped afterwards.
 - **Each call costs the person money.** The drawer says what each page
-  used, tokens in and tokens out.
+  used, tokens in, cached and out, and estimates their cost at the
+  provider's list price. Its foot keeps the total since the key was
+  connected, in memory with the key, and forgotten with it.
 
 ## The proof
 

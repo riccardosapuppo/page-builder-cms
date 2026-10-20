@@ -11,13 +11,15 @@
 // section the page does not have is taken out (a plan's button loses its
 // link instead), while the page is open. The page is left alone once
 // another one is opened in its place: nothing written for it lands on
-// another page.
+// another page. What the request used, priced (./tally.ts), is said at the
+// end, a refused or cut answer's too: a sample written by hand used none.
 import { makeDelete, makeInsert, makeSetItem, makeSetPage, type Made } from "../document/commands.ts";
 import { idDraw, type NewId } from "../document/ids.ts";
 import type { PageDocument } from "../shared/document.ts";
 import { PlanBuilder, type SiteFacts } from "./build.ts";
 import { PlanStream } from "./plan-stream.ts";
-import { AssistantError, type Answer, type Usage } from "./providers.ts";
+import { AssistantError, type Answer } from "./providers.ts";
+import type { Tally } from "./tally.ts";
 
 export interface PageHooks {
   // Makes and opens a page with this title: null once it is open, or why not.
@@ -40,7 +42,10 @@ export interface Writing {
   title: string | null;
   sections: SectionWritten[];
   notes: string[];
-  usage: Usage | null;
+  // What the request used and what it comes to at list price, once the
+  // provider has said it: none for a sample, or for a request stopped
+  // before its end.
+  tally: Tally | null;
   error: string | null;
 }
 
@@ -54,7 +59,8 @@ export function asAssistants(made: Made): Made {
 const UNTITLED = "New page";
 
 export async function writePage(options: {
-  ask: (written: (piece: string) => void) => Promise<Answer>;
+  // The answer, and what asking for it used, priced: a sample has no tally.
+  ask: (written: (piece: string) => void) => Promise<Answer & { tally?: Tally }>;
   facts: SiteFacts;
   newId: NewId;
   hooks: PageHooks;
@@ -65,7 +71,7 @@ export async function writePage(options: {
   const { ask, facts, newId, hooks, tell, signal } = options;
   const stopped = (): boolean => signal?.aborted === true;
   const builder = new PlanBuilder(facts);
-  let writing: Writing = { phase: "asking", title: null, sections: [], notes: [], usage: null, error: null };
+  let writing: Writing = { phase: "asking", title: null, sections: [], notes: [], tally: null, error: null };
   const update = (change: Partial<Writing>): void => {
     writing = { ...writing, ...change, notes: [...builder.notes] };
     tell(writing);
@@ -145,16 +151,17 @@ export async function writePage(options: {
     }
     await tidy();
     if (stopped()) {
-      update({ phase: "stopped", usage: answer.usage, error: null });
+      update({ phase: "stopped", tally: answer.tally ?? null, error: null });
       return writing;
     }
     if (opening === null) builder.notes.push("The answer held no page.");
-    update({ phase: lost === null ? "done" : "failed", usage: answer.usage, error: lost });
+    update({ phase: lost === null ? "done" : "failed", tally: answer.tally ?? null, error: lost });
   } catch (error) {
     await steps;
     await tidy();
     const halted = stopped() || (error instanceof AssistantError && error.kind === "stopped");
-    update({ phase: halted ? "stopped" : "failed", error: halted ? null : error instanceof Error ? error.message : String(error) });
+    const tally = error instanceof AssistantError ? error.tally : null;
+    update({ phase: halted ? "stopped" : "failed", tally, error: halted ? null : error instanceof Error ? error.message : String(error) });
   }
   return writing;
 }

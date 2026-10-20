@@ -48,6 +48,15 @@
 .as-notes summary { color: var(--graphite); font-weight: 600; cursor: pointer; }
 .as-notes ul { margin: 6px 0 0; padding-left: 16px; color: var(--steel); }
 .as-notes li + li { margin-top: 4px; }
+/* What a request used and what it comes to, its figures all one width. */
+.as-used, .as-cost, .as-spent, .as-total { font-variant-numeric: tabular-nums; }
+.as-used { margin-top: 10px; }
+.as-cost { margin-top: 4px; }
+
+/* The drawer's foot: the total since the key was connected, and what an
+   estimate leaves out. */
+.as-total { color: var(--graphite); }
+.as-foot p + p { margin-top: 4px; }
 
 /* The Assistant in a block's panel (AssistantTools.tsx): the ways to write
    a text again as keys, a line for one of the person's own, and what the
@@ -67,3 +76,5 @@
 .as-suggested ul { list-style: disc; }
 .as-suggested ol { list-style: decimal; }
 .as-tool-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+/* What the request used, under the keys: the gap above it is the box's own. */
+.as-suggestion .as-spent, .as-tool-failed .as-spent { margin-top: 0; }

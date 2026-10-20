@@ -75,8 +75,10 @@ can do three things:
 - **Describe an image** of the library, from the picture itself.
 
 What the model writes is read without trust, and held to the page's schema
-like any edit. With no key, a sample written by hand goes through the same
-steps. [The Assistant](builder/src/assistant/README.md) and
+like any edit. After each request the Assistant shows the tokens used and
+estimates their cost at the provider's published list prices. With no key, a
+sample written by hand goes through the same steps.
+[The Assistant](builder/src/assistant/README.md) and
 [where the key goes](docs/decisions/assistant-key-in-memory.md).
 
 ## Why Rails

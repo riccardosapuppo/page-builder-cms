@@ -4,7 +4,7 @@
 // grows on the canvas the same way. The interface says it is a sample
 // written by hand, never a model's work. The brief is the one it answers.
 import type { Clock } from "../storage/clock.ts";
-import { AssistantError, type Answer } from "./providers.ts";
+import { AssistantError, NO_USAGE, type Answer } from "./providers.ts";
 
 export const SAMPLE_BRIEF = "An open day at the swimming club: Saturday 12 April, from 8 to 11 in the morning, at the slipway. Trial swims with a coach, hot drinks after. People book a place with a short form.";
 
@@ -63,7 +63,7 @@ export function sampleAnswer(text: string, clock: Clock, signal?: AbortSignal, p
       }
       written(text.slice(at, at + piece));
       at += piece;
-      if (at >= text.length) done({ text, usage: { input: 0, output: 0 } });
+      if (at >= text.length) done({ text, usage: NO_USAGE });
       else clock.setTimeout(next, tick);
     };
     clock.setTimeout(next, tick);
