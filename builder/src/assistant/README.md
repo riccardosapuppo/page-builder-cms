@@ -387,17 +387,47 @@ says what it used; so was an illustration the cleaner refused.
 ## What a request costs
 
 After each request the Assistant says the tokens the provider counted (in,
-cached and out) and what they come to at the model's list price. After a
-page it is said in the drawer, with the price used and the day the prices
-were read: the page's words, then a line for each kind of picture made for
-it ("4 photos, ≈ $0.16: ...", its tokens and price), then the whole; and
-each picture's own cost in the drawer's steps, as it comes in. A new site
-says the same once it is written, its direction's and its pages' words
-together, and while it is written, what it has cost so far. After a text
+cached and out) and what they come to at the model's list price. While a
+page or a new site is written, what it has cost so far grows under the
+drawer's status line, a live estimate made exact as each request ends (see
+**As it is written**, below). After a page it is said in the drawer, with
+the price used and the day the prices were read: the page's words, then a
+line for each kind of picture made for it ("4 photos, ≈ $0.16: ...", its
+tokens and price), then the whole; and each picture's own cost in the
+drawer's steps, as it comes in. A new site says the same once it is
+written, its direction's and its pages' words together. After a text
 written again or an image described, it is said in the block's panel. The
 drawer's foot keeps the total of every request since the key was
-connected, the pictures counted by their kind. That total lives in memory
-with the key, and is forgotten with it.
+connected, the pictures counted by their kind: what the providers
+counted, never an estimate. That total lives in memory with the key, and
+is forgotten with it.
+
+- **As it is written** ([`live.ts`](live.ts)). Each request of the run
+  counts from the moment it is sent:
+  - its input as the provider counted it, as soon as the provider says it:
+    Anthropic's stream does as it begins (`message_start`). OpenAI's gives
+    its count only with its last piece: until then the input is estimated
+    from the question's characters, its system words, its text and its
+    schema;
+  - its output estimated from the characters of the answer streamed so
+    far: 4 a token at first, then the ratio the run's requests that ended
+    have shown, the characters they streamed over the output tokens
+    counted for them. That ratio takes in the thinking, billed as output
+    but never streamed. The input's estimate is made the same way, at a
+    ratio of its own;
+  - a photo at its price per image, the dearest on file for its size where
+    its model has none; an illustration as the words are.
+
+  Each estimate is priced as a count is, at the model's list price for its
+  prompt's length, and the line says it: "≈ $0.0123 so far · 3,144
+  tokens in, 1,215 out · live estimate, exact as each request ends". It is
+  told a few times a second at most, and is no live region: the status
+  line stays the only one. As a request ends, the provider's count takes
+  its estimate's place. One stopped or failed before the provider counted
+  it drops its estimate: what it cost, if anything, is not known, as the
+  page's words say when its own request was stopped. Once the run is over,
+  the words above say the whole. The sample asks no model, and its line
+  says nothing is spent.
 
 - **The prices.** [`prices.ts`](prices.ts) holds the providers' list prices
   for the models the Assistant offers, as their official pages gave them on
@@ -439,6 +469,8 @@ with the key, and is forgotten with it.
   and of the total.
 - **Written for a person.** An amount is written to two figures under a
   dollar (≈ $0.021), and one under a cent says so (under $0.01 ($0.0042)).
+  A run's cost while it grows is written to four decimals (≈ $0.0123), so
+  that its figures keep their place.
 - **Updating the prices.** Read the two pages again, and the image
   generation guide's price per image, then change the rows of
   `prices.ts`, and its `PRICES_READ` to the day they were read.

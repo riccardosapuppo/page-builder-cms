@@ -7,12 +7,19 @@
 // OpenAI key keeps the image model its photos are made with; a photo
 // borrows the key and is counted; an illustration counts as one. A run
 // bound to its key asks with it alone, and with no other once it goes.
+// A run's cost as it goes: each request in flight with its estimate, its
+// input from the question until the provider says it, the provider's count
+// in its place as it ends, one stopped with none dropped; a photo at its
+// price per image meanwhile; told at most every LIVE_MS; and the cost of
+// the run shown, none for the sample.
 import { expect, test } from "vitest";
-import { FakeClock } from "../../test/fake-clock.ts";
-import { createAssistant, KEY_GONE } from "./context.tsx";
+import { FakeClock, settle } from "../../test/fake-clock.ts";
+import { createAssistant, KEY_GONE, runCost, type ShownWriting } from "./context.tsx";
 import { IDLE_MS, type ProviderId } from "./key.ts";
-import { AssistantError, type Answer, type ProviderClient, type Question, type Usage } from "./providers.ts";
-import { tallyOf } from "./tally.ts";
+import { LIVE_MS, questionChars } from "./live.ts";
+import { AssistantError, type Answer, type PhotoAnswer, type ProviderClient, type Question, type Usage } from "./providers.ts";
+import type { SiteWriting } from "./site.ts";
+import { photoTallyOf, tallyOf } from "./tally.ts";
 
 const KEY = "sk-not-a-real-key-wxyz";
 // 1,000 tokens in and 100 out: on Claude Opus 5.5, 1,000 × $4 + 100 × $20 a million, $0.006.
@@ -271,4 +278,163 @@ test("a call answered after its key was forgotten says what it used, but counts 
   answer({ text: "{}", usage: USED });
   expect((await asked).tally).toMatchObject([{ calls: 1, cost: { nano: 6_000_000 } }]);
   expect(store.getState().spent).toEqual([]);
+});
+
+// ------------------------------------------------------------ the run's cost, live
+
+// A provider of the test's own whose answers the test writes piece by
+// piece and ends when it says. Where it says so (Anthropic's way), what the
+// question used is told as the answer begins; else only with the end
+// (OpenAI's). Its photos come when the test lets each go.
+function streaming(model = "gpt-6.1-sol") {
+  const asked: Question[] = [];
+  const now = {
+    write: (_piece: string): void => undefined,
+    say: (_input: Usage): void => undefined,
+    answer: (_value: Answer): void => undefined,
+    fail: (_error: unknown): void => undefined,
+    photo: (_value: PhotoAnswer): void => undefined,
+  };
+  const client: ProviderClient = {
+    models: async () => [{ id: model, name: model }],
+    ask: (_key, question, written, _signal, early) => new Promise<Answer>((done, failed) => {
+      asked.push(question);
+      Object.assign(now, { write: written, say: (input: Usage) => early?.(input), answer: done, fail: failed });
+    }),
+    photos: {
+      model: async () => "gpt-image-2",
+      make: () => new Promise<PhotoAnswer>((done) => (now.photo = done)),
+    },
+  };
+  return { client, asked, now };
+}
+
+// A question of 8,000 characters: 2,000 tokens at four a token.
+const LONG = (model: string): Question => ({ ...QUESTION(model), system: "x".repeat(7998) });
+
+test("a run's request is in flight with its estimate as its answer streams in, its input from the question's characters; as it ends, the provider's count takes the estimate's place, and the key's total holds that count only", async () => {
+  const clock = new FakeClock();
+  const provider = streaming();
+  const store = createAssistant(clock, async () => provider.client);
+  await store.getState().connect("openai", KEY);
+  const bound = store.getState().bind()!;
+  expect(store.getState().live).toMatchObject({ run: bound.run, counted: [], flying: [], nano: 0, estimate: false });
+  const asked = store.getState().ask(LONG, () => undefined, undefined, "words", bound);
+  await settle();
+  expect(questionChars(provider.asked[0]!)).toBe(8000);
+  expect(store.getState().live).toMatchObject({ flying: [{ provider: "openai", model: "gpt-6.1-sol", kind: "words", usage: { input: 2000, output: 0 }, inputSaid: false }], estimate: true });
+  provider.now.write("x".repeat(400));
+  await clock.advance(LIVE_MS);
+  // 2,000 × $2 + 100 × $10 a million tokens: $0.005.
+  expect(store.getState().live).toMatchObject({ flying: [{ usage: { input: 2000, output: 100 } }], nano: 5_000_000 });
+  expect(store.getState().spent).toEqual([]);
+  provider.now.answer({ text: "{}", usage: USED });
+  await asked;
+  const exact = tallyOf("openai", "gpt-6.1-sol", USED);
+  expect(store.getState().live).toMatchObject({ counted: exact, flying: [], lines: exact, nano: 3_000_000, estimate: false });
+  expect(store.getState().spent).toEqual(exact);
+});
+
+test("a run's request whose provider says what the question used as its answer begins, Anthropic's, has its input exact from then on", async () => {
+  const clock = new FakeClock();
+  const provider = streaming("claude-opus-5-5");
+  const store = createAssistant(clock, async () => provider.client);
+  await store.getState().connect("anthropic", KEY);
+  const bound = store.getState().bind()!;
+  const asked = store.getState().ask(LONG, () => undefined, undefined, "words", bound);
+  await settle();
+  provider.now.say({ input: 3000, cacheRead: 1000, cacheWrite: 0, output: 1 });
+  await clock.advance(LIVE_MS);
+  expect(store.getState().live?.flying).toMatchObject([{ usage: { input: 3000, cacheRead: 1000, cacheWrite: 0, output: 0 }, inputSaid: true }]);
+  provider.now.answer({ text: "{}", usage: USED });
+  await asked;
+  expect(store.getState().live).toMatchObject({ counted: tallyOf("anthropic", "claude-opus-5-5", USED), flying: [] });
+});
+
+test("a run's request stopped with no count of the provider's drops its estimate, and is one whose cost is not known; one refused keeps what the provider counted", async () => {
+  const provider = streaming();
+  const store = createAssistant(new FakeClock(), async () => provider.client);
+  await store.getState().connect("openai", KEY);
+  const bound = store.getState().bind()!;
+  const stopped = store.getState().ask(LONG, () => undefined, undefined, "words", bound);
+  await settle();
+  provider.now.write("x".repeat(400));
+  provider.now.fail(new AssistantError("Stopped.", "stopped"));
+  await expect(stopped).rejects.toMatchObject({ kind: "stopped" });
+  expect(store.getState().live).toMatchObject({ counted: [], flying: [], nano: 0, uncounted: 1, estimate: false });
+  const refused = store.getState().ask(LONG, () => undefined, undefined, "words", bound);
+  await settle();
+  provider.now.fail(new AssistantError("The model would not write this.", "refused", USED));
+  await expect(refused).rejects.toMatchObject({ kind: "refused" });
+  expect(store.getState().live).toMatchObject({ counted: tallyOf("openai", "gpt-6.1-sol", USED), flying: [], uncounted: 1 });
+});
+
+test("a run's photo is in flight at its price per image until its count comes, then priced from its tokens; its illustration counts as words do", async () => {
+  const provider = streaming();
+  const store = createAssistant(new FakeClock(), async () => provider.client);
+  await store.getState().connect("openai", KEY);
+  const bound = store.getState().bind()!;
+  const photo = store.getState().photo({ prompt: "Rowers", size: "1024x1024", quality: "medium" }, undefined, bound);
+  await settle();
+  // GPT Image 2's price per image, square, at medium: $0.053.
+  expect(store.getState().live).toMatchObject({ flying: [{ kind: "photo", model: "gpt-image-2", each: 53_000_000 }], nano: 53_000_000, estimate: true });
+  provider.now.photo({ base64: "UklGRg==", usage: { textInput: 50, imageInput: 0, output: 1372 } });
+  await photo;
+  // 50 × $5 + 1,372 × $30 a million tokens.
+  expect(store.getState().live).toMatchObject({ counted: photoTallyOf("gpt-image-2", { textInput: 50, imageInput: 0, output: 1372 }), flying: [], nano: 41_410_000 });
+  const drawn = store.getState().ask(LONG, () => undefined, undefined, "illustration", bound);
+  await settle();
+  expect(store.getState().live?.flying).toMatchObject([{ kind: "illustration", usage: { input: 2000 } }]);
+  provider.now.answer({ text: "{}", usage: USED });
+  await drawn;
+  expect(store.getState().live?.counted.map((line) => line.kind)).toEqual(["photo", "illustration"]);
+});
+
+test("the run's cost is told at most every LIVE_MS while its answer streams in, and at once as a request begins or ends", async () => {
+  const clock = new FakeClock();
+  const provider = streaming();
+  const store = createAssistant(clock, async () => provider.client);
+  await store.getState().connect("openai", KEY);
+  const bound = store.getState().bind()!;
+  const told: number[] = [];
+  store.subscribe((state, before) => {
+    if (state.live !== before.live) told.push(clock.now());
+  });
+  const asked = store.getState().ask(LONG, () => undefined, undefined, "words", bound);
+  await settle();
+  // A hundred pieces over half a second, five every 25 ms.
+  for (let step = 0; step < 20; step++) {
+    for (let piece = 0; piece < 5; piece++) provider.now.write("abcd");
+    await clock.advance(25);
+  }
+  expect(told).toEqual([0, 250, 500]);
+  expect(store.getState().live?.flying[0]?.usage.output).toBe(100);
+  provider.now.answer({ text: "{}", usage: USED });
+  await asked;
+  expect(told).toEqual([0, 250, 500, 500]);
+});
+
+test("the cost of the run being shown, a page's or a new site's: its own, live, the same while nothing changes; none for the sample, for a run no longer kept, or with nothing shown", async () => {
+  const provider = streaming();
+  const store = createAssistant(new FakeClock(), async () => provider.client);
+  await store.getState().connect("openai", KEY);
+  const page = store.getState().bind()!;
+  expect(runCost(store.getState())).toBeNull();
+  const writing: ShownWriting = { phase: "writing", title: null, sections: [], pictures: [], notes: [], tally: null, error: null };
+  store.getState().setWriting({ ...writing, run: page.run });
+  expect(runCost(store.getState())).toMatchObject({ run: page.run, counted: [], flying: [] });
+  expect(runCost(store.getState())).toBe(runCost(store.getState()));
+  // The sample: no run of a key's.
+  store.getState().setWriting({ ...writing, sample: true });
+  expect(runCost(store.getState())).toBeNull();
+  // A new site's run, shown in place of the page's.
+  const site = store.getState().bind()!;
+  const shown: SiteWriting = { phase: "asking", direction: null, steps: { direction: "doing", style: "waiting", header: "waiting", footer: "waiting" }, frame: { header: null, footer: null }, pages: [], notes: [], tally: null, error: null, before: null };
+  store.getState().setWriting(null);
+  store.getState().setSite({ ...shown, run: site.run });
+  expect(runCost(store.getState())?.run).toBe(site.run);
+  // The page's run shown again: its cost is no longer kept.
+  store.getState().setSite(null);
+  store.getState().setWriting({ ...writing, run: page.run });
+  expect(runCost(store.getState())).toBeNull();
 });

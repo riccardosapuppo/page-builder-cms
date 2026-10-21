@@ -6,11 +6,13 @@
 // the key is asked for. Before writing, a switch makes pictures: photos
 // with an OpenAI key, at the quality chosen, its price per photo said
 // beside it; illustrations with an Anthropic key. While the page is
-// written, each picture's progress is in the list of steps, and its cost
-// once it is made. After a page, the tokens it used and what they come to
-// at the model's list price are said (../assistant/tally.ts), a line for
-// each kind of picture, then the whole; the drawer's foot keeps the total
-// since the key was connected, and says it is an estimate.
+// written, what it has cost so far grows under the status line, a live
+// estimate made exact as each request ends (../assistant/live.ts), each
+// picture's progress is in the list of steps, and its cost once it is
+// made. After a page, the tokens it used and what they come to at the
+// model's list price are said (../assistant/tally.ts), a line for each
+// kind of picture, then the whole; the drawer's foot keeps the total since
+// the key was connected, and says it is an estimate.
 //
 // Two choices: a page for this site, or a new site (../assistant/site.ts),
 // said plainly before anything is asked: a new style, header and footer,
@@ -18,13 +20,15 @@
 // twice, and beside it is said what its pictures may cost at most, the
 // site's budget, and that its words cost a few cents with most models,
 // said exactly after. Its steps are grouped by page, the site's own first
-// (direction, style, header, footer), with the running cost, then the
-// final one; then what becomes of it, each asked: the home page made the
-// site's, everything published, the old style put back, and in the
-// browser demo Start over with the example site.
+// (direction, style, header, footer), its cost so far growing under its
+// status line as a page's does, then the final one; then what becomes of
+// it, each asked: the home page made the site's, everything published, the
+// old style put back, and in the browser demo Start over with the example
+// site.
 import { Fragment, useCallback, useEffect, useId, useRef, useState, type CSSProperties, type RefObject } from "react";
-import { useAssistant, useAssistantStore, type AssistantStore, type ShownSite, type ShownWriting, type SiteOutcome } from "../assistant/context.tsx";
+import { runCost, useAssistant, useAssistantStore, type AssistantStore, type ShownSite, type ShownWriting, type SiteOutcome } from "../assistant/context.tsx";
 import { PROVIDER_NAMES, PROVIDERS, type ProviderId } from "../assistant/key.ts";
+import { liveWords, SAMPLE_SPENDS } from "../assistant/live.ts";
 import { illustrationMaker, photoMaker } from "../assistant/makers.ts";
 import { PICTURE_KINDS, type PictureKind } from "../assistant/pictures.ts";
 import { PLAN_MADE_MOST } from "../assistant/plan.ts";
@@ -456,7 +460,7 @@ function Brief() {
     void run(assistant, (signal, tell) => writePage({
       ask: (written) => assistant.getState().ask((chosen) => pageQuestion(chosen, brief, words, pictures ? kind : null), written, signal, "words", bound),
       facts, newId: env.newId, hooks: pageHooks(env, session, library), tell, signal, ...(maker ? { pictures: maker } : {}),
-    }), { model: name });
+    }), { model: name, run: bound.run });
   };
 
   // A new site, once asked twice; not before the site's style is read,
@@ -496,7 +500,7 @@ function Brief() {
       newId: env.newId,
       tell,
       signal,
-    }), { model: name });
+    }), { model: name, run: bound.run });
   };
 
   const hint = library === null ? "This editor has no library to keep pictures in."
@@ -643,6 +647,18 @@ const PICTURE_ICONS: Readonly<Record<PictureWritten["state"], "clock" | "spinner
   waiting: "clock", making: "spinner", placing: "spinner", placed: "check", failed: "warning", stopped: "warning",
 };
 
+// What the run has cost so far, under the status line while the run goes
+// (../assistant/live.ts): the requests that ended as the provider counted
+// them, those in flight estimated, told a few times a second at most. No
+// live region: the status line stays the only one, so a screen reader is
+// not read every figure. The sample's says nothing is spent.
+function LiveCost({ sample = false }: { sample?: boolean }) {
+  const cost = useAssistant(runCost);
+  if (sample) return <p className="hint as-live">{SAMPLE_SPENDS}</p>;
+  if (cost === null || (cost.lines.length === 0 && cost.flying.length === 0)) return null;
+  return <p className="hint as-live">{liveWords(cost)}</p>;
+}
+
 // A page's sections as they land, each with its pictures under it.
 function SectionSteps({ writing }: { writing: Writing }) {
   return (
@@ -700,6 +716,7 @@ function Progress({ writing }: { writing: ShownWriting }) {
       <p className={writing.phase === "failed" ? "error as-line" : "as-line"} role="status">
         {moving && <Icon name="spinner" className="i spin" />}{writing.phase === "failed" && <Icon name="error" />}<span>{line}</span>
       </p>
+      {moving && <LiveCost sample={writing.sample === true} />}
       {writing.sections.length > 0 && <ol className="as-sections"><SectionSteps writing={writing} /></ol>}
       {!moving && writing.notes.length > 0 && (
         <details className="as-notes">
@@ -798,14 +815,6 @@ function partWords(site: ShownSite, kind: "header" | "footer"): string {
   return site.steps[kind] === "done" ? "draft" : "";
 }
 
-// What a new site's steps have cost so far, as the person waits.
-function soFarWords(tally: Tally): string | null {
-  if (tally.length === 0) return null;
-  const priced = tally.filter((line) => line.cost.price !== null);
-  if (priced.length === 0) return "So far: no list price on file for these models; only their tokens are counted.";
-  return `So far, ${about(priced.reduce((nano, line) => nano + (line.cost.price === null ? 0 : line.cost.nano), 0))}${priced.length < tally.length ? " for what has a list price on file" : ""}.`;
-}
-
 function SiteProgress({ site }: { site: ShownSite }) {
   const assistant = useAssistantStore();
   const moving = siteGoing(site);
@@ -840,6 +849,7 @@ function SiteProgress({ site }: { site: ShownSite }) {
       <p className={site.phase === "failed" ? "error as-line" : "as-line"} role="status">
         {moving && <Icon name="spinner" className="i spin" />}{site.phase === "failed" && <Icon name="error" />}<span>{siteLine(site)}</span>
       </p>
+      {moving && <LiveCost />}
       <ol className="as-groups">
         <li className="as-group">
           <h4 className="as-group-title">The site{direction ? <span className="as-group-path">{direction.name}</span> : null}</h4>
@@ -878,7 +888,6 @@ function SiteProgress({ site }: { site: ShownSite }) {
           <ul>{notes.map((note, index) => <li key={index}>{note}</li>)}</ul>
         </details>
       )}
-      {moving && soFarWords(all) && <p className="hint as-so-far">{soFarWords(all)}</p>}
       {!moving && words.length > 0 && (
         <>
           <p className="hint as-used">{usedWords(words)}</p>

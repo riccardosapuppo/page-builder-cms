@@ -13,7 +13,8 @@
 //   photo made for a page from the tokens it used (./tally.ts); and GPT
 //   Image 2's price per image, by quality and size, as the image
 //   generation guide gives it, which the drawer shows before a photo is
-//   made. No other model has a price per image on file.
+//   made, and counts a photo at while it is being made (./live.ts). No
+//   other model has a price per image on file.
 // A model the tables do not hold has no list price on file, whatever its
 // name is like: a dated snapshot has a price only where a page gives that
 // snapshot one, and neither page prices a snapshot as its model.
@@ -263,6 +264,15 @@ export function imagePrice(model: string, quality: ImageQuality, size: ImageSize
 // The models with a price per image on file.
 export const PER_IMAGE_MODELS: readonly string[] = [...new Set(PER_IMAGE_TABLE.map(([id]) => id))];
 
+// The dearest price per image on file for `size`, of any model at any
+// quality, or null where none is: what a photo of a model with no price per
+// image counts at while it is being made (./live.ts), until its tokens are
+// counted.
+export function dearestPerImage(size: ImageSize): Nano | null {
+  const prices = [...PER_IMAGE.values()].map((sizes) => sizes[size]);
+  return prices.length === 0 ? null : Math.max(...prices);
+}
+
 // ------------------------------------------------------------ written out
 
 const HUNDREDTH_OF_A_CENT = 100_000;
@@ -302,6 +312,14 @@ export function about(nano: Nano): string {
 // image, "$0.27" for five, "$1.05".
 export function dollars(nano: Nano): string {
   return `$${decimals(nano, 2)}`;
+}
+
+// An amount still growing, as the drawer writes a run's cost while the run
+// goes (./live.ts): to a hundredth of a cent, a half going up, its four
+// decimals always written, so that its figures stand still as it grows
+// ("$0.0123", "$1.2500").
+export function liveDollars(nano: Nano): string {
+  return `$${decimals(nearest(Math.max(0, nano), HUNDREDTH_OF_A_CENT), 4)}`;
 }
 
 // A price as the pages write it, per million tokens: "$2", "$0.10",

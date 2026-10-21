@@ -19,13 +19,17 @@
 // hostile one refused; each into the CMS's library with its alt text, then
 // onto the page as a step of its own; Stop stops those being made, and so
 // do another page opened and the key forgotten, none asked after, nor
-// with the key connected next. A new site from a gym's brief: the two
-// choices, the new site said plainly and its Write asked twice, the cost
-// of its pictures said before; its direction, its palette held to AA and
-// applied through Site style's own call, the old style kept; a header and
-// a footer of its own, the old ones kept as versions; three pages with
-// photos within the site's budget, the cost said after; published when
-// asked and met by a visitor, then the old style put back in one click.
+// with the key connected next. While they are made, what the page has cost
+// so far is under the status line: its words as counted, the photos in
+// flight at their price per image, the drawings estimated from their
+// questions; the sample's says nothing is spent. A new site from a gym's
+// brief: the two choices, the new site said plainly and its Write asked
+// twice, the cost of its pictures said before; its direction, its palette
+// held to AA and applied through Site style's own call, the old style
+// kept; a header and a footer of its own, the old ones kept as versions;
+// three pages with photos within the site's budget, the cost said after;
+// published when asked and met by a visitor, then the old style put back
+// in one click.
 import type { Page, Route } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { block } from "./helpers/canvas.ts";
@@ -627,8 +631,13 @@ test("Stop stops the photos still being made: nothing more lands, and the drawer
   // The sections are in; two photos are being made, the third waits.
   await expect(box.getByRole("heading", { name: "Making pictures" })).toBeVisible({ timeout: 30_000 });
   await expect(box.locator(".as-picture-making")).toHaveCount(2);
+  // What the page has cost so far, under the status line: its words as
+  // counted ($0.0047875), and the two photos being made at their price per
+  // image, at medium quality ($0.041 the landscape one, $0.053 the square).
+  await expect(box.locator(".as-line + .as-live")).toHaveText("≈ $0.0988 so far · 900 tokens in, 400 out · 2 photos at their price per image · live estimate, exact as each request ends");
   await box.getByRole("button", { name: "Stop" }).click();
   await expect(box.getByRole("heading", { name: "Stopped" })).toBeVisible();
+  await expect(box.locator(".as-live")).toHaveCount(0);
   answer();
   await expect(box.locator(".as-picture")).toHaveText([/stopped$/, /stopped$/, /stopped$/]);
   await expect(pageSections(page).first().locator(":scope > picture.sw-picture")).toHaveCount(0);
@@ -691,6 +700,10 @@ test("Forget key while illustrations are drawn: those in flight stop, none is as
   await box.getByLabel("What is the page for?").fill("A rowing club.");
   await box.getByRole("button", { name: "Write the page" }).click();
   await expect(box.locator(".as-picture-making")).toHaveCount(2, { timeout: 30_000 });
+  // What it has cost so far: the page's words as counted, and the two
+  // drawings asked, their input estimated from their questions, nothing
+  // of them out yet.
+  await expect(box.locator(".as-live")).toHaveText(/^≈ \$0\.\d{4} so far · [\d,]+ tokens in, 567 out · live estimate, exact as each request ends$/);
   // The key forgotten, another provider's connected, while two are being drawn.
   await box.getByRole("button", { name: "Forget key" }).click();
   await box.getByRole("radio", { name: "OpenAI" }).click();
@@ -734,8 +747,10 @@ test("with no key, the sample written by hand builds its page the same way, sect
   await startOn(page, request, "Before the sample");
   const box = await assistant(page);
   await box.getByRole("button", { name: "Build the sample page" }).click();
+  await expect(box.locator(".as-line + .as-live")).toHaveText("A sample written by hand: nothing is spent.");
   await expect(box.getByRole("status").filter({ hasText: "4 sections on “Open day”" })).toBeVisible({ timeout: 20_000 });
   await expect(box.getByText("A sample written by hand: no model was asked.")).toBeVisible();
+  await expect(box.locator(".as-live")).toHaveCount(0);
   await expect(pageSections(page)).toHaveCount(4);
 });
 

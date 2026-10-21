@@ -7,13 +7,17 @@
 // (./tally.ts): kept in memory like the key, and forgotten with it. A
 // page's run, or a site's, is bound to the key it began with (Bound): its
 // requests go with that key alone, and stop once it is forgotten or
-// replaced. One per editor, made by the
-// shell (../editor/App.tsx) or a test, which gives the clock and, for a
-// test, the providers.
+// replaced. What the run being written has cost so far is kept too, live
+// (./live.ts): its requests that ended as the provider counted them, and
+// an estimate for each one in flight, told at most every LIVE_MS while
+// answers stream in; runCost reads it for the run shown. One per editor,
+// made by the shell (../editor/App.tsx) or a test, which gives the clock
+// and, for a test, the providers.
 import { createContext, useContext, type ReactNode } from "react";
 import { createStore, useStore, type StoreApi } from "zustand";
 import type { Clock } from "../storage/clock.ts";
 import { createKeyKeeper, type ForgetReason, type Held, type KeyKeeper, type ProviderId } from "./key.ts";
+import { createLiveBook, photoPrice, questionChars, type RunCost } from "./live.ts";
 import type { ImageQuality, ImageSize } from "./prices.ts";
 import { AssistantError, providerClient, type Answer, type ModelChoice, type PhotoAnswer, type ProviderClient, type Question, type Usage } from "./providers.ts";
 import type { SiteWriting } from "./site.ts";
@@ -21,8 +25,9 @@ import { addTallies, photoTallyOf, tallyOf, type Tally, type TallyKind } from ".
 import type { Writing } from "./write.ts";
 
 // The page being written as the drawer shows it: a sample written by hand
-// says so, a model's work names the model.
-export type ShownWriting = Writing & { sample?: boolean; model?: string };
+// says so, a model's work names the model and its run (Bound.run), whose
+// cost is kept live.
+export type ShownWriting = Writing & { sample?: boolean; model?: string; run?: number };
 
 // A new site being written as the drawer shows it (./site.ts), naming the
 // model; and what became of the person's choices once it is over: the home
@@ -34,20 +39,22 @@ export interface SiteOutcome {
   styleBack: boolean;
   said: string | null;
 }
-export type ShownSite = SiteWriting & { model?: string; outcome?: SiteOutcome };
+export type ShownSite = SiteWriting & { model?: string; outcome?: SiteOutcome; run?: number };
 
 // A run's key, bound when the run begins (bind): its provider, the
 // keeper's ticket for it, the model chosen and the image model. A request
 // made with it (ask, photo) is lent that key alone: once the key is
 // forgotten or replaced, `gone` aborts, and every request made with it is
 // refused, never sent with another key, nor counted toward another key's
-// total.
+// total. `run` names the run, whose cost is kept live while its requests
+// are answered (AssistantState.live).
 export interface Bound {
   provider: ProviderId;
   ticket: number;
   model: string;
   imageModel: string | null;
   gone: AbortSignal;
+  run: number;
 }
 
 // What a request made with a key no longer kept is told.
@@ -72,25 +79,34 @@ export interface AssistantState {
   // The page or the site being written can be stopped.
   running: AbortController | null;
   // Every request since the key was kept: its tokens and what they come to
-  // at list price. Emptied when a key is kept and when it is forgotten.
+  // at list price, as the provider counted them, never an estimate.
+  // Emptied when a key is kept and when it is forgotten.
   spent: Tally;
+  // What the run bound last has cost so far (./live.ts): its requests that
+  // ended, as the provider counted them, and those in flight, each with its
+  // estimate; told at most every LIVE_MS while answers stream in. Null
+  // before any run is bound.
+  live: RunCost | null;
   // Checks the key with its provider (the models it may use) and keeps it
   // only then.
   connect(provider: ProviderId, key: string): Promise<boolean>;
   forget(): void;
   choose(model: string): void;
   // The key kept now, with its models, bound for a run; null with none.
+  // The run's cost starts at nothing (`live`).
   bind(): Bound | null;
   // Asks the chosen model, or a run's own (`bound`); the key is lent for
   // the call and nothing else. The question may take a moment to make (an
   // image made smaller). What the call used comes back priced (tally), and
   // is added to `spent` while its key is the one kept; an answer refused
   // or cut short says it in its error's tally. An illustration drawn for a
-  // page is counted as one (`kind`).
+  // page is counted as one (`kind`). A run's call is in its live cost while
+  // it is answered, estimated, then as counted.
   ask(question: (model: string) => Question | Promise<Question>, written: (piece: string) => void, signal?: AbortSignal, kind?: TallyKind, bound?: Bound): Promise<Answer & { tally: Tally }>;
   // Makes one photo with the key's image model, or a run's own (`bound`),
   // the key lent for the call; what it used comes back priced, and is
-  // added to `spent` while its key is the one kept.
+  // added to `spent` while its key is the one kept. A run's photo is in
+  // its live cost at its price per image while it is made.
   photo(ask: { prompt: string; size: ImageSize; quality: ImageQuality }, signal?: AbortSignal, bound?: Bound): Promise<PhotoAnswer & { tally: Tally }>;
   setWriting(writing: ShownWriting | null): void;
   setSite(site: ShownSite | null): void;
@@ -103,10 +119,24 @@ export interface AssistantState {
 // watch(page): see KeyKeeper.watch; the editor calls it in an effect.
 export type AssistantStore = StoreApi<AssistantState> & { watch(page: EventTarget): () => void };
 
+// The cost of the run being shown, a page's or a new site's, as it grows:
+// its requests that ended, as the provider counted them, and the estimates
+// of those in flight (./live.ts, RunCost). Null for the sample, which asks
+// no model, for a run whose cost is no longer kept (another was bound
+// since), and with nothing shown. The same object until the cost changes,
+// so a component may select it as it is.
+export function runCost(state: Pick<AssistantState, "live" | "writing" | "site">): RunCost | null {
+  const run = (state.site ?? state.writing)?.run;
+  return run !== undefined && state.live?.run === run ? state.live : null;
+}
+
 export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<ProviderClient> = providerClient): AssistantStore {
   const keeper: KeyKeeper = createKeyKeeper(clock);
   // The runs bound to the key kept: each told when it goes.
   const bindings = new Set<AbortController>();
+  // The cost of the run bound last, as its requests are answered.
+  let runs = 0;
+  const book = createLiveBook(clock, (live) => store.setState({ live }));
   const store = createStore<AssistantState>()((set, get) => ({
     held: null,
     forgotten: null,
@@ -119,6 +149,7 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     site: null,
     running: null,
     spent: [],
+    live: null,
     async connect(provider, key) {
       const given = key.trim();
       if (given === "") {
@@ -151,7 +182,9 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
       if (held === null || model === null) return null;
       const going = new AbortController();
       bindings.add(going);
-      return { provider: held.provider, ticket: keeper.ticket(), model, imageModel, gone: going.signal };
+      runs += 1;
+      book.begin(runs);
+      return { provider: held.provider, ticket: keeper.ticket(), model, imageModel, gone: going.signal, run: runs };
     },
     async ask(question, written, signal, kind = "words", bound) {
       const { model, held } = get();
@@ -173,11 +206,27 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
         if (keeper.ticket() === ticket) set((state) => ({ spent: addTallies(state.spent, tally) }));
         return tally;
       };
+      // A run's call is in its cost while it is answered: estimated from
+      // its question and what has streamed, the input as the provider says
+      // it, then as the provider counted it, or dropped where it counted
+      // nothing (./live.ts).
+      const live = bound ? book.start(bound.run, { provider: using.provider, model: asked.model, kind: kind === "photo" ? "words" : kind, chars: questionChars(asked) }) : null;
+      const streamed = live === null ? written : (piece: string) => {
+        live.wrote(piece);
+        written(piece);
+      };
       try {
-        const answer = await keeper.lend((key) => client.ask(key, asked, written, signal), ticket);
-        return { ...answer, tally: counted(answer.usage) };
+        const answer = await keeper.lend((key) => client.ask(key, asked, streamed, signal, live === null ? undefined : (input) => live.said(input)), ticket);
+        const tally = counted(answer.usage);
+        live?.end(tally);
+        return { ...answer, tally };
       } catch (error) {
-        if (error instanceof AssistantError && error.usage !== null) throw new AssistantError(error.message, error.kind, error.usage, counted(error.usage));
+        if (error instanceof AssistantError && error.usage !== null) {
+          const tally = counted(error.usage);
+          live?.end(tally);
+          throw new AssistantError(error.message, error.kind, error.usage, tally);
+        }
+        live?.end(null);
         throw error;
       }
     },
@@ -192,9 +241,19 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
       if (!client.photos) throw new AssistantError("This key makes no photos.", "model");
       const photos = client.photos;
       if (keeper.ticket() !== ticket) throw new AssistantError(KEY_GONE, "key");
-      const answer = await keeper.lend((key) => photos.make(key, { model, ...ask }, signal), ticket);
+      // A run's photo is in its cost while it is made, at its price per
+      // image, then as the provider counted it (./live.ts).
+      const live = bound ? book.start(bound.run, { provider: using.provider, model, kind: "photo", each: photoPrice(model, ask.quality, ask.size) }) : null;
+      let answer: PhotoAnswer;
+      try {
+        answer = await keeper.lend((key) => photos.make(key, { model, ...ask }, signal), ticket);
+      } catch (error) {
+        live?.end(null);
+        throw error;
+      }
       const tally = answer.usage === null ? [] : photoTallyOf(model, answer.usage);
       if (keeper.ticket() === ticket) set((state) => ({ spent: addTallies(state.spent, tally) }));
+      live?.end(answer.usage === null ? null : tally);
       return { ...answer, tally };
     },
     setWriting: (writing) => set({ writing }),

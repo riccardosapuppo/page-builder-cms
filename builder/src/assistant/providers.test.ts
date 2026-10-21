@@ -3,12 +3,16 @@
 // used, read from each SDK's usage object, a refusal and a cut answer, which
 // still say what they used, which models are offered and in which order,
 // and a provider's error said in a sentence with the key taken out.
+// Anthropic's question's own count told as its stream begins, on
+// Anthropic's SDK itself too, fed the events as the API sends them;
+// OpenAI's, only with its end.
 // OpenAI's photos: one Images API request with the newest GPT Image model,
 // at the size and quality asked, as a WebP, and the tokens it used.
+import Anthropic from "@anthropic-ai/sdk";
 import { expect, test } from "vitest";
 import { anthropic, usageOf as usageOfAnthropic, versionOf, type AnthropicLike } from "./anthropic.ts";
 import { imageUsageOf, offered, openai, PHOTO_COMPRESSION, photoModelOf, usageOf as usageOfOpenAI, type OpenAILike } from "./openai.ts";
-import { AssistantError, said, type Question } from "./providers.ts";
+import { AssistantError, said, type Question, type Usage } from "./providers.ts";
 
 const KEY = "sk-test-not-a-real-key-9z8y";
 const QUESTION: Question = {
@@ -38,16 +42,21 @@ function anthropicClient(answer: { stop_reason?: string; pieces?: string[]; erro
     messages: {
       stream(body, options) {
         asked.push({ key, body, signal: options?.signal });
-        const listeners: Array<(delta: string) => void> = [];
+        const listeners: Array<[string, (value: never) => void]> = [];
+        const emit = (event: string, value: unknown) => {
+          for (const [name, listener] of listeners) if (name === event) (listener as (value: unknown) => void)(value);
+        };
         return {
-          on(_event, listener) {
-            listeners.push(listener);
+          on(event: string, listener: (value: never) => void) {
+            listeners.push([event, listener]);
             return this;
           },
           async finalMessage() {
             if (answer.error) throw answer.error;
+            // As the stream begins, the question's own count: its output, one token so far.
+            emit("streamEvent", { type: "message_start", message: { usage: { input_tokens: 120, cache_read_input_tokens: 50, cache_creation_input_tokens: null, output_tokens: 1 } } });
             const pieces = answer.pieces ?? ["{\"title\":", "\"Open day\"}"];
-            for (const piece of pieces) listeners.forEach((listener) => listener(piece));
+            for (const piece of pieces) emit("text", piece);
             return {
               id: "msg_1", type: "message", role: "assistant", model: "the-model", stop_sequence: null, stop_details: null, container: null,
               stop_reason: answer.stop_reason ?? "end_turn",
@@ -116,6 +125,50 @@ test("Anthropic: one streamed Messages request, adaptive thinking, the answer he
   }]);
 });
 
+test("Anthropic: the question's own count is told as the stream begins, before a word of the answer, its output counted at the end", async () => {
+  const told: string[] = [];
+  const answer = await anthropic(anthropicClient().make).ask(KEY, QUESTION, (piece) => told.push(`piece ${piece}`), undefined, (input) => told.push(`input ${JSON.stringify(input)}`));
+  expect(told).toEqual([
+    "input {\"input\":120,\"cacheRead\":50,\"cacheWrite\":0,\"output\":0}",
+    "piece {\"title\":",
+    "piece \"Open day\"}",
+  ]);
+  expect(answer.usage).toEqual({ input: 120, cacheRead: 50, cacheWrite: 0, output: 34 });
+});
+
+// A response streamed as the API streams it, each event sent when the test
+// says: the server-sent events the SDK itself reads.
+function streamed() {
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  const body = new ReadableStream<Uint8Array>({ start: (given) => void (controller = given) });
+  const encoder = new TextEncoder();
+  return {
+    answering: async () => new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } }),
+    send: (event: string, data: unknown) => controller!.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)),
+    close: () => controller!.close(),
+  };
+}
+
+test("Anthropic, on its SDK itself: message_start's usage is told the moment it comes, the answer not begun; the whole count once the stream ends", async () => {
+  const stream = streamed();
+  const make = (key: string): AnthropicLike => new Anthropic({ apiKey: key, fetch: stream.answering, maxRetries: 0 });
+  const pieces: string[] = [];
+  let early: (input: Usage) => void = () => undefined;
+  const said = new Promise<Usage>((done) => (early = done));
+  const asked = anthropic(make).ask(KEY, QUESTION, (piece) => pieces.push(piece), undefined, (input) => early(input));
+  stream.send("message_start", { type: "message_start", message: { id: "msg_1", type: "message", role: "assistant", model: "the-model", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 3000, cache_read_input_tokens: 1000, cache_creation_input_tokens: 0, output_tokens: 1 } } });
+  expect(await said).toEqual({ input: 3000, cacheRead: 1000, cacheWrite: 0, output: 0 });
+  expect(pieces).toEqual([]);
+  stream.send("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } });
+  stream.send("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "{\"title\":\"Open day\"}" } });
+  stream.send("content_block_stop", { type: "content_block_stop", index: 0 });
+  stream.send("message_delta", { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null }, usage: { output_tokens: 567 } });
+  stream.send("message_stop", { type: "message_stop" });
+  stream.close();
+  expect(await asked).toEqual({ text: "{\"title\":\"Open day\"}", usage: { input: 3000, cacheRead: 1000, cacheWrite: 0, output: 567 } });
+  expect(pieces).toEqual(["{\"title\":\"Open day\"}"]);
+});
+
 test("Anthropic: a refusal and an answer cut short are said, with the tokens they used", async () => {
   const used = { input: 120, cacheRead: 50, cacheWrite: 0, output: 34 };
   await expect(anthropic(anthropicClient({ stop_reason: "refusal" }).make).ask(KEY, QUESTION, () => undefined)).rejects.toMatchObject({ kind: "refused", usage: used });
@@ -136,13 +189,15 @@ test("Anthropic: the models offered take adaptive thinking and a schema (4.6 and
   expect([versionOf("claude-opus-4-6"), versionOf("claude-sonnet-5"), versionOf("claude-haiku-4-5-20251001"), versionOf("claude-mythos-preview")]).toEqual([4.6, 5, 4.5, null]);
 });
 
-test("OpenAI: one streamed Chat Completions request with a strict schema; the usage comes in the last piece", async () => {
+test("OpenAI: one streamed Chat Completions request with a strict schema; the usage comes in the last piece, and nothing of it before", async () => {
   const { asked, make } = openaiClient();
   const pieces: string[] = [];
-  const answer = await openai(make).ask(KEY, QUESTION, (piece) => pieces.push(piece));
+  const early: Usage[] = [];
+  const answer = await openai(make).ask(KEY, QUESTION, (piece) => pieces.push(piece), undefined, (input) => early.push(input));
   // prompt_tokens, 40 of them cached_tokens and 30 cache_write_tokens, and completion_tokens, the reasoning in them.
   expect(answer).toEqual({ text: "{\"title\":\"Open day\"}", usage: { input: 20, cacheRead: 40, cacheWrite: 30, output: 12 } });
   expect(pieces).toEqual(["{\"title\":", "\"Open day\"}"]);
+  expect(early).toEqual([]);
   expect(asked[0]).toEqual({
     key: KEY,
     body: {

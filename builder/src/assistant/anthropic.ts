@@ -13,7 +13,10 @@
 // comes: input_tokens (not read from the cache, not written to it),
 // cache_read_input_tokens, cache_creation_input_tokens and output_tokens,
 // the thinking included. The Assistant asks for no cache: a write, should
-// one come, is priced as the five-minute cache's.
+// one come, is priced as the five-minute cache's. The stream's first event,
+// message_start, already holds the input's three, before a word of the
+// answer: they are told as it comes (`early`), for the run's cost as it
+// grows (./live.ts); its output so far, a token or so, is left to the end.
 import Anthropic from "@anthropic-ai/sdk";
 import { AssistantError, said, type ModelChoice, type ProviderClient, type Question, type Usage } from "./providers.ts";
 
@@ -27,6 +30,7 @@ export interface AnthropicLike {
   messages: {
     stream(body: Anthropic.MessageStreamParams, options?: { signal?: AbortSignal | undefined; maxRetries?: number }): {
       on(event: "text", listener: (delta: string) => void): unknown;
+      on(event: "streamEvent", listener: (event: Anthropic.MessageStreamEvent) => void): unknown;
       finalMessage(): Promise<Anthropic.Message>;
     };
   };
@@ -68,7 +72,7 @@ export function anthropic(make: (key: string) => AnthropicLike = client): Provid
       }
     },
 
-    async ask(key, question: Question, written, signal) {
+    async ask(key, question: Question, written, signal, early) {
       try {
         const content: Anthropic.ContentBlockParam[] = [];
         if (question.image) content.push({ type: "image", source: { type: "base64", media_type: question.image.mediaType as Anthropic.Base64ImageSource["media_type"], data: question.image.base64 } });
@@ -81,6 +85,11 @@ export function anthropic(make: (key: string) => AnthropicLike = client): Provid
           output_config: { format: { type: "json_schema", schema: question.schema }, effort: question.effort },
           messages: [{ role: "user", content }],
         }, question.once ? { signal, maxRetries: 0 } : { signal });
+        if (early) {
+          stream.on("streamEvent", (event) => {
+            if (event.type === "message_start") early({ ...usageOf(event.message.usage), output: 0 });
+          });
+        }
         stream.on("text", (delta) => written(delta));
         const message = await stream.finalMessage();
         const usage = usageOf(message.usage);

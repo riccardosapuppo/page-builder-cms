@@ -12,12 +12,17 @@
 // the new site said plainly first; what its pictures may cost at most said
 // before it is written; its Write asked twice, Cancel asking nothing; its
 // steps grouped by page, its cost after, then what becomes of it, each
-// asked: the home page, Publish all, and the old style put back.
+// asked: the home page, Publish all, and the old style put back. While a
+// page or a new site is written, what it has cost so far grows under the
+// status line, in no live region of its own, and goes once it is written;
+// the sample's says nothing is spent.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { describedText, editorKit } from "../../test/editor-kit.tsx";
-import { AssistantError, type ModelChoice, type ProviderClient, type Usage } from "../assistant/providers.ts";
+import { questionChars } from "../assistant/live.ts";
+import { liveDollars } from "../assistant/prices.ts";
+import { AssistantError, type Answer, type ModelChoice, type ProviderClient, type Question, type Usage } from "../assistant/providers.ts";
 import type { SiteStyle } from "../storage/adapter.ts";
 import { AssistantPanel } from "./AssistantPanel.tsx";
 import { createMediaService, type MediaAdapter, type MediaService } from "./library/service.ts";
@@ -514,13 +519,116 @@ test("a header whose save had its answer lost, and could not be put back either:
   expect(notes).toContain("The new header was not put back as it was: the storage did not answer. It may lead to pages that were not made; its versions hold the one it replaced, as “Before the new site”.");
 });
 
-test("the sample written by hand says no model was asked, and adds nothing to any total", async () => {
+test("the sample written by hand says nothing is spent while it is built, then that no model was asked, and adds nothing to any total", async () => {
   const kit = setUp();
   fireEvent.click(screen.getByRole("button", { name: "Build the sample page" }));
+  await act(async () => {
+    await kit.clock.advance(300);
+  });
+  expect(document.querySelector(".as-line + .as-live")?.textContent).toBe("A sample written by hand: nothing is spent.");
   await act(async () => {
     await kit.clock.advance(60_000);
   });
   expect(screen.getByText("A sample written by hand: no model was asked.")).toBeTruthy();
+  expect(document.querySelector(".as-live")).toBeNull();
   expect(screen.queryByText(/tokens in/)).toBeNull();
   expect(foot()).toBeNull();
+});
+
+// ------------------------------------------------------------ the cost, live
+
+test("while a page is written, its cost grows under the status line, a live estimate in no live region of its own; once written, the words as before", async () => {
+  const held = { asked: [] as Question[], write: (_piece: string): void => undefined, end: (): void => undefined };
+  const client: ProviderClient = {
+    models: async () => [{ id: "gpt-6.1-sol", name: "gpt-6.1-sol" }],
+    ask: (_key, question, written) => new Promise<Answer>((done) => {
+      held.asked.push(question);
+      held.write = written;
+      held.end = () => done({ text: PLAN, usage: USED });
+    }),
+  };
+  const kit = editorKit({ document: KIT_DOC, session: { makePage: async () => ({ ok: true, id: 1 }), isOpen: (id) => id === 1 }, providers: async () => client });
+  kit.render(<AssistantPanel />);
+  await connect(kit);
+  fireEvent.change(screen.getByLabelText("What is the page for?"), { target: { value: "An open day at the club." } });
+  fireEvent.click(screen.getByRole("button", { name: "Write the page" }));
+  await act(async () => {
+    await new Promise((done) => setTimeout(done, 20));
+  });
+  // Asked: its input from the question's characters, at four a token; nothing out yet.
+  const tokensIn = Math.ceil(questionChars(held.asked[0]!) / 4);
+  const line = () => document.querySelector(".as-progress .as-live");
+  const said = (out: number) => `≈ ${liveDollars(tokensIn * 2000 + out * 10_000)} so far · ${tokensIn.toLocaleString("en-US")} tokens in, ${out} out · live estimate, exact as each request ends`;
+  expect(line()?.textContent).toBe(said(0));
+  // Under the status line, which stays the only live region: the line is none.
+  expect(line()?.previousElementSibling?.getAttribute("role")).toBe("status");
+  expect([line()?.getAttribute("role"), line()?.getAttribute("aria-live")]).toEqual([null, null]);
+  expect(within(document.querySelector<HTMLElement>(".as-progress")!).getAllByRole("status")).toHaveLength(1);
+  // The answer streams in, its output grows: told within a quarter of a second.
+  await act(async () => {
+    held.write(PLAN.slice(0, 100));
+    await kit.clock.advance(250);
+  });
+  expect(line()?.textContent).toBe(said(25));
+  // Written: the line goes, and the words say what the provider counted, as before.
+  await act(async () => {
+    held.write(PLAN.slice(100));
+    held.end();
+    await new Promise((done) => setTimeout(done, 20));
+  });
+  expect(screen.getByRole("heading", { level: 3, name: "Written" })).toBeTruthy();
+  expect(line()).toBeNull();
+  expect(screen.getByText("Used 3,144 tokens in, 1,024 of them cached, and 1,415 out, on your key.")).toBeTruthy();
+});
+
+test("while a new site is written, its cost grows under its status line, in place of its So far: the requests that ended exact, the one in flight estimated, its input as the provider said it", async () => {
+  const calls: string[] = [];
+  const held = { release: (): void => undefined };
+  const client: ProviderClient = {
+    models: async () => [{ id: "claude-opus-5-5", name: "Claude Opus 5.5" }],
+    ask: async (_key, question, written, _signal, early) => {
+      const title = /This page: “([^”]+)”/.exec(question.system)?.[1] ?? "Page";
+      const text = question.name === "site_direction" ? DIRECTION : pagePlan(title);
+      if (title !== "Classes") {
+        written(text);
+        return { text, usage: USED };
+      }
+      early?.({ input: 2000, cacheRead: 0, cacheWrite: 0, output: 1 });
+      written(text.slice(0, 80));
+      await new Promise<void>((done) => (held.release = done));
+      written(text.slice(80));
+      return { text, usage: USED };
+    },
+  };
+  let kitRef: ReturnType<typeof editorKit> | null = null;
+  const kit = editorKit({ document: KIT_DOC, session: siteSession(() => kitRef!, calls), providers: async () => client });
+  kitRef = kit;
+  kit.ui.getState().setSiteStyle(STYLE_NOW);
+  kit.render(<AssistantPanel />);
+  await act(async () => {
+    await kit.assistant.getState().connect("anthropic", "sk-ant-not-a-real-key");
+  });
+  fireEvent.click(screen.getByRole("radio", { name: "A new site" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Draw illustrations for the site" }));
+  fireEvent.change(screen.getByLabelText("What is the site for?"), { target: { value: "A modern fitness gym." } });
+  fireEvent.click(screen.getByRole("button", { name: "Write the new site" }));
+  fireEvent.click(within(screen.getByRole("group", { name: "Write the new site" })).getByRole("button", { name: "Write the new site" }));
+  await act(async () => {
+    await new Promise((done) => setTimeout(done, 50));
+    await kit.clock.advance(250);
+  });
+  expect(screen.getByRole("heading", { level: 3, name: "Writing the pages · new site" })).toBeTruthy();
+  // The direction and Home, as counted: 2,120 × $4 + 1,024 × $0.20 + 1,415 × $20 a million tokens each.
+  // Classes: its 2,000 tokens in as said, its 80 characters out at the ratio the two have shown.
+  const out = Math.ceil((80 * 1415 * 2) / (DIRECTION.length + pagePlan("Home").length));
+  const nano = 36_984_800 * 2 + 2000 * 4000 + out * 20_000;
+  expect(document.querySelector(".as-site .as-line + .as-live")?.textContent).toBe(`≈ ${liveDollars(nano)} so far · 8,288 tokens in, ${(2830 + out).toLocaleString("en-US")} out · live estimate, exact as each request ends`);
+  expect(document.querySelector(".as-so-far")).toBeNull();
+  await act(async () => {
+    held.release();
+    await new Promise((done) => setTimeout(done, 50));
+  });
+  expect(screen.getByRole("heading", { level: 3, name: "Written · new site" })).toBeTruthy();
+  expect(document.querySelector(".as-live")).toBeNull();
+  expect(document.querySelector(".as-used")?.textContent).toBe("Used 12,576 tokens in, 4,096 of them cached, and 5,660 out, on your key.");
 });

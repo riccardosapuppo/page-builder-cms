@@ -2,14 +2,15 @@
 // write them, each call's tokens priced kind by kind in whole nano-dollars,
 // Claude Haiku 5.5's dearer price past 100,000 tokens and no price past
 // OpenAI's 272,000, no price for a model the tables do not hold, amounts
-// written for a person to read, every model the drawer offers priced or
-// said to have no price, GPT Image 2's price per image as the guide gives
-// it, and the tables read again before they are 120 days old.
+// written for a person to read, an amount still growing to four decimals,
+// every model the drawer offers priced or said to have no price, GPT Image
+// 2's price per image as the guide gives it and the dearest for each size,
+// and the tables read again before they are 120 days old.
 import { expect, test } from "vitest";
 import { anthropic, type AnthropicLike } from "./anthropic.ts";
 import { PROVIDERS, type ProviderId } from "./key.ts";
 import { openai, type OpenAILike } from "./openai.ts";
-import { about, costAt, dayWords, dollars, IMAGE_PRICES, IMAGE_QUALITIES, imagePrice, listPrice, PER_IMAGE_MODELS, perImage, perMillion, perToken, PRICE_PAGES, PRICES_DAY, PRICES_READ, pricedModels } from "./prices.ts";
+import { about, costAt, dayWords, dearestPerImage, dollars, IMAGE_PRICES, IMAGE_QUALITIES, imagePrice, listPrice, liveDollars, PER_IMAGE_MODELS, perImage, perMillion, perToken, PRICE_PAGES, PRICES_DAY, PRICES_READ, pricedModels } from "./prices.ts";
 import type { Usage } from "./providers.ts";
 import { addTallies, estimateWords, tallyOf, type Tally } from "./tally.ts";
 
@@ -206,6 +207,23 @@ test("an amount is written to the cent from a dollar, to two figures under one, 
   ];
   expect(amounts.map(([nano]) => about(nano))).toEqual(amounts.map(([, words]) => words));
   expect([dayWords(PRICES_READ), dayWords("2027-02-03"), PRICES_DAY]).toEqual(["20 Oct 2026", "3 Feb 2027", "20 Oct 2026"]);
+});
+
+test("an amount still growing is written to a hundredth of a cent, its four decimals kept, a half going up", () => {
+  const amounts: Array<[number, string]> = [
+    [0, "$0.0000"],
+    [49_999, "$0.0000"],
+    [50_000, "$0.0001"],
+    [12_345_678, "$0.0123"],
+    [18_492_400, "$0.0185"],
+    [1_250_000_000, "$1.2500"],
+    [12_345_678_901, "$12.3457"],
+  ];
+  expect(amounts.map(([nano]) => liveDollars(nano))).toEqual(amounts.map(([, words]) => words));
+});
+
+test("the dearest price per image on file for each size, whatever its quality: what a photo of a model with none counts at while it is made", () => {
+  expect((["1024x1024", "1024x1536", "1536x1024"] as const).map(dearestPerImage)).toEqual([211_000_000, 165_000_000, 165_000_000]);
 });
 
 // What each provider lists for a key that may use everything, as the pages

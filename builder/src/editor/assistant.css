@@ -53,6 +53,10 @@
 .as-line { display: flex; align-items: flex-start; gap: 6px; margin: 2px 0 0; font-size: 13px; line-height: 19px; color: var(--graphite); }
 .as-line.error { color: var(--err); }
 .as-line .i { flex: none; width: 16px; height: 16px; margin-top: 1.5px; }
+/* What the run has cost so far, under the status line while it goes, in
+   line with its words past the spinner; its figures one width, so they
+   stand still as they grow. */
+.as-live { margin-top: 2px; padding-left: 22px; font-variant-numeric: tabular-nums; }
 .as-sections { display: grid; gap: 2px; margin: 8px 0 0; padding: 0; list-style: none; }
 .as-sections li { display: flex; align-items: center; gap: 8px; min-height: 26px; font-size: 13px; line-height: 18px; }
 .as-sections li .i { flex: none; width: 16px; height: 16px; color: var(--live); }
@@ -109,7 +113,6 @@
 .as-page-failed > .as-group-title, .as-page-stopped > .as-group-title { color: var(--steel); }
 .as-swatches { display: inline-flex; gap: 2px; }
 .as-swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--c); box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); }
-.as-so-far { margin-top: 10px; font-variant-numeric: tabular-nums; }
 
 /* What becomes of a new site once it is written: each choice a key, asked. */
 .as-offer { margin-top: 12px; padding-top: 10px; box-shadow: inset 0 1px 0 var(--alloy); }

@@ -13,7 +13,9 @@
 // Each call hands back the tokens it used (Usage), read from the provider's
 // own count in its SDK's usage object, as it bills them: input at the base
 // price, input read from the prompt cache, input written to it, and output,
-// thinking and reasoning included. ./tally.ts prices them.
+// thinking and reasoning included. ./tally.ts prices them. A question's
+// input is told before its answer where the provider says it then
+// (Anthropic's), for the run's cost as it grows (./live.ts).
 //
 // A provider that makes photos (OpenAI's, ./pictures.ts) has `photos`: the
 // image model a key would make them with, and one photo, with the tokens
@@ -88,8 +90,11 @@ export interface PhotoAnswer {
 export interface ProviderClient {
   models(key: string, signal?: AbortSignal): Promise<ModelChoice[]>;
   // Streams the answer's text to `written` piece by piece, then gives the
-  // whole of it.
-  ask(key: string, question: Question, written: (piece: string) => void, signal?: AbortSignal): Promise<Answer>;
+  // whole of it. A provider that says what the question used before the
+  // answer is written (Anthropic's stream, as it begins) tells it to
+  // `early`: the input, read from the cache and written to it, the output
+  // none, as the answer's whole count comes with its end.
+  ask(key: string, question: Question, written: (piece: string) => void, signal?: AbortSignal, early?: (input: Usage) => void): Promise<Answer>;
   // The photos of a provider that makes them: the image model the key
   // would make them with (null: none it may use), and one photo.
   photos?: {
