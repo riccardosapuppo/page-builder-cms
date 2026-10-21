@@ -12,9 +12,11 @@
 // an estimate for each one in flight, told at most every LIVE_MS while
 // answers stream in; runCost reads it for the run shown. So are whether
 // the run window is open (../editor/AssistantRun.tsx), and the pages the
-// run has written, in memory, as its preview draws them. One per editor,
-// made by the shell (../editor/App.tsx) or a test, which gives the clock
-// and, for a test, the providers.
+// run has written, in memory, as its preview draws them; and the pages
+// whose last changes were not saved as their run ended (PendingPage), kept
+// whatever run comes next, until they are saved after all or opened. One
+// per editor, made by the shell (../editor/App.tsx) or a test, which gives
+// the clock and, for a test, the providers.
 import { createContext, useContext, type ReactNode } from "react";
 import { createStore, useStore, type StoreApi } from "zustand";
 import type { PageDocument } from "../shared/document.ts";
@@ -25,7 +27,7 @@ import type { ImageQuality, ImageSize } from "./prices.ts";
 import { AssistantError, providerClient, type Answer, type ModelChoice, type PhotoAnswer, type ProviderClient, type Question, type Usage } from "./providers.ts";
 import type { SiteWriting } from "./site.ts";
 import { addTallies, photoTallyOf, tallyOf, type Tally, type TallyKind } from "./tally.ts";
-import type { Writing } from "./write.ts";
+import { unsavedNote, type Writing } from "./write.ts";
 
 // The page being written as the drawer shows it: a sample written by hand
 // says so, a model's work names the model and its run (Bound.run), whose
@@ -71,6 +73,46 @@ export interface WrittenPage {
   document: PageDocument;
 }
 
+// A page written aside whose last changes were not saved as its run ended
+// (../editor/assistant-aside.ts): kept in this tab, its own autosave alive
+// (it sends again by itself a save whose answer was lost) and closing the
+// tab asking first, whatever run comes next; until a save of it gets
+// through after all, or the page is opened, where the editor takes it as a
+// step of its own and saves it (../editor/App.tsx, openPage).
+export interface PendingPage {
+  id: number;
+  title: string;
+  // The page as this tab holds it: what its last save was to hold, and
+  // what was changed on it since (a new site's buttons led elsewhere).
+  document(): PageDocument;
+  // The revision of the draft its last save left, or the page's as made.
+  revision(): number;
+  // Changed as this tab holds it, and tried again: whether it is saved.
+  change(document: PageDocument): Promise<boolean>;
+  // Its save on its way answered, then none sent any more: the draft read
+  // next is the last its saves leave. It is kept still, and closing the tab
+  // still asks first.
+  settle(): Promise<void>;
+  // Its autosave stopped, and closing the tab no longer asks about it.
+  letGo(): void;
+}
+
+// What a page's run says once its last changes are no longer only in this
+// tab, in place of the note that said they were not saved.
+export const SETTLED_WORDS = {
+  saved: "Its last changes were saved after all.",
+  opened: "Its last changes, not saved before, were put back on it as it was opened, for the editor to save.",
+} as const;
+
+// A page's run once its last changes are saved after all, or put back on
+// the page opened: no longer marked, its note saying so.
+function settledWriting<W extends Writing>(writing: W, how: keyof typeof SETTLED_WORDS): W {
+  if (writing.unsaved === undefined) return writing;
+  const said = unsavedNote(writing.unsaved);
+  const { unsaved: _settled, ...rest } = writing;
+  return { ...rest, notes: writing.notes.map((note) => (note === said ? SETTLED_WORDS[how] : note)) } as W;
+}
+
 export interface AssistantState {
   held: Held | null;
   // Why the last key went, until another is kept.
@@ -106,6 +148,9 @@ export interface AssistantState {
   // it was shown last (showPage): what the window's preview draws. Emptied
   // as a run begins.
   written: readonly WrittenPage[];
+  // The pages whose last changes were not saved, by id (PendingPage): kept
+  // as runs begin and end, until each is released.
+  pending: ReadonlyMap<number, PendingPage>;
   // Checks the key with its provider (the models it may use) and keeps it
   // only then.
   connect(provider: ProviderId, key: string): Promise<boolean>;
@@ -134,8 +179,15 @@ export interface AssistantState {
   // A page of the run, as it is now: in place of the one with its id, or
   // after the others.
   showPage(page: WrittenPage): void;
+  // A page whose last changes were not saved, kept; or kept anew.
+  keepPending(page: PendingPage): void;
+  // The page of `id`, kept no more: saved after all, or opened, which its
+  // run's summary says, where it is the one shown. Given back for the
+  // caller to let go; null where none is kept.
+  releasePending(id: number, how: keyof typeof SETTLED_WORDS): PendingPage | null;
   // A run starts, to be stopped with stop(); its end lets it go. The
-  // pages written before it go.
+  // pages written before it go from the preview; those kept with their
+  // last changes not saved stay.
   begin(): AbortSignal;
   stop(): void;
   end(): void;
@@ -177,6 +229,7 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     live: null,
     runWindow: false,
     written: [],
+    pending: new Map(),
     async connect(provider, key) {
       const given = key.trim();
       if (given === "") {
@@ -290,6 +343,24 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
       const at = state.written.findIndex((one) => one.id === page.id);
       return { written: at === -1 ? [...state.written, page] : state.written.map((one, index) => (index === at ? page : one)) };
     }),
+    keepPending: (page) => set((state) => ({ pending: new Map(state.pending).set(page.id, page) })),
+    releasePending(id, how) {
+      const { pending, writing, site, written } = get();
+      const page = pending.get(id);
+      if (page === undefined) return null;
+      const left = new Map(pending);
+      left.delete(id);
+      set({
+        pending: left,
+        // Said in its run's summary, where that run is the one shown: a
+        // new site's page by its id, a page's run by the page it wrote.
+        ...(site !== null && site.pages.some((one) => one.id === id)
+          ? { site: { ...site, pages: site.pages.map((one) => (one.id === id && one.writing !== null ? { ...one, writing: settledWriting(one.writing, how) } : one)) } }
+          : {}),
+        ...(writing !== null && written.some((one) => one.id === id) ? { writing: settledWriting(writing, how) } : {}),
+      });
+      return page;
+    },
     begin() {
       get().running?.abort();
       const running = new AbortController();

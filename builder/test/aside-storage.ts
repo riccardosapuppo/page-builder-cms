@@ -3,14 +3,19 @@
 // address, ids counted from `first`, an address in `taken` refused as the
 // CMS refuses it; each draft at a revision, a save taken only at it, as the
 // CMS takes one; every save of the page at `elsewhere` met by a conflict, as
-// if another tab saved it each time. `made` hears of each page made.
+// if another tab saved it each time; every save of a page at an address in
+// `refused` refused outright, as the CMS refuses a request it forbids (a
+// 403), until the test takes the address out. `made` hears of each page
+// made.
+import { StorageError } from "../src/storage/adapter.ts";
 import type { PageDocument } from "../src/shared/document.ts";
 import type { Session } from "../src/editor/session.tsx";
 
 const T = "2026-10-21T08:00:00.000Z";
 
-export function asideStorage(options: { first?: number; taken?: readonly string[]; elsewhere?: string; made?: (page: { id: number; title: string; slug: string }) => void } = {}) {
+export function asideStorage(options: { first?: number; taken?: readonly string[]; elsewhere?: string; refused?: readonly string[]; made?: (page: { id: number; title: string; slug: string }) => void } = {}) {
   const taken = new Set(options.taken ?? []);
+  const refused = new Set(options.refused ?? []);
   const drafts = new Map<number, { title: string; slug: string; revision: number; document: PageDocument }>();
   let next = options.first ?? 1;
   const session: Pick<Session, "makePageAside" | "drafts" | "cmsOrigin"> = {
@@ -28,6 +33,7 @@ export function asideStorage(options: { first?: number; taken?: readonly string[
       getDraft: async (id) => ({ revision: drafts.get(id)!.revision, document: drafts.get(id)!.document, lastSaveId: null, updatedAt: T }),
       async saveDraft(id, save) {
         const draft = drafts.get(id)!;
+        if (refused.has(draft.slug)) throw new StorageError({ kind: "refused", status: 403, code: "forbidden", message: "Saving is not allowed here." });
         if (draft.slug === options.elsewhere) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: draft.revision + 1, lastSaveId: null } };
         if (save.revision !== draft.revision) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: draft.revision, lastSaveId: null } };
         drafts.set(id, { ...draft, revision: draft.revision + 1, document: save.document });
@@ -37,5 +43,5 @@ export function asideStorage(options: { first?: number; taken?: readonly string[
   };
   // The page made at `slug`, as its draft is saved now.
   const draftAt = (slug: string): PageDocument | undefined => [...drafts.values()].find((draft) => draft.slug === slug)?.document;
-  return { session, drafts, draftAt };
+  return { session, drafts, draftAt, refused };
 }

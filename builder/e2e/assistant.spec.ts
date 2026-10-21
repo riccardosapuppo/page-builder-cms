@@ -12,7 +12,10 @@
 // their own, a plan's button whose address the brief does not give leading
 // to the top of the page, said. A key the provider refuses is said and not
 // kept; Forget key forgets it; with no key, the sample builds its page the
-// same way; the drawer and the run window pass axe. In a block's panel, a
+// same way, and where the CMS refuses its saves, its last changes are said
+// not saved and kept in the tab, Open the page putting them on it as one
+// step the editor saves once the CMS takes saves again; the drawer and the
+// run window pass axe. In a block's panel, a
 // heading is written again and an image of the library described, each
 // shown before it is taken, with what it used, and taken as one step of the
 // Assistant's. Pictures made for a page: OpenAI's photos with GPT Image 2
@@ -847,6 +850,46 @@ test("with no key, the sample written by hand builds its page the same way, sect
   await openWritten(page);
   await expect(page.getByRole("button", { name: /^Switch page\. Open: Open day/ })).toBeVisible();
   await expect(pageSections(page)).toHaveCount(4);
+});
+
+test.describe("the CMS refusing the saves of the page written aside", () => {
+  test.use({ allowConsole: /status of 403 \(Forbidden\)/ });
+
+  test("its last changes are said not saved and kept in this tab; Open the page puts them on it as one step, which the editor saves once the CMS takes saves again", async ({ page, request }) => {
+    await startOn(page, request, "Before the refusals");
+    // Every save of a draft refused, as the CMS refuses a request it forbids, until the test lets them through.
+    let refusing = true;
+    let refused = 0;
+    await page.route("**/api/pages/*/draft", (route) => {
+      if (!refusing || route.request().method() !== "PUT") return route.fallback();
+      refused += 1;
+      return route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: "forbidden", message: "Saving is not allowed right now." }) });
+    });
+    const box = await assistant(page);
+    await box.getByRole("button", { name: "Build the sample page" }).click();
+    const run = runWindow(page);
+    await expect(run.getByRole("status")).toHaveText("4 sections on “Open day”. Its last changes were not saved: open the page to try again.", { timeout: 20_000 });
+    expect(refused).toBeGreaterThan(0);
+    await run.getByText(/left out$/).click();
+    await expect(run.getByText("Its last changes were not saved: the CMS refused them: Saving is not allowed right now. Open it to try again; they are kept in this tab until then.")).toBeVisible();
+    // The preview has them all; the editor is still on its own page.
+    await expect(run.getByText("Preview of “Open day”, 4 sections")).toBeVisible();
+    await expect(pageSections(page)).toHaveCount(1);
+
+    // The CMS takes saves again: the page, opened, takes the Assistant's changes, and the editor saves them.
+    refusing = false;
+    await openWritten(page);
+    await expect(page.getByRole("button", { name: /^Switch page\. Open: Open day/ })).toBeVisible();
+    await expect(pageSections(page)).toHaveCount(4);
+    await expect(page.getByText("The Assistant's last changes to “Open day”, not saved before, are back on the page, to be saved.")).toBeVisible();
+    await expect(page.locator(".topbar .save-state")).toHaveText("Saved");
+    const id = Number(new URL(page.url()).searchParams.get("page"));
+    const draft = await draftOf(request, id);
+    expect(draft.document.sections).toHaveLength(4);
+    // One step in History, which Undo would take back to the page as it was made.
+    await page.locator(".topbar").getByRole("button", { name: "History", exact: true }).click();
+    await expect(page.getByRole("complementary", { name: "History", exact: true }).locator(".hist-what")).toHaveText(["Put back the Assistant's changes not saved before"]);
+  });
 });
 
 // On a phone, the keyboard up while the brief is written takes the bar's

@@ -109,9 +109,19 @@ function siteFacts(session: Session, media: ReadonlyMap<string, MediaItem>, brie
 }
 
 // What the pages of a run are written with here: aside, with the editor's
-// clock, each shown to the run window's preview as it grows.
+// clock, each shown to the run window's preview as it grows; one whose last
+// changes were not saved kept in the Assistant's state, which outlives the
+// run (../assistant/context.tsx, pending).
 function aside(assistant: AssistantStore, session: Session, clock: AsideOptions["clock"], library: AsideOptions["library"]): AsideOptions {
-  return { session, clock, library, show: (page) => assistant.getState().showPage(page) };
+  return {
+    session, clock, library,
+    show: (page) => assistant.getState().showPage(page),
+    pending: {
+      get: (id) => assistant.getState().pending.get(id),
+      keep: (page) => assistant.getState().keepPending(page),
+      saved: (id) => void assistant.getState().releasePending(id, "saved"),
+    },
+  };
 }
 
 // One run of the writer, its state shown in the drawer and in the run

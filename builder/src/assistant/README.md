@@ -365,12 +365,30 @@ new site's, is written aside:
   after a pause, one save on its way at a time, a save whose answer is lost
   sent again. At the page's end, however it comes (written, stopped,
   failed), its saves are flushed, and the autosave let go once the page is
-  saved. A flush that does not end saved is said in the notes ("Its last
-  changes were not saved: ..."), the page marked so; one whose answer was
-  lost goes on being sent until it is kept. Until the autosave is let go,
-  closing the tab while the page's edits are only here asks first, as for
-  the page open. A new site's clean-up comes after its pages' ends, and
-  reads their drafts as saved.
+  saved. Until the autosave is let go, closing the tab while the page's
+  edits are only here asks first, as for the page open. A new site's
+  clean-up comes after its pages' ends, and reads their drafts as saved.
+- **Kept in this tab when its last save fails.** A flush that does not end
+  saved (refused, saved somewhere else, no answer) is said in the notes
+  ("Its last changes were not saved: ... Open it to try again; they are
+  kept in this tab until then."), and in the status line, the page marked
+  so. The page is kept as the run left it (`pending` in
+  [`context.tsx`](context.tsx)), whatever run comes next: its autosave
+  alive, closing the tab asking first, and Publish all not offered while
+  it is kept. A save whose answer was lost goes on being sent: saved after
+  all, the page is let go, its mark goes, and its note says so; refused
+  again, or met by another save, it is kept still. A new site's clean-up
+  changes a kept page as this tab holds it, and tries again. However the
+  page is opened (Open the page, the page switch, anything else), the
+  editor takes it in ([`../editor/App.tsx`](../editor/App.tsx), openPage):
+  its save on its way answered and none sent after, its draft read; where
+  another save moved that draft since the Assistant's last, the draft is
+  kept as a version first ("Before the Assistant's page"); then the
+  Assistant's page goes on it as one step of History ("Put back the
+  Assistant's changes not saved before"), which the editor's autosave
+  saves as any edit, and the page is let go. Before written aside, the
+  sections sat in the open editor, whose own autosave kept them; now
+  nothing the run wrote is lost because a save of it failed.
 - **Shown as it grows** in the run window's preview, four times a second
   at most.
 
@@ -418,9 +436,10 @@ behind it, inert:
   stays, to show what stays and what it cost.
 - **Once over** it stays open, saying how the run ended: Done closes it;
   Open the page, or Open the home page for a new site (the page planned
-  home, else the first page made), opens it in the editor and closes it.
-  Closing it then asks nothing. The drawer keeps the summary and the new
-  site's offers.
+  home, else the first page made), opens it in the editor and closes it;
+  a page whose last changes were not saved is taken in then, as written
+  above. Closing it then asks nothing. The drawer keeps the summary and
+  the new site's offers.
 - **On a phone's window** it is the whole window, Progress and Preview a
   switch apart.
 

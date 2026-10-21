@@ -3,21 +3,26 @@
 // its address or the next free one; each command applied to its document in
 // memory, shown to the preview as it grows, a few times a second at most;
 // saved by an autosave of its own after its pause, and flushed at the
-// page's end, then let go; a refusal said, nothing changed; a flush that
-// does not end saved said, one whose answer was lost sent again until it is
-// saved. Through ../assistant/write.ts, a run stopped midway keeps what was
-// made, saved as the page's draft. Closing the tab while a page's edits are
-// only here asks first, until its autosave is let go.
+// page's end, then let go; a refusal said, nothing changed. A page whose
+// last changes are not saved as it ends (refused, saved somewhere else, no
+// answer) is said and kept as this tab holds it, its autosave alive and
+// closing the tab asking first: one whose answer was lost is sent again by
+// itself, and let go once saved after all, kept still if that save is
+// refused or meets another; a change of it (a new site's buttons led
+// elsewhere) is tried again; settled, its save on its way is answered and
+// none goes after. Through ../assistant/write.ts, a run stopped midway
+// keeps what was made, saved as the page's draft. Closing the tab while a
+// page's edits are only here asks first, until its autosave is let go.
 // @vitest-environment jsdom
-import { expect, test } from "vitest";
+import { afterEach, expect, test } from "vitest";
 import { FakeClock } from "../../test/fake-clock.ts";
-import type { WrittenPage } from "../assistant/context.tsx";
+import type { PendingPage, WrittenPage } from "../assistant/context.tsx";
 import { writePage } from "../assistant/write.ts";
 import { AssistantError } from "../assistant/providers.ts";
 import { makeInsert, makeSetPage } from "../document/commands.ts";
 import type { Block, PageDocument } from "../shared/document.ts";
 import { StorageError, type DraftSave } from "../storage/adapter.ts";
-import { asideHooks, asideSiteHooks, SHOW_MS } from "./assistant-aside.ts";
+import { asideHooks, asideSiteHooks, KEPT_HERE, SHOW_MS, type PendingPages } from "./assistant-aside.ts";
 import { emptySession, type Session } from "./session.tsx";
 import { createUiStore } from "./ui-store.ts";
 
@@ -25,13 +30,14 @@ const T = "2026-10-21T08:00:00.000Z";
 
 // The storage: pages made at free addresses, their drafts at revisions,
 // each save taken at the draft's revision; the next saves answered as the
-// test says: kept, refused as a conflict, or with no answer at all.
+// test says: kept, refused as a conflict, refused outright (a 403), or
+// with no answer at all.
 function storage(taken: string[] = []) {
   const slugs = new Set(taken);
   const drafts = new Map<number, { revision: number; document: PageDocument }>();
   const asked: string[] = [];
   const saves: Array<{ id: number; revision: number; sections: string[] }> = [];
-  const answers: Array<"conflict" | "lost"> = [];
+  const answers: Array<"conflict" | "lost" | "refused"> = [];
   let next = 10;
   const session: Pick<Session, "makePageAside" | "drafts" | "cmsOrigin"> = {
     cmsOrigin: "http://127.0.0.1:3900",
@@ -51,6 +57,7 @@ function storage(taken: string[] = []) {
         saves.push({ id, revision: save.revision, sections: save.document.sections.map((section) => section.props.label ?? "") });
         const answer = answers.shift();
         if (answer === "lost") throw new StorageError({ kind: "unknown", cause: "network", status: null, message: "The network failed." });
+        if (answer === "refused") throw new StorageError({ kind: "refused", status: 403, code: "forbidden", message: "Saving is not allowed here." });
         const draft = drafts.get(id)!;
         if (answer === "conflict" || save.revision !== draft.revision) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: draft.revision + 1, lastSaveId: null } };
         drafts.set(id, { revision: draft.revision + 1, document: save.document });
@@ -61,6 +68,36 @@ function storage(taken: string[] = []) {
   return { session, drafts, asked, saves, answers };
 }
 
+// Where the pages whose last changes were not saved are kept, as the
+// Assistant's state keeps them (../assistant/context.tsx): those saved
+// after all heard of. Every one still kept is let go after each test, so
+// that none of them asks about a tab closed in the next.
+const registries: Array<Map<number, PendingPage>> = [];
+function registry() {
+  const kept = new Map<number, PendingPage>();
+  const saved: number[] = [];
+  registries.push(kept);
+  const pending: PendingPages = {
+    get: (id) => kept.get(id),
+    keep: (page) => void kept.set(page.id, page),
+    saved: (id) => {
+      kept.delete(id);
+      saved.push(id);
+    },
+  };
+  return { kept, saved, pending };
+}
+afterEach(() => {
+  for (const kept of registries.splice(0)) for (const page of kept.values()) page.letGo();
+});
+
+// Whether closing the tab now asks first.
+const closing = () => {
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+};
+
 const section = (id: string, label: string): Block => ({
   id, type: "section", props: { label }, style: { base: {} },
   children: [{ id: `${id}-c`, type: "column", props: {}, style: { base: {} }, children: [{ id: `${id}-h`, type: "heading", props: { level: 2, text: label }, style: { base: {} }, children: [] }] }],
@@ -69,14 +106,17 @@ const section = (id: string, label: string): Block => ({
 function set(taken: string[] = []) {
   const clock = new FakeClock(Date.UTC(2026, 9, 21, 8));
   const kept = storage(taken);
+  const held = registry();
   const shown: WrittenPage[] = [];
-  const hooks = asideHooks({ session: kept.session, clock, library: null, show: (page) => shown.push(page) });
+  const hooks = asideHooks({ session: kept.session, clock, library: null, show: (page) => shown.push(page), pending: held.pending });
   const add = (id: string, label: string) => {
     const doc = hooks.document();
     return hooks.apply(makeInsert(doc, section(id, label), { parentId: null, index: doc.sections.length }));
   };
-  return { clock, kept, shown, hooks, add };
+  return { clock, kept, held, shown, hooks, add };
 }
+
+const labels = (document: PageDocument) => document.sections.map((one) => one.props.label);
 
 test("a page made aside, at its address or the next free one; each command applied to its document in memory, shown to the preview as it grows, a few times a second at most", async () => {
   const { clock, kept, shown, hooks, add } = set(["open-day"]);
@@ -87,7 +127,7 @@ test("a page made aside, at its address or the next free one; each command appli
   // Shown at once as it is made, empty.
   expect(shown.map((page) => [page.id, page.title, page.document.sections.length])).toEqual([[11, "Open day", 0]]);
   expect([add("s1", "Hero"), add("s2", "Book")]).toEqual([null, null]);
-  expect(hooks.document().sections.map((one) => one.props.label)).toEqual(["Hero", "Book"]);
+  expect(labels(hooks.document())).toEqual(["Hero", "Book"]);
   // The two that came within SHOW_MS, shown once, together.
   expect(shown).toHaveLength(1);
   await clock.advance(SHOW_MS);
@@ -99,7 +139,7 @@ test("a page made aside, at its address or the next free one; each command appli
 });
 
 test("saved through an autosave of its own, after its pause; flushed at the page's end and let go, no timer left", async () => {
-  const { clock, kept, hooks, add } = set();
+  const { clock, kept, held, hooks, add } = set();
   await hooks.open("Open day");
   add("s1", "Hero");
   // Nothing goes before the pause.
@@ -113,6 +153,8 @@ test("saved through an autosave of its own, after its pause; flushed at the page
   expect(kept.saves).toEqual([{ id: 11, revision: 0, sections: ["Hero"] }, { id: 11, revision: 1, sections: ["Hero", "Book"] }]);
   expect(kept.drafts.get(11)).toMatchObject({ revision: 2, document: { description: "Trial swims.", sections: [{ props: { label: "Hero" } }, { props: { label: "Book" } }] } });
   expect(clock.pending).toBe(0);
+  // Saved: nothing kept.
+  expect(held.kept.size).toBe(0);
 });
 
 test("a command the page refuses, or one not made, is said, and changes nothing; a page that cannot be made is said, and so is one with no free address", async () => {
@@ -134,34 +176,114 @@ test("a command the page refuses, or one not made, is said, and changes nothing;
   expect(full.kept.asked).toEqual(["gym", "gym-2", "gym-3", "gym-4", "gym-5"]);
 });
 
-test("an end that does not end saved is said: the page saved somewhere else; no answer, the save then sent again by itself until it is kept, and let go", async () => {
-  const elsewhere = set();
-  await elsewhere.hooks.open("Open day");
-  elsewhere.add("s1", "Hero");
-  elsewhere.kept.answers.push("conflict");
-  expect(await elsewhere.hooks.end!()).toBe("the page was saved somewhere else meanwhile.");
-  expect(elsewhere.clock.pending).toBe(0);
+test("a page whose last save is refused as it ends is said and kept as this tab holds it: its autosave alive, closing the tab asking first, nothing sent again by itself; changed (a new site's buttons led elsewhere), it is tried again, and once saved let go", async () => {
+  const { clock, kept, held, hooks, add } = set();
+  await hooks.open("Open day");
+  add("s1", "Hero");
+  kept.answers.push("refused");
+  expect(await hooks.end!()).toBe(`the CMS refused them: Saving is not allowed here. ${KEPT_HERE}`);
+  expect(KEPT_HERE).toBe("Open it to try again; they are kept in this tab until then.");
+  const page = held.kept.get(11)!;
+  expect([page.id, page.title, labels(page.document()), page.revision()]).toEqual([11, "Open day", ["Hero"], 0]);
+  expect(page.document()).toBe(hooks.document());
+  expect(closing()).toBe(true);
+  // A refusal stays one until something changes: nothing goes by itself.
+  await clock.advance(60_000);
+  expect(kept.saves).toHaveLength(1);
+  expect(held.kept.has(11)).toBe(true);
+  // Changed as this tab holds it: tried again at once, saved, and let go.
+  expect(await page.change({ ...page.document(), description: "Trial swims." })).toBe(true);
+  expect(kept.drafts.get(11)).toMatchObject({ revision: 1, document: { description: "Trial swims.", sections: [{ props: { label: "Hero" } }] } });
+  expect(held.saved).toEqual([11]);
+  expect(held.kept.size).toBe(0);
+  expect(closing()).toBe(false);
+  expect(clock.pending).toBe(0);
+});
 
+test("a page saved somewhere else as it ends is said and kept too, closing the tab asking first, never sent again over the other save", async () => {
+  const { clock, kept, held, hooks, add } = set();
+  await hooks.open("Open day");
+  add("s1", "Hero");
+  kept.answers.push("conflict");
+  expect(await hooks.end!()).toBe(`the page was saved somewhere else meanwhile. ${KEPT_HERE}`);
+  expect(labels(held.kept.get(11)!.document())).toEqual(["Hero"]);
+  expect(closing()).toBe(true);
+  await clock.advance(60_000);
+  expect(kept.saves).toHaveLength(1);
+  expect(held.saved).toEqual([]);
+});
+
+test("a page whose last save had no answer is said and kept, the save sent again by itself: saved after all, it is let go and said so; refused when sent again, or met by another save, it is kept still", async () => {
   const lost = set();
   await lost.hooks.open("Open day");
   lost.add("s1", "Hero");
   lost.kept.answers.push("lost");
-  expect(await lost.hooks.end!()).toBe("no answer came about their save (The network failed.), and the editor is sending it again.");
-  // Sent again after its wait, kept, then let go.
+  expect(await lost.hooks.end!()).toBe(`no answer came about their save (The network failed.), and the editor is sending it again. ${KEPT_HERE}`);
+  expect(lost.held.kept.has(11)).toBe(true);
+  expect(closing()).toBe(true);
+  // Sent again after its wait, kept: let go, and said saved after all.
   await lost.clock.advance(2_000);
   expect(lost.kept.saves.map((save) => save.revision)).toEqual([0, 0]);
   expect(lost.kept.drafts.get(11)).toMatchObject({ revision: 1 });
+  expect([lost.held.saved, lost.held.kept.size]).toEqual([[11], 0]);
+  expect(closing()).toBe(false);
   expect(lost.clock.pending).toBe(0);
+
+  for (const then of ["refused", "conflict"] as const) {
+    const again = set();
+    await again.hooks.open("Open day");
+    again.add("s1", "Hero");
+    again.kept.answers.push("lost", then);
+    await again.hooks.end!();
+    await again.clock.advance(2_000);
+    expect(again.kept.saves).toHaveLength(2);
+    // The second answer is a sure one: kept still, as this tab holds it.
+    expect(again.held.saved).toEqual([]);
+    expect(labels(again.held.kept.get(11)!.document())).toEqual(["Hero"]);
+    expect(closing()).toBe(true);
+    again.held.kept.get(11)!.letGo();
+    again.held.kept.clear();
+  }
+  expect(closing()).toBe(false);
+});
+
+test("a page kept, settled before it is opened: what waits is sent, its save on its way answered; then none goes any more, its document kept, closing the tab still asking first until it is let go", async () => {
+  // Refused as it ended, then changed: settled, the change is sent at once and saved.
+  const refused = set();
+  await refused.hooks.open("Open day");
+  refused.add("s1", "Hero");
+  refused.kept.answers.push("refused");
+  await refused.hooks.end!();
+  const page = refused.held.kept.get(11)!;
+  refused.kept.answers.push("refused");
+  const changed = page.change({ ...page.document(), description: "Trial swims." });
+  await page.settle();
+  expect(await changed).toBe(false);
+  expect(refused.kept.saves).toHaveLength(2);
+  expect(page.document().description).toBe("Trial swims.");
+
+  // No answer as it ended: settled, the save is never sent again.
+  const lost = set();
+  await lost.hooks.open("Open day");
+  lost.add("s1", "Hero");
+  lost.kept.answers.push("lost");
+  await lost.hooks.end!();
+  const kept = lost.held.kept.get(11)!;
+  await kept.settle();
+  await lost.clock.advance(60_000);
+  expect(lost.kept.saves).toHaveLength(1);
+  expect(lost.clock.pending).toBe(0);
+  expect([lost.held.kept.has(11), lost.held.saved]).toEqual([true, []]);
+  expect(labels(kept.document())).toEqual(["Hero"]);
+  expect(closing()).toBe(true);
+  kept.letGo();
+  page.letGo();
+  expect(closing()).toBe(false);
 });
 
 test("closing the tab while the page's edits are only here asks first, as for the page open; saved, or let go at the page's end, it asks nothing", async () => {
   const { clock, hooks, add } = set();
   await hooks.open("Open day");
-  const closing = () => {
-    const event = new Event("beforeunload", { cancelable: true });
-    window.dispatchEvent(event);
-    return event.defaultPrevented;
-  };
   expect(closing()).toBe(false);
   add("s1", "Hero");
   expect(closing()).toBe(true);
@@ -202,20 +324,45 @@ test("written by ../assistant/write.ts and stopped midway: what was made stays, 
   });
   expect(written).toMatchObject({ phase: "stopped", title: "Open day" });
   expect(written.unsaved).toBeUndefined();
-  expect(kept.drafts.get(11)!.document.sections.map((one) => one.props.label)).toEqual(["Hero"]);
-  expect(shown.at(-1)!.document.sections.map((one) => one.props.label)).toEqual(["Hero"]);
+  expect(labels(kept.drafts.get(11)!.document)).toEqual(["Hero"]);
+  expect(labels(shown.at(-1)!.document)).toEqual(["Hero"]);
 });
 
-test("a new site's hooks: its pages written aside at their planned addresses; the addresses taken, the header as it is now", async () => {
+test("a new site's hooks: its pages written aside at their planned addresses; the addresses taken, the header as it is now; a page kept with its last changes not saved is changed as this tab holds it, any other through the editor", async () => {
   const clock = new FakeClock();
   const kept = storage();
+  const held = registry();
+  const changed: number[] = [];
   const ui = createUiStore({ parts: { header: { schemaVersion: 1, title: "Header", sticky: true, sections: [] }, footer: null } });
-  const session = emptySession({ ...kept.session, pages: [{ id: 1, kind: "page", title: "Home", slug: "home", home: true, revision: 1, updatedAt: T, published: null, scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null } }] });
-  const hooks = asideSiteHooks({ session, ui, clock, library: null, show: () => undefined });
+  const session = emptySession({
+    ...kept.session,
+    pages: [{ id: 1, kind: "page", title: "Home", slug: "home", home: true, revision: 1, updatedAt: T, published: null, scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null } }],
+    changeDraft: async (id) => (changed.push(id), null),
+  });
+  const hooks = asideSiteHooks({ session, ui, clock, library: null, show: () => undefined, pending: held.pending });
   expect(hooks.taken()).toEqual(["home"]);
   expect(hooks.header()?.sticky).toBe(true);
   const page = hooks.page({ slug: "classes" });
   expect(await page.open("Classes")).toBeNull();
   expect([kept.asked, page.made()]).toEqual([["classes"], { id: 11, slug: "classes" }]);
-  expect(await page.end!()).toBeNull();
+  expect(page.apply(makeInsert(page.document(), section("s1", "Hero"), { parentId: null, index: 0 }))).toBeNull();
+  kept.answers.push("refused");
+  expect(await page.end!()).toBe(`the CMS refused them: Saving is not allowed here. ${KEPT_HERE}`);
+  // The site's clean-up: the page kept is changed as this tab holds it, and
+  // tried again (saved now), never read from its draft; another page goes
+  // through the editor.
+  const relink = (doc: PageDocument) => ({ document: { ...doc, description: "Relinked." }, label: "Assistant led buttons to the pages made" });
+  expect(await hooks.changePage(11, relink)).toBeNull();
+  expect(kept.drafts.get(11)).toMatchObject({ revision: 1, document: { description: "Relinked.", sections: [{ props: { label: "Hero" } }] } });
+  expect([held.saved, changed]).toEqual([[11], []]);
+  expect(await hooks.changePage(1, relink)).toBeNull();
+  expect(changed).toEqual([1]);
+  // Nothing to change on the page kept: nothing tried.
+  kept.answers.push("refused");
+  const other = hooks.page({ slug: "join" });
+  await other.open("Join");
+  other.apply(makeInsert(other.document(), section("s2", "Join"), { parentId: null, index: 0 }));
+  await other.end!();
+  expect(await hooks.changePage(12, () => null)).toBeNull();
+  expect(kept.saves.filter((save) => save.id === 12)).toHaveLength(1);
 });

@@ -50,7 +50,9 @@ export const plural = (n: number, one: string, many: string): string => `${n} ${
 export const and = (words: readonly string[]): string => (words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
 
 // A page's status line: what it is doing, or how it ended. A page written
-// arrives whole, as its draft: History holds none of its sections.
+// arrives whole, as its draft: History holds none of its sections. One
+// whose last changes were not saved is kept in this tab until it is opened,
+// which tries again (./assistant-aside.ts).
 export function pageLine(writing: ShownWriting): string {
   const kept = writing.sections.filter((section) => section.kept).length;
   const placed = writing.pictures.filter((one) => one.state === "placed");
@@ -65,10 +67,10 @@ export function pageLine(writing: ShownWriting): string {
     case "pictures":
       return `Making the pictures for ${page}: ${placed.length} of ${writing.pictures.length} in.`;
     case "done":
-      return writing.unsaved === undefined ? `${onPage} on ${page}, saved as its draft.` : `${onPage} on ${page}. Its last changes were not saved.`;
+      return writing.unsaved === undefined ? `${onPage} on ${page}, saved as its draft.` : `${onPage} on ${page}. Its last changes were not saved: open the page to try again.`;
     case "stopped":
       if (writing.title === null) return "Stopped: no page was made.";
-      return writing.unsaved === undefined ? `Stopped. The ${onPage} on ${page} stay, saved as its draft.` : `Stopped. The ${onPage} on ${page} stay; its last changes were not saved.`;
+      return writing.unsaved === undefined ? `Stopped. The ${onPage} on ${page} stay, saved as its draft.` : `Stopped. The ${onPage} on ${page} stay; its last changes were not saved: open the page to try again.`;
     case "failed":
       return writing.error ?? "The page was not written.";
   }

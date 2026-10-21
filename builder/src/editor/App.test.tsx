@@ -20,7 +20,11 @@
 // too, tells a save whose answer is lost from its draft read back (or
 // says it cannot, and at what revision it was sent), fences one that may
 // land late by saving at the revision read, draws the part as stored, and
-// changes a page's draft without losing a save from elsewhere.
+// changes a page's draft without losing a save from elsewhere. A page the
+// Assistant wrote aside whose last changes were not saved, kept in this
+// tab, is taken in as it is opened, as a step the page's autosave saves,
+// a draft saved elsewhere since kept as a version first; kept still where
+// it could not be opened, or the page refuses it.
 // An editor that cannot start says why, with the one button that can help.
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -38,7 +42,8 @@ import type { ShopSettings } from "../shared/shop.ts";
 import { SITE_THEME } from "virtual:site-theme";
 import { StorageError, type DraftSave, type FieldError, type Page, type PageKind, type PageSummary, type Published, type Schedule, type ScheduleRequest, type SiteStyle, type SiteStyleChange, type StorageAdapter } from "../storage/adapter.ts";
 import { createEditorStore } from "../store/editor-store.ts";
-import { App, NO_PAGE, type PageAddress, type TabOpener } from "./App.tsx";
+import { useAssistantStore, type AssistantStore, type PendingPage } from "../assistant/context.tsx";
+import { App, BEFORE_ASSISTANTS_PAGE, NO_PAGE, PUT_BACK, type PageAddress, type TabOpener } from "./App.tsx";
 import { thisTab } from "./SaveStatus.tsx";
 import { useSession, type PartReplaced, type Session } from "./session.tsx";
 import { createUiStore } from "./ui-store.ts";
@@ -521,6 +526,111 @@ test("a page made aside for the Assistant is made and listed, and the page open 
   const document: PageDocument = { schemaVersion: 1, title: "Open day", sections: [] , description: "Trial swims." };
   expect(await grab.session!.drafts.saveDraft(3, { revision: 0, saveId: "aside-1", document })).toMatchObject({ ok: true, value: { revision: 1 } });
   expect(site.drafts.get(3)!.document).toEqual(document);
+});
+
+// The session and the Assistant's state the shell gives what it draws.
+function GrabAll({ onGrab }: { onGrab: (session: Session, assistant: AssistantStore) => void }) {
+  const session = useSession();
+  const assistant = useAssistantStore();
+  useEffect(() => {
+    onGrab(session, assistant);
+  }, [onGrab, session, assistant]);
+  return null;
+}
+
+// A page the Assistant made aside (id 3), its last changes not saved and
+// kept in this tab, as ./assistant-aside.ts keeps one: what it was let do,
+// heard in `events`.
+async function keptAside(options: Parameters<typeof start>[1] = {}) {
+  const grab: { session: Session | null; assistant: AssistantStore | null } = { session: null, assistant: null };
+  const started = start(1, { ...options, foot: <GrabAll onGrab={(session, assistant) => Object.assign(grab, { session, assistant })} /> });
+  await opened();
+  await act(async () => {
+    await grab.session!.makePageAside({ title: "Open day", slug: "open-day" });
+  });
+  const ours: PageDocument = { ...page(), title: "Open day" };
+  const events: string[] = [];
+  const kept: PendingPage = {
+    id: 3, title: "Open day", document: () => ours, revision: () => 0, change: async () => false,
+    settle: async () => void events.push("settled"),
+    letGo: () => void events.push("let go"),
+  };
+  act(() => grab.assistant!.getState().keepPending(kept));
+  const open = async () => {
+    let why: string | null = "not asked";
+    await act(async () => {
+      why = await grab.session!.openPage(3);
+    });
+    return why;
+  };
+  return { ...started, grab, ours, events, open };
+}
+
+test("a page the Assistant wrote aside, its last changes not saved and kept in this tab, is taken in as it is opened: its saves settled first, its draft read, the Assistant's page put on it as one step the editor's autosave saves; let go, kept no more, and said", async () => {
+  const { env, site, clock, grab, ours, events, open } = await keptAside();
+  expect(await open()).toBeNull();
+  expect(events).toEqual(["settled", "let go"]);
+  expect(grab.assistant!.getState().pending.size).toBe(0);
+  expect(screen.getByRole("button", { name: "Switch page. Open: Open day" })).toBeTruthy();
+  // One step, which undo takes back to the draft as it was saved.
+  expect(env.store.getState().document).toEqual(ours);
+  expect(env.store.getState().past.map((entry) => entry.command.label)).toEqual([PUT_BACK]);
+  expect(PUT_BACK).toBe("Put back the Assistant's changes not saved before");
+  expect(env.ui.getState().notice).toBe("The Assistant's last changes to “Open day”, not saved before, are back on the page, to be saved.");
+  // Saved by the editor's own autosave, after its pause, at the draft's revision.
+  await act(async () => {
+    await clock.advance(1_000);
+  });
+  expect(site.saves.at(-1)).toMatchObject({ revision: 0, document: ours });
+  expect(site.drafts.get(3)).toMatchObject({ revision: 1, document: ours });
+  expect(site.versions).toEqual([]);
+});
+
+test("a page kept in this tab whose draft was saved somewhere else since the Assistant's last save: that draft is kept as a version first, then the Assistant's page saved over it; one whose draft holds the Assistant's page already takes nothing, and is let go", async () => {
+  const theirs: PageDocument = { schemaVersion: 1, title: "Open day", sections: [], description: "Saved in another tab." };
+  const elsewhere = await keptAside();
+  elsewhere.site.savedElsewhere(3, theirs);
+  expect(await elsewhere.open()).toBeNull();
+  expect(elsewhere.site.versions).toEqual([{ id: 3, name: BEFORE_ASSISTANTS_PAGE, document: theirs }]);
+  expect(BEFORE_ASSISTANTS_PAGE).toBe("Before the Assistant's page");
+  expect(elsewhere.env.ui.getState().notice).toBe("The Assistant's last changes to “Open day”, not saved before, are back on the page, to be saved. The page as it was saved somewhere else is kept in Versions, as “Before the Assistant's page”.");
+  await act(async () => {
+    await elsewhere.clock.advance(1_000);
+  });
+  expect(elsewhere.site.drafts.get(3)).toMatchObject({ revision: 2, document: elsewhere.ours });
+  cleanup();
+
+  // Its last save landed after all, its answer lost: nothing to take in.
+  const landed = await keptAside();
+  landed.site.savedElsewhere(3, landed.ours);
+  expect(await landed.open()).toBeNull();
+  expect(landed.events).toEqual(["settled", "let go"]);
+  expect(landed.env.store.getState().past).toEqual([]);
+  expect(landed.site.versions).toEqual([]);
+  expect(landed.grab.assistant!.getState().pending.size).toBe(0);
+});
+
+test("a page kept in this tab that could not be opened stays kept, settled, to be taken in at the next open; one the page refuses to take stays kept too, said", async () => {
+  const { site, grab, ours, events, open, env } = await keptAside();
+  site.refusePageOnce = new StorageError({ kind: "unknown", cause: "network", status: null, message: "The network failed." });
+  expect(await open()).toBe("The page could not be opened: The network failed.");
+  expect(events).toEqual(["settled"]);
+  expect(grab.assistant!.getState().pending.has(3)).toBe(true);
+  expect(await open()).toBeNull();
+  expect(events).toEqual(["settled", "settled", "let go"]);
+  expect(env.store.getState().document).toEqual(ours);
+  cleanup();
+
+  // Two sections with the same ids: the page's rules refuse them.
+  const refused = await keptAside();
+  const twice = refused.ours.sections[0]!;
+  const bad: PageDocument = { ...refused.ours, sections: [twice, twice] };
+  act(() => refused.grab.assistant!.getState().keepPending({ ...refused.grab.assistant!.getState().pending.get(3)!, document: () => bad }));
+  expect(await refused.open()).toBeNull();
+  expect(refused.events).toEqual(["settled"]);
+  expect(refused.grab.assistant!.getState().pending.has(3)).toBe(true);
+  expect(refused.env.ui.getState().notice).toMatch(/^The Assistant's last changes to “Open day” could not be put back on the page: .+ They are still kept in this tab\.$/);
+  expect(refused.env.store.getState().past).toEqual([]);
 });
 
 // An edit the shell's autosave has not sent yet: the first section's label.

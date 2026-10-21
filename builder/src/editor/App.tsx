@@ -27,7 +27,10 @@
 // it saves over kept as a version first (replacePart), changes a page's
 // draft without losing a save from elsewhere (changeDraft), makes a page
 // the home page (setHome) and publishes pages and parts one after the
-// other (publishAll).
+// other (publishAll). A page the Assistant wrote aside whose last changes
+// were not saved, kept in this tab, is taken in as it is opened (openPage):
+// put on it as a step its autosave saves, any draft saved elsewhere since
+// kept as a version first.
 //
 // The page's versions: the list the history panel shows (./HistoryPanel.tsx),
 // "Save version" and restore, each after the edits waiting are saved. A
@@ -349,6 +352,15 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     };
     if (!(await save())) return kept;
     if (opening.current !== ticket) return null;
+    // A page the Assistant wrote aside whose last changes were not saved,
+    // kept in this tab (../assistant/context.tsx, PendingPage): its save on
+    // its way answered and none sent after, so that the draft read next is
+    // the last its saves leave.
+    const aside = assistant.getState().pending.get(id);
+    if (aside !== undefined) {
+      await aside.settle();
+      if (opening.current !== ticket) return null;
+    }
     let page;
     try {
       page = await adapter.getPage(id);
@@ -366,6 +378,23 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     }
     const taken = openDocument(page.draft.document);
     if (!taken.ok) return `The page could not be opened: ${taken.errors[0]?.message ?? "its document is not valid"}.`;
+    // The Assistant's page kept in this tab, over a draft saved somewhere
+    // else since its last save: that draft is kept as a version first, as
+    // Keep mine keeps one, so that putting the Assistant's page back over
+    // it loses nobody's save.
+    const ours = assistant.getState().pending.get(page.page.id);
+    let keptFirst = false;
+    if (ours !== undefined && page.draft.revision !== ours.revision() && !sameJson(taken.document, ours.document())) {
+      let version;
+      try {
+        version = await adapter.saveVersion(page.page.id, { name: BEFORE_ASSISTANTS_PAGE });
+      } catch (error) {
+        version = { ok: false as const, problem: { message: describe(error) } };
+      }
+      if (opening.current !== ticket) return null;
+      if (!version.ok) return `The page was not opened: its draft, saved somewhere else since the Assistant's last changes, could not be kept as a version first (${problemWords(version.problem)}). Those changes are still kept in this tab.`;
+      keptFirst = true;
+    }
     // The page being left stayed open while the next one loaded, and the
     // person may have edited it meanwhile: those edits are saved too. The
     // last look (left) and the switch below run with no await between
@@ -439,8 +468,23 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     // A part opened with no page before it (the address named it) is drawn
     // around the home page's draft, read now.
     if (kind !== "page" && ui.getState().aroundPart === null) void aroundHome(ticket);
+    // The Assistant's page kept in this tab, taken in: put on the page as a
+    // step of its own, which this page's autosave saves as any edit, closing
+    // the tab asking first until it has; then let go. A draft that holds it
+    // already was saved after all, and takes nothing.
+    const taking = assistant.getState().pending.get(page.page.id);
+    if (taking !== undefined) {
+      const made = makeReplacePage(taken.document, taking.document(), PUT_BACK);
+      const put = made.ok ? store.getState().dispatch(made.command) : null;
+      if (put !== null && !put.ok) {
+        ui.getState().say(`The Assistant's last changes to “${taking.title}” could not be put back on the page: ${put.error.message} They are still kept in this tab.`);
+      } else {
+        assistant.getState().releasePending(taking.id, put === null ? "saved" : "opened")?.letGo();
+        if (put !== null) ui.getState().say(`The Assistant's last changes to “${taking.title}”, not saved before, are back on the page, to be saved.${keptFirst ? ` The page as it was saved somewhere else is kept in Versions, as “${BEFORE_ASSISTANTS_PAGE}”.` : ""}`);
+      }
+    }
     return null;
-  }, [adapter, address, aroundHome, clock, held, store, ui, words]);
+  }, [adapter, address, aroundHome, assistant, clock, held, store, ui, words]);
 
   // The site as the editor starts on it: its pages and parts, the parts'
   // drafts the canvas draws around a page, its library, style and
@@ -1420,6 +1464,15 @@ const UNDO_AGAIN = "Undo starts again from here: its steps belonged to the page 
 
 // The name of the version Keep mine keeps of the page it saves over.
 export const KEPT_BEFORE_OVERWRITE = "Before Keep mine";
+
+// The name of the version kept of a page's draft saved somewhere else
+// since the Assistant's last save of it, before the Assistant's page, kept
+// in this tab, is put back over it as the page is opened.
+export const BEFORE_ASSISTANTS_PAGE = "Before the Assistant's page";
+
+// The step that puts the Assistant's page, kept in this tab, back on the
+// page as it is opened.
+export const PUT_BACK = "Put back the Assistant's changes not saved before";
 
 // How many times the Assistant's change of a draft is tried, a save from
 // elsewhere having come in between each time, before it is left as it is.

@@ -163,6 +163,10 @@ export const HALTS: ReadonlySet<string> = new Set(["key", "model", "limit", "net
 // "Added section Hero" said as the Assistant's: "Assistant added section Hero".
 export const ASSISTANTS = (label: string): string => `Assistant ${label.charAt(0).toLowerCase()}${label.slice(1)}`;
 
+// The note a page's end leaves when its last changes were not saved
+// (PageHooks.end), `why` its hooks' words.
+export const unsavedNote = (why: string): string => `Its last changes were not saved: ${why}`;
+
 export function asAssistants(made: Made): Made {
   return made.ok ? { ok: true, command: { ...made.command, label: ASSISTANTS(made.command.label) } } : made;
 }
@@ -421,7 +425,7 @@ export async function writePage(options: {
       why = error instanceof Error ? error.message : String(error);
     }
     if (why === null) return;
-    builder.notes.push(`Its last changes were not saved: ${why}`);
+    builder.notes.push(unsavedNote(why));
     update({ unsaved: why });
   };
 

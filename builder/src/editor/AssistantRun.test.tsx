@@ -6,7 +6,9 @@
 // Keep writing going on and giving the focus back, Stop from its close
 // stopping the run and closing it, from its Stop key stopping it and
 // staying; once the run is over it says how it ended, Done closes it, Open
-// the page opens the page written and closes it, and nothing is asked. Its
+// the page opens the page written and closes it, and nothing is asked; a
+// page whose saves are refused is said, kept in this tab to be opened, and
+// said saved once a save of it gets through after all. Its
 // meter says what the run has cost so far, then in all; its preview draws
 // the page as its sections land, not to be edited, and at a new site's end
 // its home page, with a switch for each page it made. How far a run has
@@ -21,6 +23,7 @@ import { AssistantError, type Answer, type ModelChoice, type ProviderClient, typ
 import type { SiteStyle } from "../storage/adapter.ts";
 import { AssistantPanel } from "./AssistantPanel.tsx";
 import { AssistantRun, progressOf } from "./AssistantRun.tsx";
+import { KEPT_HERE } from "./assistant-aside.ts";
 
 const words = (text: string) => ({ kind: "text", paragraphs: [text] });
 const PLAN = JSON.stringify({
@@ -53,8 +56,8 @@ function holding(models: ModelChoice[] = [{ id: "gpt-6.1-sol", name: "gpt-6.1-so
   return { held, client };
 }
 
-function setUp(client: ProviderClient, session: Parameters<typeof editorKit>[0]["session"] = {}) {
-  const kept = asideStorage({ first: 20 });
+function setUp(client: ProviderClient, session: Parameters<typeof editorKit>[0]["session"] = {}, storage: Parameters<typeof asideStorage>[0] = {}) {
+  const kept = asideStorage({ first: 20, ...storage });
   const openPage = vi.fn(async () => null);
   const kit = editorKit({ document: KIT_DOC, session: { ...kept.session, openPage, ...session }, providers: async () => client });
   kit.render(<><AssistantPanel /><AssistantRun /></>);
@@ -232,6 +235,34 @@ test("a run refused before a word made nothing: Done alone", async () => {
   fireEvent.click(within(failed).getByRole("button", { name: "Done" }));
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(again.openPage).not.toHaveBeenCalled();
+});
+
+test("a page whose saves are refused: the window says its last changes were not saved and how to have them back, the page kept in this tab, and Open the page opens it; saved after all, the drawer says it is saved", async () => {
+  const { held, client } = holding();
+  const { kit, kept, openPage } = setUp(client, {}, { refused: ["open-day"] });
+  await writeAPage(kit);
+  await act(async () => {
+    held.write(PLAN);
+    held.end();
+    await new Promise((done) => setTimeout(done, 10));
+  });
+  expect(within(run()).getByRole("status").textContent).toBe("2 sections on “Open day”. Its last changes were not saved: open the page to try again.");
+  fireEvent.click(within(run()).getByText("One thing was left out"));
+  expect(within(run()).getByText(`Its last changes were not saved: the CMS refused them: Saving is not allowed here. ${KEPT_HERE}`)).toBeTruthy();
+  const page = kit.assistant.getState().pending.get(20)!;
+  expect(page.document().sections.map((one) => one.props.label)).toEqual(["Hero", "Book"]);
+  fireEvent.click(within(run()).getByRole("button", { name: "Open the page" }));
+  expect(openPage).toHaveBeenCalledWith(20);
+  // The CMS takes saves again, and the page is tried once more: saved after all.
+  kept.refused.clear();
+  await act(async () => {
+    expect(await page.change({ ...page.document(), description: "An open day." })).toBe(true);
+  });
+  expect(kit.assistant.getState().pending.size).toBe(0);
+  expect(kept.draftAt("open-day")).toMatchObject({ description: "An open day.", sections: [{ props: { label: "Hero" } }, { props: { label: "Book" } }] });
+  expect(screen.getByRole("status").textContent).toBe("2 sections on “Open day”, saved as its draft.");
+  fireEvent.click(screen.getByText("One thing was left out"));
+  expect(screen.getByText("Its last changes were saved after all.")).toBeTruthy();
 });
 
 test("the meter: what it has cost so far, large, its tokens in and out, the model at its list price and the day the prices were read, a live estimate; once over, what it cost in all, in the drawer's own words", async () => {

@@ -478,7 +478,7 @@ async function writeNewSite(plan: (title: string) => string, changed: string | n
     await new Promise((done) => setTimeout(done, 50));
   });
   closeWindow(kit);
-  return calls;
+  return { calls, kit };
 }
 
 const refused = (): never => {
@@ -486,7 +486,7 @@ const refused = (): never => {
 };
 
 test("a new site none of whose pages is made: its header and footer are put back as they were, said in its steps; nothing is offered to publish, and the old style is still put back in one click", async () => {
-  const calls = await writeNewSite(refused);
+  const { calls } = await writeNewSite(refused);
   // Each saved, the drafts they replaced kept; then each put back, the run's own not kept.
   expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "header", "footer"]);
   expect([...document.querySelectorAll(".as-group:first-child .as-sections > li")].map((li) => li.textContent)).toEqual(["Direction, 3 pages", "Style, applied", "Header, put back", "Footer, put back"]);
@@ -498,7 +498,7 @@ test("a new site none of whose pages is made: its header and footer are put back
 
 test("a page made whose buttons to a page not made could not be changed: Publish all is not offered, and the drawer says why", async () => {
   // Classes is refused; Home and Join each lead to it, and their change is not saved.
-  const calls = await writeNewSite((title) => (title === "Classes" ? refused() : pagePlan(title, [{ kind: "button", label: "Classes", target: "/classes" }])), "the storage did not answer.");
+  const { calls } = await writeNewSite((title) => (title === "Classes" ? refused() : pagePlan(title, [{ kind: "button", label: "Classes", target: "/classes" }])), "the storage did not answer.");
   expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "make /iron-forge", "make /join", "header", "footer", "change 10", "change 11"]);
   expect(screen.queryByRole("button", { name: "Publish all" })).toBeNull();
   expect(document.querySelector(".as-offer-held")?.textContent).toBe("Publish all is not offered: “Home” and “Join” may still lead to a page that was not made, as the things to know say.");
@@ -510,19 +510,26 @@ test("a page made whose buttons to a page not made could not be changed: Publish
 
 test("a page of the new site whose last changes were not saved: its title says so, the things to know say why, and Publish all is not offered, said", async () => {
   // Join's draft is saved in another tab each time the Assistant saves it.
-  await writeNewSite((title) => pagePlan(title), null, [], "join");
+  const { kit } = await writeNewSite((title) => pagePlan(title), null, [], "join");
   expect([...document.querySelectorAll(".as-group-title")].map((title) => title.textContent)).toEqual(["The siteIron Forge", "Home/iron-forge, written", "Classes/classes, written", "Join/join, last changes not saved"]);
   expect(screen.queryByRole("button", { name: "Publish all" })).toBeNull();
   expect(document.querySelector(".as-offer-held")?.textContent).toBe("Publish all is not offered: “Join” has changes that were not saved, as the things to know say.");
   fireEvent.click(screen.getByText(/things? to know$/));
-  expect(document.querySelector(".as-notes")?.textContent).toContain("“Join”: Its last changes were not saved: the page was saved somewhere else meanwhile.");
+  expect(document.querySelector(".as-notes")?.textContent).toContain("“Join”: Its last changes were not saved: the page was saved somewhere else meanwhile. Open it to try again; they are kept in this tab until then.");
   // What else becomes of it is offered as ever.
   expect(screen.getByRole("button", { name: "Make “Home” the home page" })).toBeTruthy();
+  // Opened, the editor takes the page in (./App.tsx): Publish all is offered again, its mark gone, its note saying so.
+  act(() => {
+    kit.assistant.getState().releasePending(12, "opened")?.letGo();
+  });
+  expect([...document.querySelectorAll(".as-group-title")].map((title) => title.textContent)).toEqual(["The siteIron Forge", "Home/iron-forge, written", "Classes/classes, written", "Join/join, written"]);
+  expect(screen.getByRole("button", { name: "Publish all" })).toBeTruthy();
+  expect(document.querySelector(".as-notes")?.textContent).toContain("“Join”: Its last changes, not saved before, were put back on it as it was opened, for the editor to save.");
 });
 
 test("a header whose save had its answer lost, and could not be put back either: its step says to check it, and the drawer says why Publish all is not offered", async () => {
   // Every page refused. The header's save: its answer lost; putting it back: failed. The footer: saved, then put back.
-  const calls = await writeNewSite(refused, null, ["lost", "saved", "failed", "saved"]);
+  const { calls } = await writeNewSite(refused, null, ["lost", "saved", "failed", "saved"]);
   // The header put back at the revision its doubtful save was sent at.
   expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "header, fenced at 0", "footer"]);
   expect([...document.querySelectorAll(".as-group:first-child .as-sections > li")].map((li) => li.textContent)).toEqual(["Direction, 3 pages", "Style, applied", "Header, to check", "Footer, put back"]);

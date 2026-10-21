@@ -14,16 +14,24 @@
 //   answer is lost sent again), and shown to the run window's preview
 //   (`show`) a few times a second at most.
 // - At the page's end its autosave is flushed, and let go once the page is
-//   saved. A flush that does not end saved is said in a sentence; an
-//   autosave still sending a save whose answer was lost goes on sending it,
-//   and is let go once saved or refused. Until it is let go, closing the
-//   tab while the page's edits are only here asks first, as for the page
-//   open (../storage/autosave.ts, warnOnClose).
+//   saved. Until it is let go, closing the tab while the page's edits are
+//   only here asks first, as for the page open (../storage/autosave.ts,
+//   warnOnClose).
+// - A flush that does not end saved (refused, saved somewhere else, no
+//   answer) is said in a sentence, and the page is kept as this tab holds
+//   it (../assistant/context.tsx, PendingPage): its autosave alive, which
+//   sends again by itself a save whose answer was lost, and closing the
+//   tab asking first. Saved after all, it is let go, and its run says so;
+//   refused again, or met by another save, it is kept still. A new site's
+//   clean-up changes it as this tab holds it, and tries again. Opened, the
+//   editor takes it in and saves it (./App.tsx, openPage), its autosave
+//   settled first and then let go: nothing of what the run wrote is lost
+//   because a save of it failed.
 // - A picture made for the page goes into the library, as an upload does.
 //
 // A new site's own steps go through the editor as before: its style through
 // Site style's own call, its header and footer as the parts' drafts.
-import type { WrittenPage } from "../assistant/context.tsx";
+import type { PendingPage, WrittenPage } from "../assistant/context.tsx";
 import { LIVE_MS, throttle } from "../assistant/live.ts";
 import type { SiteHooks, SitePageHooks } from "../assistant/site.ts";
 import { applyCommand } from "../document/reducer.ts";
@@ -40,13 +48,26 @@ export const SHOW_MS = LIVE_MS;
 // The addresses tried for a page: the one asked for, then -2, -3, -4, -5.
 const ADDRESS_TRIES = 5;
 
+// Where the pages whose last changes were not saved are kept, as the
+// Assistant's state keeps them (../assistant/context.tsx, pending): told
+// of one saved after all, which it keeps no more.
+export interface PendingPages {
+  get(id: number): PendingPage | undefined;
+  keep(page: PendingPage): void;
+  saved(id: number): void;
+}
+
 export interface AsideOptions {
   session: Pick<Session, "makePageAside" | "drafts" | "cmsOrigin">;
   clock: Clock;
   library: MediaService | null;
   // A page of the run as it is now, for the preview.
   show: (page: WrittenPage) => void;
+  pending: PendingPages;
 }
+
+// What a page whose last changes were not saved says of them, after why.
+export const KEPT_HERE = "Open it to try again; they are kept in this tab until then.";
 
 // Why a page's last changes were not saved, from where its autosave
 // stopped: the end of a sentence.
@@ -68,7 +89,7 @@ export function unsavedWords(snapshot: SaveSnapshot, keeper: string): string {
 // A page's hooks, written aside: made at `planned`'s address for a page of
 // a new site, else at an address from its title.
 export function asideHooks(options: AsideOptions, planned?: { slug: string }): SitePageHooks {
-  const { session, clock, library, show } = options;
+  const { session, clock, library, show, pending } = options;
   let made: { id: number; slug: string; title: string } | null = null;
   let document: PageDocument | null = null;
   let saving: Autosave | null = null;
@@ -82,6 +103,51 @@ export function asideHooks(options: AsideOptions, planned?: { slug: string }): S
   const letGo = (autosave: Autosave) => {
     if (typeof window !== "undefined") window.removeEventListener("beforeunload", warn);
     autosave.dispose();
+  };
+  // The page, its last changes not saved as it ended, kept as this tab
+  // holds it (PendingPage): until its autosave saves it after all, and it
+  // is let go and said so, or the editor takes it as it is opened.
+  const keep = (page: { id: number; title: string }, start: PageDocument, autosave: Autosave): void => {
+    let latest = start;
+    // Settled, nothing more is sent: the page is about to be opened.
+    let settled = false;
+    let gone = false;
+    const release = (): void => {
+      if (gone) return;
+      gone = true;
+      watching();
+      letGo(autosave);
+    };
+    // Saved after all: let go once the autosave has told everyone waiting
+    // for it, a flush on its way too, which letting it go at once would drop.
+    const watching = autosave.subscribe((snapshot) => {
+      if (snapshot.phase !== "saved") return;
+      queueMicrotask(() => {
+        if (gone) return;
+        release();
+        pending.saved(page.id);
+      });
+    });
+    pending.keep({
+      id: page.id,
+      title: page.title,
+      document: () => latest,
+      revision: () => autosave.getSnapshot().revision,
+      async change(next) {
+        latest = next;
+        if (settled || gone) return false;
+        autosave.edit(next);
+        return (await autosave.flush()).phase === "saved";
+      },
+      async settle() {
+        if (settled || gone) return;
+        await autosave.flush();
+        settled = true;
+        watching();
+        autosave.dispose();
+      },
+      letGo: release,
+    });
   };
   return {
     made: () => (made === null ? null : { id: made.id, slug: made.slug }),
@@ -128,23 +194,14 @@ export function asideHooks(options: AsideOptions, planned?: { slug: string }): S
     async end() {
       shown.now();
       const autosave = saving;
-      if (autosave === null) return null;
+      if (autosave === null || made === null || document === null) return null;
       const settled = await autosave.flush();
       if (settled.phase === "saved") {
         letGo(autosave);
         return null;
       }
-      if (settled.phase === "retrying") {
-        // Sent again by itself until an answer comes: let go once there is one.
-        const stop = autosave.subscribe((snapshot) => {
-          if (snapshot.phase === "retrying" || snapshot.phase === "saving" || snapshot.phase === "waiting") return;
-          stop();
-          letGo(autosave);
-        });
-      } else {
-        letGo(autosave);
-      }
-      return unsavedWords(settled, keptWords(session.cmsOrigin).keeper);
+      keep(made, document, autosave);
+      return `${unsavedWords(settled, keptWords(session.cmsOrigin).keeper)} ${KEPT_HERE}`;
     },
   };
 }
@@ -153,13 +210,21 @@ export function asideHooks(options: AsideOptions, planned?: { slug: string }): S
 // style saved as Site style saves it, the old one kept to be put back; its
 // header and footer saved as the parts' drafts, the drafts they replace
 // kept as versions; its pages made and written aside, and their buttons to
-// a page not made changed once it ends.
+// a page not made changed once it ends: a page kept with its last changes
+// not saved as this tab holds it, tried again, and saved with them, now
+// or once it is opened; any other as the editor changes a draft.
 export function asideSiteHooks(options: AsideOptions & { session: Session; ui: UiStore }): SiteHooks {
-  const { session, ui } = options;
+  const { session, ui, pending } = options;
   return {
     applyStyle: (style) => session.applySiteStyle({ ...style, kept: "now" }),
     savePart: (kind, document, keep, ours, fence) => session.replacePart(kind, document, keep, ours, fence),
-    changePage: (id, change) => session.changeDraft(id, change),
+    async changePage(id, change) {
+      const kept = pending.get(id);
+      if (kept === undefined) return session.changeDraft(id, change);
+      const next = change(kept.document());
+      if (next !== null) await kept.change(next.document);
+      return null;
+    },
     taken: () => session.pages.flatMap((page) => (page.slug === null ? [] : [page.slug])),
     header: () => ui.getState().parts.header,
     page: (planned) => asideHooks(options, planned),

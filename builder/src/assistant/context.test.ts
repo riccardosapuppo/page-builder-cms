@@ -12,15 +12,18 @@
 // in its place as it ends, one stopped with none dropped; a photo at its
 // price per image meanwhile; told at most every LIVE_MS; and the cost of
 // the run shown, none for the sample. The run window, open or closed, and
-// the pages a run has written, as the window's preview draws them.
+// the pages a run has written, as the window's preview draws them. A page
+// whose last changes were not saved, kept through the runs that follow
+// until it is saved after all or opened, its run's summary saying so then.
 import { expect, test } from "vitest";
 import { FakeClock, settle } from "../../test/fake-clock.ts";
-import { createAssistant, KEY_GONE, runCost, type ShownWriting } from "./context.tsx";
+import { createAssistant, KEY_GONE, runCost, type PendingPage, type ShownSite, type ShownWriting } from "./context.tsx";
 import { IDLE_MS, type ProviderId } from "./key.ts";
 import { LIVE_MS, questionChars } from "./live.ts";
 import { AssistantError, type Answer, type PhotoAnswer, type ProviderClient, type Question, type Usage } from "./providers.ts";
 import type { SiteWriting } from "./site.ts";
 import { photoTallyOf, tallyOf } from "./tally.ts";
+import { unsavedNote } from "./write.ts";
 import type { PageDocument } from "../shared/document.ts";
 
 const KEY = "sk-not-a-real-key-wxyz";
@@ -435,6 +438,69 @@ test("the run window, closed until a run opens it and open until it is closed; t
   expect([store.getState().written, store.getState().runWindow]).toEqual([[], true]);
   store.getState().setRunWindow(false);
   expect(store.getState().runWindow).toBe(false);
+});
+
+// A page kept with its last changes not saved, as the editor keeps one
+// (../editor/assistant-aside.ts): what this store sees of it. `gone` hears
+// of each one let go.
+function pendingPage(id: number, title: string, gone: string[]): PendingPage {
+  const document: PageDocument = { schemaVersion: 1, title, sections: [] };
+  return { id, title, document: () => document, revision: () => 0, change: async () => false, settle: async () => undefined, letGo: () => void gone.push(title) };
+}
+
+test("a page whose last changes were not saved is kept whatever run begins next, until it is released, saved after all or opened: its run's summary says so then, its mark gone; another run's summary is left as it is", () => {
+  const store = createAssistant(new FakeClock(), async () => {
+    throw new TypeError("No provider in this test.");
+  });
+  const gone: string[] = [];
+  const why = "the CMS refused them: Forbidden. Open it to try again; they are kept in this tab until then.";
+  const ended = (title: string): ShownWriting => ({ phase: "done", title, sections: [], pictures: [], notes: ["Left out a picture.", unsavedNote(why)], tally: null, error: null, unsaved: why });
+  expect(store.getState().pending.size).toBe(0);
+
+  // A page's run: its page kept, a new run begun, kept still.
+  store.getState().begin();
+  store.getState().showPage({ id: 7, title: "Open day", document: { schemaVersion: 1, title: "Open day", sections: [] } });
+  store.getState().setWriting(ended("Open day"));
+  const kept = pendingPage(7, "Open day", gone);
+  store.getState().keepPending(kept);
+  expect([...store.getState().pending.keys()]).toEqual([7]);
+  // Saved after all: given back to be let go, and said in its summary.
+  expect(store.getState().releasePending(7, "saved")).toBe(kept);
+  expect(store.getState().pending.size).toBe(0);
+  expect(store.getState().writing).toMatchObject({ notes: ["Left out a picture.", "Its last changes were saved after all."] });
+  expect(store.getState().writing!.unsaved).toBeUndefined();
+  // The store lets none go itself; one released already is not there to release.
+  expect(gone).toEqual([]);
+  expect(store.getState().releasePending(7, "saved")).toBeNull();
+
+  // A new site's: its page kept through the next run's beginning, then opened.
+  const site: ShownSite = {
+    phase: "done", direction: null, steps: { direction: "done", style: "done", header: "done", footer: "done" }, frame: { header: "new", footer: "new" }, notes: [], tally: null, error: null, before: null,
+    pages: [
+      { title: "Home", path: "/home", state: "done", id: 10, writing: ended("Home"), dangling: false },
+      { title: "Join", path: "/join", state: "done", id: 11, writing: ended("Join"), dangling: false },
+    ],
+  };
+  store.getState().setWriting(null);
+  store.getState().setSite(site);
+  store.getState().keepPending(pendingPage(10, "Home", gone));
+  store.getState().keepPending(pendingPage(11, "Join", gone));
+  store.getState().begin();
+  expect([...store.getState().pending.keys()]).toEqual([10, 11]);
+  store.getState().releasePending(10, "opened");
+  const [home, join] = store.getState().site!.pages;
+  expect(home!.writing).toMatchObject({ notes: ["Left out a picture.", "Its last changes, not saved before, were put back on it as it was opened, for the editor to save."] });
+  expect(home!.writing!.unsaved).toBeUndefined();
+  expect(join!.writing).toBe(site.pages[1]!.writing);
+  expect([...store.getState().pending.keys()]).toEqual([11]);
+
+  // A page of a run no longer shown: released, and no other summary touched.
+  const other = { ...ended("Other"), notes: [unsavedNote(why)] };
+  store.getState().setSite(null);
+  store.getState().setWriting(other);
+  store.getState().releasePending(11, "saved");
+  expect(store.getState().writing).toBe(other);
+  expect(store.getState().pending.size).toBe(0);
 });
 
 test("the cost of the run being shown, a page's or a new site's: its own, live, the same while nothing changes; none for the sample, for a run no longer kept, or with nothing shown", async () => {
