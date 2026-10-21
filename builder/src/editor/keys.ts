@@ -41,10 +41,10 @@ export function isTyping(target: EventTarget | null): boolean {
 // menus and dialogs keep theirs.
 export function inScope(scope: Scope, target: EventTarget | null, typing = false): boolean {
   const element = target instanceof Element ? target : null;
-  if (element?.closest("[role=dialog], [role=menu]")) return false;
+  if (element?.closest("[role=dialog], [role=alertdialog], [role=menu]")) return false;
   // A modal dialog open: the editor behind it takes no key, wherever the
   // focus is (lost to the page, say, when a field it was in went).
-  if (document.querySelector("[role=dialog][aria-modal=true]")) return false;
+  if (document.querySelector("[role=dialog][aria-modal=true], [role=alertdialog][aria-modal=true]")) return false;
   if (!typing && isTyping(element)) return false;
   switch (scope) {
     // The clamp is a toolbar of its own on the canvas: its keys are its
@@ -85,7 +85,7 @@ export function waitForText(env: Pick<EditorEnv, "ui">, event: KeyboardEvent): b
   if (!editingText || textEditorOpen(env.ui.getState()) || event.isComposing || MODIFIERS.has(event.key)) return false;
   const target = event.target instanceof Element ? event.target : null;
   if (target !== null && target !== document.body && !target.closest(".canvas")) return false;
-  if (isTyping(target) || target?.closest("[role=dialog], [role=menu]")) return false;
+  if (isTyping(target) || target?.closest("[role=dialog], [role=alertdialog], [role=menu]")) return false;
   const press = { key: event.key, code: event.code, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, altKey: event.altKey, altGraph: event.getModifierState?.("AltGraph") ?? false };
   if (entriesFor(press, true).some((entry) => entry.via === "keymap")) return false;
   if (event.key === "Escape") env.ui.setState({ editingText: null });

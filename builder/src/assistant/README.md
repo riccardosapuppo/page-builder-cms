@@ -73,14 +73,16 @@ guarantee that holds.
      ids and coordinates would be made up. No logo or menu either: those
      belong to the site's header and footer.
 2. **The answer, as it streams.** [`plan-stream.ts`](plan-stream.ts) hands
-   on the plan's title the moment it has come, and the editor makes and
-   opens a new page with it. Each section is handed on the moment its last
-   character has come.
+   on the plan's title the moment it has come, and the editor makes a new
+   page with it, aside: it does not open it (see
+   [Written aside](#written-aside)). Each section is handed on the moment
+   its last character has come.
 3. **Each section, built.** [`build.ts`](build.ts) turns it into the page's
-   blocks and puts it on the page with a command of its own. The store holds
-   that command to the page's schema like any other, and History shows it as
-   the Assistant's step ("Assistant added section Hero"), undoable on its
-   own.
+   blocks and puts it on the page with a command of its own, held to the
+   page's schema like any other edit by the reducer, on the page's document
+   in memory. The page arrives whole, as its draft: none of its sections is
+   a step in the History of the page the person has open, nor in the new
+   page's once it is opened.
    - **Read without trust.** Words are cleaned and cut at a word to the
      schema's lengths.
    - **Headings in order.** There is one level 1, and no level is skipped.
@@ -118,15 +120,16 @@ guarantee that holds.
      two, or pricing with no plan are left out.
    - **Notes.** What cannot be made to fit is left out and said in a note.
 4. **Its pictures**, once its section is in, are made, put in the library
-   and put on the page, each as a step of its own (see
+   and put on the page, each by a command of its own (see
    [Pictures made for a page](#pictures-made-for-a-page)).
 5. **The end.** However the answer ends, any button whose section never
-   came is taken out, and a plan's button loses its link, while the page
-   made is the one open. A stop, a refusal or another page opened midway
-   keeps what is already in, and a stop lets nothing more land, not even
-   sections that came while the page was being made. The page is written
-   once its pictures are in. What the request used is said (see
-   [What a request costs](#what-a-request-costs)).
+   came is taken out, and a plan's button loses its link. A stop or a
+   refusal midway keeps what is already in, and a stop lets nothing more
+   land, not even sections that came while the page was being made. The
+   page is written once its pictures are in; then its end is told to the
+   editor, which saves it (`PageHooks.end`), and a page whose last changes
+   were not saved is said so, and marked. What the request used is said
+   (see [What a request costs](#what-a-request-costs)).
 
 ## Pictures made for a page
 
@@ -182,23 +185,23 @@ written, a switch, on by default, makes pictures for it.
   the browser's. A photo is read for what it is (WebP, PNG or JPEG, by its
   bytes) and its size, and drawn smaller only past the editor's longest
   side.
-- **Onto the page, as a step of its own.** Behind its section with the
+- **Onto the page, by a command of its own.** Behind its section with the
   veil it went in with (`makeSetPicture`), or as an image in its column,
   after the blocks the plan put before it, decorative where its alt text
-  is empty. Each is the Assistant's step in History, undone on its own,
-  and counted as a use of its image where it is placed. It leaves the
-  person's selection where it is: it may come while they work on the page.
+  is empty, and counted as a use of its image where it is placed.
 - **One that fails** (refused, not clean, too large, the network, the
   library's refusal) leaves its section as it was, and is said in a note.
   A refusal of the key, of the model, for credit or for no network asks
   for no more pictures: the same would come again.
-- **Stop**, or another page opened, stops the pictures still being made,
-  those in flight too. The page is looked at before each picture is asked
-  for, after each that fails, and every quarter of a second meanwhile
-  (`PAGE_WATCH_MS`), so no request goes out for a page the person has
-  left. One already made was paid for: it goes into the library, not onto
-  the page, and the note says so; the note says too how many were not
-  made, and why.
+- **Stop**, or the run window closed (which asks first, and then stops the
+  run), stops the pictures still being made, those in flight too. One
+  already made was paid for: it goes into the library, not onto the page,
+  and the note says so; the note says too how many were not made, and why.
+  The page's hooks are asked before each picture is asked for, after each
+  that fails, and every quarter of a second meanwhile (`PAGE_WATCH_MS`),
+  whether the page is still the one being written (`PageHooks.still`):
+  hooks of a page a person may leave stop its pictures there. The editor's
+  never do: they write the page aside, and nothing leaves it.
 - **With the key the page began with.** A page's run is bound to the key
   kept when it began ([`context.tsx`](context.tsx), `bind`): its provider,
   the keeper's ticket and the models chosen then. Its plan and each of its
@@ -294,10 +297,12 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
      each page still to come, five at most, and is held to it
      (`SiteFacts.most`). The imagery sentence goes with every photo's
      prompt and every illustration's question. A page waits for its
-     pictures before the next one opens.
+     pictures, and for its end, where the editor saves it, before the next
+     one is asked for.
 5. **The frame settled**, however the run ends once a part is saved:
-   through, stopped (during the frame's own saves too), refused, another
-   page opened, the key forgotten. The header and the footer are built
+   through, stopped (during the frame's own saves too), refused, the key
+   forgotten; once every page made has ended, so that what follows reads
+   their drafts as saved. The header and the footer are built
    again from the pages made, at the addresses they were made at, and the
    header's call to action leads to the home page's form, by the anchor of
    its section, or else to its first section; each is saved again where it
@@ -322,9 +327,11 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
 - **The home page** becomes the site's home only when the person says so,
   once the site is written: nothing takes it from the site behind their
   back. Nothing is published by the Assistant either.
-- **Another page opened** by the person stops the site: before each page
-  is asked for and again before it is made, the page the Assistant opened
-  last must still be the one open.
+- **The person's own page** stays open all along: the pages are written
+  aside, and the run window keeps the person on the page they had open
+  while the run goes. So another page opened no longer stops the site, as
+  it did when the pages were written in the editor, one opened after the
+  other.
 - **Stop** stops all of it: the request on its way, the pictures in flight,
   the pages still to come. A page the model refuses is said and the next
   one written; a key refused, a model gone, no credit or no network stops
@@ -333,7 +340,89 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
   home page, and publish all it made (its pages, and the header and the
   footer where they are the new site's); and Put the old style back. In
   the browser demo, Start over with the example site brings the example
-  site back whole, as the demo's line does for a newer edition.
+  site back whole, as the demo's line does for a newer edition. Publish
+  all is not offered while a page or a part may still lead to a page not
+  made, or a page's last changes were not saved.
+
+## Written aside
+
+The Assistant never writes into the page the person has open
+([`../editor/assistant-aside.ts`](../editor/assistant-aside.ts)): a page
+written in the open editor, section by section, kept the editor busy, and
+felt as if it was locked. Each page of a run, a page's, the sample's or a
+new site's, is written aside:
+
+- **Made, not opened.** The page is made with the storage
+  (`Session.makePageAside`), at its address or, taken, the next free one,
+  and the editor stays where it is.
+- **Written in memory.** Each command the run makes is applied by the
+  reducer ([`../document/reducer.ts`](../document/reducer.ts)) to the
+  page's document in memory, held to the page's rules as any edit is.
+  Nothing goes on the editor's store: not its page, not its selection,
+  not its History, and nothing scrolls.
+- **Saved by an autosave of its own**
+  ([`../storage/autosave.ts`](../storage/autosave.ts)), as an open page is:
+  after a pause, one save on its way at a time, a save whose answer is lost
+  sent again. At the page's end, however it comes (written, stopped,
+  failed), its saves are flushed, and the autosave let go once the page is
+  saved. A flush that does not end saved is said in the notes ("Its last
+  changes were not saved: ..."), the page marked so; one whose answer was
+  lost goes on being sent until it is kept. Until the autosave is let go,
+  closing the tab while the page's edits are only here asks first, as for
+  the page open. A new site's clean-up comes after its pages' ends, and
+  reads their drafts as saved.
+- **Shown as it grows** in the run window's preview, four times a second
+  at most.
+
+The page arrives whole, as its draft: it is opened with Open the page,
+from the run window, or later from the pages, and none of its sections is
+a step in History. A new site's style still takes the place of the old one
+on every page at once, the open one too, and its header and footer are
+saved as the parts' drafts as before (`replacePart`), through the open
+part where the person has it open.
+
+## The run window
+
+A run (Write the page; Write the new site, once asked twice; Build the
+sample page) opens a window over the editor
+([`../editor/AssistantRun.tsx`](../editor/AssistantRun.tsx)), which waits
+behind it, inert:
+
+- **What the drawer says of the run, and more.** Its phase as the
+  window's title; its status line, the run's one live region (the
+  drawer's, behind it, says nothing meanwhile); a bar of how far it has
+  come (a new site's own four steps and its pages, once its direction
+  names them; a page's sections and pictures, once its plan has said how
+  many sections; moving, with no measure, before); the steps as the drawer
+  lists them.
+- **The cost, large** (see [What a request costs](#what-a-request-costs)):
+  so far, to four decimals, as the run goes, its tokens in, of them cached,
+  and out, each model at its list price and the day the prices were read,
+  the photos being made counted at their price per image, the requests
+  whose cost is not known, all a live estimate made exact as each request
+  ends; in all once it is over, said as the drawer says it, with what
+  every estimate leaves out. The sample's says nothing is spent.
+- **The preview**: the page being written, drawn by the site's renderer
+  ([`../render/page.tsx`](../render/page.tsx)) with the site's style and
+  its header and footer (a new site's own, once saved), at a desktop's
+  width, 1280, made smaller to fit, not to be edited, its pictures from the
+  library as they go in. It follows the newest section as it lands,
+  unless the person scrolls it, and says in words what it shows ("Preview
+  of “Home”, 4 sections"). Once the run is over, it shows the page, or a
+  new site's home page, with a switch for each page the site made.
+- **Closing it while the run goes asks first** (its close key, Esc, the
+  scrim, or its Stop key): Stop the Assistant? says what stays (what was
+  made, as drafts; for a new site, its style, which Put the old style back
+  returns), with Keep writing, the safe answer, and Stop. From its close,
+  Stop stops the run and closes the window; from its Stop key, the window
+  stays, to show what stays and what it cost.
+- **Once over** it stays open, saying how the run ended: Done closes it;
+  Open the page, or Open the home page for a new site (the page planned
+  home, else the first page made), opens it in the editor and closes it.
+  Closing it then asks nothing. The drawer keeps the summary and the new
+  site's offers.
+- **On a phone's window** it is the whole window, Progress and Preview a
+  switch apart.
 
 ## The providers
 
@@ -388,9 +477,9 @@ says what it used; so was an illustration the cleaner refused.
 
 After each request the Assistant says the tokens the provider counted (in,
 cached and out) and what they come to at the model's list price. While a
-page or a new site is written, what it has cost so far grows under the
-drawer's status line, a live estimate made exact as each request ends (see
-**As it is written**, below). After a page it is said in the drawer, with
+page or a new site is written, what it has cost so far grows in the run
+window's meter, large, and under the drawer's status line, a live
+estimate made exact as each request ends (see **As it is written**, below). After a page it is said in the drawer, with
 the price used and the day the prices were read: the page's words, then a
 line for each kind of picture made for it ("4 photos, ≈ $0.16: ...", its
 tokens and price), then the whole; and each picture's own cost in the

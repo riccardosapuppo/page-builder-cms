@@ -9,7 +9,8 @@ again.
 | --- | --- |
 | `editor.png` | The editor, 1440 by 900, with the home page open, its heading selected, the Outline on the left and the heading's settings on the right. |
 | `editor-phone.png` | The editor on a 390 by 844 phone, at twice the pixels: the hero's heading tapped, its settings risen from the bar at the foot as a sheet. |
-| `assistant.png` | The Assistant, 1440 by 900, after writing a page from the sample written by hand (no key, no model): its four sections on the canvas, the opening over a picture under a dark veil, and listed in its drawer, each a step in History, above the choice of provider and what each one makes; the new page's heading selected, Write it again and Motion among its settings. |
+| `assistant-run.png` | The Assistant's run window, 1440 by 900, at the end of the sample written by hand (no key, no model): on its left its status, the bar full, the cost in all (nothing spent) and the four sections in its steps; on its right the page it wrote, drawn by the site's renderer in its preview, the opening over a picture under a dark veil; over the editor, still on the home page. |
+| `assistant.png` | The same page opened from the run window with Open the page, 1440 by 900: its four sections on the canvas, the opening over a picture under a dark veil, and listed in the Assistant's drawer above the choice of provider and what each one makes; the page arrived whole, as its draft; its heading selected, Write it again and Motion among its settings. |
 | `header.png` | The site's header open in the editor, 1440 by 900, as a page is opened: its menu selected, the menu's links on the right, the home page dimmed under it. |
 | `published-desktop.png` | The home page as the CMS serves it to a 1440 by 900 window. |
 | `published-phone.png` | The same page on a 390 by 844 phone, at twice the pixels. |
@@ -99,6 +100,12 @@ veil, and the drawer saying what each provider makes), `editor.png`,
 foot). Those five were kept. The others differed only as above, in their
 times, port and the 38 pixels of `demo-preview.png`, and were left as
 they were, so the link preview's picture and its address stay the same.
+
+On 21 October 2026, with the Assistant's run window, `assistant-run.png`
+was added and `assistant.png` made again with it (`--only`, on the ports
+3925 and 4925): the sample is now written aside, in the window, and opened
+from it. A second run gave both byte for byte the same. The others were
+not made again.
 
 ## What holds them to what the script makes
 

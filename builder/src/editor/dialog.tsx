@@ -1,7 +1,10 @@
 // A modal dialog in the design's look (.dialog, .scrim): it takes the focus
 // when it opens, keeps Tab inside itself, closes on Escape, and gives the
 // focus back to what had it before. The rest of the editor is inert while
-// it is open.
+// it is open. One may open over another (the media library over
+// Collections; Stop the Assistant? over the Assistant's run window): the
+// one under it waits, inert too. A question that interrupts, asked before
+// something that cannot be taken back, is an alertdialog.
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./icons.tsx";
@@ -33,6 +36,8 @@ interface DialogProps {
   // line a key was dropped at): the dialog stands beside it and not over
   // it, instead of in the middle of the window (./place-dialog.ts).
   beside?: string | undefined;
+  // "alertdialog" for a question that interrupts; "dialog" else.
+  role?: "dialog" | "alertdialog";
 }
 
 const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
@@ -43,7 +48,7 @@ const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), textar
 // key that reached no dialog.
 const opened: HTMLElement[] = [];
 
-export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note, plain, describedBy, beside }: DialogProps) {
+export function Dialog({ title, onClose, children, footer, wide = false, className, bodyClassName, tools, closeLabel = "Close", note, plain, describedBy, beside, role = "dialog" }: DialogProps) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -142,7 +147,7 @@ export function Dialog({ title, onClose, children, footer, wide = false, classNa
       <div
         ref={box}
         className={`dialog chrome ${className ?? (wide ? "dlg-wide" : "dlg-form")}`}
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-labelledby={`${id}-title`}
         aria-describedby={describedBy}

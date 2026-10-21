@@ -1,6 +1,7 @@
 // A new site from a brief (./site.ts), on fakes of the test's own: an
-// editor whose pages are real editor stores, opened one at a time, and a
-// storage that keeps the style and the parts. The direction first; the
+// editor whose pages are real editor stores, written aside while the
+// person stays on a page of their own, and a storage that keeps the style
+// and the parts. The direction first; the
 // style it gives, the old one kept; the header and the footer, the drafts
 // they replace kept as versions; then the pages, one after the other, each
 // asked with the direction and the site's pages, their pictures through
@@ -10,11 +11,12 @@
 // no page was made, a Stop during its first save included, and a first
 // save whose answer was lost counted as saved, made sure of at the
 // revision it was sent at, or marked to check; the buttons of the pages
-// made that lead to a page not made
-// losing their links. A stop,
-// another page opened, a refused key end it; a page the model refused is
-// said and the next written; a direction that is none, or a style the
-// storage refuses, change nothing more.
+// made that lead to a page not made losing their links. Each page's end,
+// where the editor saves it, comes before the next page is asked for and
+// before the clean-up; a page whose last changes were not saved is marked.
+// A stop or a refused key ends it; a page the model refused is said and the
+// next written; a direction that is none, or a style the storage refuses,
+// change nothing more.
 import { expect, test } from "vitest";
 import { makeReplacePage, type Made } from "../document/commands.ts";
 import { sameJson } from "../document/json.ts";
@@ -26,9 +28,9 @@ import type { PictureAsk } from "./build.ts";
 import { KEY_GONE } from "./context.tsx";
 import type { DirectionStyle } from "./direction.ts";
 import { AssistantError, type Answer, type Usage } from "./providers.ts";
-import { BEFORE_NEW_SITE, LEFT_SITE, SITE_PICTURES_MOST, writeSite, type SiteHooks, type SitePagePlan, type SiteWriting } from "./site.ts";
+import { BEFORE_NEW_SITE, SITE_PICTURES_MOST, writeSite, type SiteHooks, type SitePagePlan, type SiteWriting } from "./site.ts";
 import { tallyOf, type Tally } from "./tally.ts";
-import { LEFT, type PictureMaker } from "./write.ts";
+import type { PictureMaker } from "./write.ts";
 
 const STYLE: DirectionStyle = { ...defaultSiteStyle(), choices: siteStyleChoices() };
 const USED: Usage = { input: 100, cacheRead: 0, cacheWrite: 0, output: 200 };
@@ -107,15 +109,16 @@ const ORIGINAL: Record<PartKind, PageDocument> = {
   footer: { schemaVersion: 1, title: "Footer", sections: [] },
 };
 
-// The editor and the storage, faked: pages made at an address, opened one
-// at a time, the person on a page of their own (id 1) to begin with; the
-// parts' drafts, each one saved over kept as a version unless it is the
-// run's own; a page's draft changed as the editor changes it. The parts'
-// saves are counted from 1: those `losing` names are kept but answer that
-// what became of them cannot be told; those `failing` names are not kept.
-function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: string | null; onSave?: (kind: PartKind) => void; refuseChange?: string; losing?: number[]; failing?: number[] } = {}) {
+// The editor and the storage, faked: pages made at an address and written
+// aside, the person on a page of their own all along; the parts' drafts,
+// each one saved over kept as a version unless it is the run's own; a
+// page's draft changed as the editor changes it. The parts' saves are
+// counted from 1: those `losing` names are kept but answer that what
+// became of them cannot be told; those `failing` names are not kept. With
+// `ends`, each page's end is in the calls, and answers as `ends` says for
+// its address (null: saved).
+function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: string | null; onSave?: (kind: PartKind) => void; refuseChange?: string; losing?: number[]; failing?: number[]; ends?: Record<string, string | null> } = {}) {
   const pages = new Map<number, { slug: string; store: EditorStore }>();
-  let open = 1;
   let next = 100;
   let partSaves = 0;
   const calls: string[] = [];
@@ -165,21 +168,18 @@ function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: s
     },
     taken: () => [...(options.taken ?? []), ...[...pages.values()].map((page) => page.slug)],
     header: () => ({ schemaVersion: 1, title: "Header", sticky: true, sections: [] }),
-    isOpen: (id) => open === id,
-    page({ slug, after }) {
+    page({ slug }) {
       let page: { id: number; slug: string } | null = null;
       return {
         made: () => page,
         async open(title) {
-          if (after !== null && open !== after) return LEFT;
           const at = options.madeElsewhere === slug ? `${slug}-2` : slug;
           page = { id: next++, slug: at };
           pages.set(page.id, { slug: at, store: createEditorStore({ document: { schemaVersion: 1, title, sections: [] }, now: () => 0 }) });
-          open = page.id;
           calls.push(`page /${at}`);
           return null;
         },
-        still: () => page !== null && open === page.id,
+        still: () => page !== null,
         document: () => pages.get(page!.id)!.store.getState().document,
         apply(change: Made) {
           if (!change.ok) return change.error.message;
@@ -187,10 +187,17 @@ function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: s
           return outcome.ok ? null : outcome.error.message;
         },
         upload: async (_file, picture) => ({ ok: true, mediaId: `m-${picture.alt.replace(/[^a-z0-9]+/gi, "-")}` }),
+        ...(options.ends ? {
+          async end() {
+            await Promise.resolve();
+            calls.push(`end /${page!.slug}`);
+            return options.ends?.[page!.slug] ?? null;
+          },
+        } : {}),
       };
     },
   };
-  return { hooks, calls, parts, drafts, versions, fences, styles, pages, leave: () => (open = -1) };
+  return { hooks, calls, parts, drafts, versions, fences, styles, pages };
 }
 
 // The page made at `slug`, as its store has it now.
@@ -592,40 +599,15 @@ test("once the run ends, a button of a page made that leads to a page not made l
   expect(held.notes).toContain("“Home”: Its buttons that lead to pages not made keep their links, as the change was not saved: the storage did not answer.");
 });
 
-test("another page opened by the person between two pages stops the site there, said; nothing is asked after", async () => {
-  const site = fakeSite();
-  const asked: string[] = [];
+test("each page's end, where the editor saves it, comes before the next page is asked for, and every end before the clean-up changes a page's draft", async () => {
+  const site = fakeSite({ ends: {} });
   const result = await writeSite({
     askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
     askPage: (page) => {
-      asked.push(page.title);
-      return answered(planOf(page));
-    },
-    style: STYLE,
-    facts: { media: [], brief: "A gym." },
-    hooks: site.hooks,
-    newId,
-    // The person goes elsewhere the moment the first page is written.
-    tell: (writing) => {
-      if (writing.pages[0]?.state === "done") site.leave();
-    },
-  });
-  expect(asked).toEqual(["Home"]);
-  expect(result.phase).toBe("stopped");
-  expect(result.error).toBe(LEFT_SITE);
-  expect(result.pages.map((page) => page.state)).toEqual(["done", "stopped", "stopped"]);
-  // The frame settled all the same, on the page made, and its button to a page not made gone.
-  expect(menuOf(site.drafts.header)).toEqual(["/iron-forge"]);
-  expect(result.notes).toContain("“Home”: Took the link out of the button “Classes”: the page it led to, /classes, was not made.");
-});
-
-test("another page opened while the next page's plan comes: it is not made, and the site stops there, said", async () => {
-  const site = fakeSite();
-  const result = await writeSite({
-    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
-    askPage: (page) => async (written) => {
-      if (page.index === 1) site.leave();
-      return answered(planOf(page))(written);
+      site.calls.push(`ask ${page.title}`);
+      return page.index === 1 ? async () => {
+        throw new AssistantError("Anthropic refused the request.", "other");
+      } : answered(linkedPlan(page));
     },
     style: STYLE,
     facts: { media: [], brief: "A gym." },
@@ -633,9 +615,37 @@ test("another page opened while the next page's plan comes: it is not made, and 
     newId,
     tell: () => undefined,
   });
-  expect(site.calls.filter((call) => call.startsWith("page"))).toEqual(["page /iron-forge"]);
-  expect([result.phase, result.error]).toEqual(["stopped", LEFT_SITE]);
-  expect(result.pages.map((page) => page.state)).toEqual(["done", "failed", "stopped"]);
+  expect(result.phase).toBe("done");
+  expect(site.calls).toEqual([
+    "style", `header, “${BEFORE_NEW_SITE}” kept`, `footer, “${BEFORE_NEW_SITE}” kept`,
+    "ask Home", "page /iron-forge", "end /iron-forge",
+    // Refused before its page was made: no page, no end.
+    "ask Classes",
+    "ask Membership", "page /membership", "end /membership",
+    "header", "footer", "change /iron-forge", "change /membership",
+  ]);
+  // The clean-up read each page as it was written, in memory: its buttons to /classes lost their links.
+  expect(buttonsOf(pageAt(site, "iron-forge"))).toEqual(["Classes #", "Membership /membership", "Monthly: Join /membership"]);
+});
+
+test("a page whose last changes were not saved is marked and said, and the next page is written all the same", async () => {
+  const site = fakeSite({ ends: { "iron-forge": "the CMS refused the save." } });
+  const result = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: (page) => answered(planOf(page)),
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: site.hooks,
+    newId,
+    tell: () => undefined,
+  });
+  expect(result.phase).toBe("done");
+  expect(result.pages.map((page) => [page.path, page.state, page.writing?.unsaved])).toEqual([
+    ["/iron-forge", "done", "the CMS refused the save."],
+    ["/classes", "done", undefined],
+    ["/membership", "done", undefined],
+  ]);
+  expect(result.pages[0]!.writing!.notes).toContain("Its last changes were not saved: the CMS refused the save.");
 });
 
 test("a page the model refuses is said and the next one written; a key no longer accepted, or forgotten, stops the site, its frame settled on the page made", async () => {

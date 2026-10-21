@@ -494,6 +494,35 @@ test("a new page is made, its address offered from its title, and opened; a take
   expect((screen.getByLabelText("Address") as HTMLInputElement).value).toBe("spring-series");
 });
 
+test("a page made aside for the Assistant is made and listed, and the page open stays open, its document untouched; its id, its draft's revision and its document come back, and the storage's own draft calls save it", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { env, site, written } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const before = env.store.getState().document;
+  let made: Awaited<ReturnType<Session["makePageAside"]>> | undefined;
+  await act(async () => {
+    made = await grab.session!.makePageAside({ title: "Open day", slug: "open-day" });
+  });
+  expect(made).toEqual({ ok: true, id: 3, revision: 0, document: { schemaVersion: 1, title: "Open day", sections: [] } });
+  // Still on Winter series, its document the same; the address names it still.
+  expect(screen.getByRole("button", { name: "Switch page. Open: Winter series" })).toBeTruthy();
+  expect(env.store.getState().document).toBe(before);
+  expect(written).toEqual([1]);
+  // Listed in the page switch.
+  fireEvent.click(screen.getByRole("button", { name: "Switch page. Open: Winter series" }));
+  expect(within(screen.getByRole("dialog", { name: "Pages" })).getByRole("button", { name: /^Open day/ })).toBeTruthy();
+  // A taken address: the server's findings, on /slug.
+  let taken: Awaited<ReturnType<Session["makePageAside"]>> | undefined;
+  await act(async () => {
+    taken = await grab.session!.makePageAside({ title: "Winter", slug: "winter-series" });
+  });
+  expect(taken).toMatchObject({ ok: false, errors: [{ pointer: "/slug" }] });
+  // Its draft, saved through the storage's own calls.
+  const document: PageDocument = { schemaVersion: 1, title: "Open day", sections: [] , description: "Trial swims." };
+  expect(await grab.session!.drafts.saveDraft(3, { revision: 0, saveId: "aside-1", document })).toMatchObject({ ok: true, value: { revision: 1 } });
+  expect(site.drafts.get(3)!.document).toEqual(document);
+});
+
 // An edit the shell's autosave has not sent yet: the first section's label.
 function relabel(label: string) {
   fireEvent.click(within(outline()).getAllByRole("treeitem")[0]!.querySelector(".t-row")!);

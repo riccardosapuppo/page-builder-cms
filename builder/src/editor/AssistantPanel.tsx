@@ -1,18 +1,24 @@
 // The Assistant's drawer (../assistant/README.md): a key of the person's
-// own, then a brief, then a new page written section by section while the
-// person watches it grow on the canvas, or a new site. Without a key, a
-// sample written by hand goes through the same steps. Which provider, what
-// each one does, what is kept of the key and where it goes are said where
-// the key is asked for. Before writing, a switch makes pictures: photos
-// with an OpenAI key, at the quality chosen, its price per photo said
-// beside it; illustrations with an Anthropic key. While the page is
-// written, what it has cost so far grows under the status line, a live
-// estimate made exact as each request ends (../assistant/live.ts), each
-// picture's progress is in the list of steps, and its cost once it is
-// made. After a page, the tokens it used and what they come to at the
-// model's list price are said (../assistant/tally.ts), a line for each
+// own, then a brief, then a new page written section by section, or a new
+// site. Without a key, a sample written by hand goes through the same
+// steps. Which provider, what each one does, what is kept of the key and
+// where it goes are said where the key is asked for. Before writing, a
+// switch makes pictures: photos with an OpenAI key, at the quality chosen,
+// its price per photo said beside it; illustrations with an Anthropic key.
+//
+// A run (a page, a new site, the sample) opens the run window
+// (./AssistantRun.tsx) over the editor, which stays on the page the person
+// has open: the Assistant writes aside (./assistant-aside.ts), never into
+// it, and the window shows the page growing in a preview. The drawer says
+// the same of the run behind it, with no live region of its own while the
+// window speaks: its status line, what it has cost so far under it, a live
+// estimate made exact as each request ends (../assistant/live.ts), its
+// steps (./assistant-steps.tsx), each picture's progress and its cost once
+// it is made. After a page, the tokens it used and what they come to at
+// the model's list price are said (../assistant/tally.ts), a line for each
 // kind of picture, then the whole; the drawer's foot keeps the total since
-// the key was connected, and says it is an estimate.
+// the key was connected, and says it is an estimate. The page arrives whole,
+// as its draft: no section of it is a step in the History of the page open.
 //
 // Two choices: a page for this site, or a new site (../assistant/site.ts),
 // said plainly before anything is asked: a new style, header and footer,
@@ -25,30 +31,31 @@
 // it, each asked: the home page made the site's, everything published, the
 // old style put back, and in the browser demo Start over with the example
 // site.
-import { Fragment, useCallback, useEffect, useId, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { runCost, useAssistant, useAssistantStore, type AssistantStore, type ShownSite, type ShownWriting, type SiteOutcome } from "../assistant/context.tsx";
 import { PROVIDER_NAMES, PROVIDERS, type ProviderId } from "../assistant/key.ts";
 import { liveWords, SAMPLE_SPENDS } from "../assistant/live.ts";
 import { illustrationMaker, photoMaker } from "../assistant/makers.ts";
 import { PICTURE_KINDS, type PictureKind } from "../assistant/pictures.ts";
 import { PLAN_MADE_MOST } from "../assistant/plan.ts";
-import { about, dollars, IMAGE_QUALITIES, imagePrice, PRICES_DAY, type ImageQuality } from "../assistant/prices.ts";
+import { dollars, IMAGE_QUALITIES, imagePrice, PRICES_DAY, type ImageQuality } from "../assistant/prices.ts";
 import { directionQuestion, pageQuestion, type PageDirection, type SiteWords } from "../assistant/prompts.ts";
 import { sampleAnswer, samplePlan, SAMPLE_BRIEF } from "../assistant/sample.ts";
-import { BEFORE_NEW_SITE, SITE_PICTURES_MOST, writeSite, type SiteHooks, type SitePage, type SitePageHooks, type SitePagePlan, type SiteStep } from "../assistant/site.ts";
-import { addTallies, allWords, ESTIMATE_NOTE, estimateWords, pictureWords, totalWords, usedWords, type Tally } from "../assistant/tally.ts";
-import { LEFT, writePage, type PictureWritten, type Writing } from "../assistant/write.ts";
+import { SITE_PICTURES_MOST, writeSite, type SitePage, type SitePagePlan } from "../assistant/site.ts";
+import { ESTIMATE_NOTE, totalWords } from "../assistant/tally.ts";
+import { writePage } from "../assistant/write.ts";
 import type { SiteFacts } from "../assistant/build.ts";
 import { PALETTE_SLOTS, type PaletteSlot } from "../shared/document.ts";
 import { isFreeColor } from "../shared/free-colors.ts";
-import { slotLabel, slotTone } from "../shared/site-tokens.ts";
+import { slotTone } from "../shared/site-tokens.ts";
 import type { MediaItem, SiteStyle } from "../storage/adapter.ts";
 import { afterRender } from "./act.ts";
-import { runMade, useEnv, useUi, type EditorEnv } from "./context.tsx";
+import { asideHooks, asideSiteHooks, type AsideOptions } from "./assistant-aside.ts";
+import { and, going, Notes, PageCost, pageLine, pageTitle, plural, SectionSteps, shownTally, siteGoing, siteLine, siteNotes, SiteCost, SiteSteps, siteTallies, siteTitle } from "./assistant-steps.tsx";
+import { useEnv, useUi } from "./context.tsx";
 import { Icon } from "./icons.tsx";
 import { useMediaService } from "./library/context.tsx";
-import type { MediaService } from "./library/service.ts";
-import { slugFrom, useSession, type Session } from "./session.tsx";
+import { useSession, type Session } from "./session.tsx";
 import "./assistant.css";
 
 const KEY_PAGES: Readonly<Record<ProviderId, string>> = {
@@ -70,7 +77,6 @@ export const NEW_SITE_DOES = [
 ] as const;
 
 const QUALITY_NAMES: Readonly<Record<ImageQuality, string>> = { low: "Low", medium: "Medium", high: "High" };
-const KIND_NAMES: Readonly<Record<PictureKind, string>> = { photo: "Photo", illustration: "Illustration" };
 
 // The palette's tones as hex, for the question: a free colour as it is, a
 // curated tone by its name.
@@ -102,79 +108,21 @@ function siteFacts(session: Session, media: ReadonlyMap<string, MediaItem>, brie
   };
 }
 
-// The steps of ../assistant/write.ts done by this editor: a page made from
-// the plan's title (its address made free if it is taken), each command
-// applied to it while it is the page open, each new section brought into
-// view as it lands, and a picture made for it put in the library. A page
-// of a new site (`planned`) is made at the address planned for it, and
-// only while the page the Assistant opened before it is still the one
-// open: another opened meanwhile stops the site.
-function pageHooks(env: EditorEnv, session: Session, library: MediaService | null, planned?: { slug: string; after: number | null }): SitePageHooks {
-  let opened: { id: number; slug: string } | null = null;
-  return {
-    made: () => opened,
-    async open(title) {
-      if (planned && planned.after !== null && !session.isOpen(planned.after)) return LEFT;
-      const base = planned?.slug ?? (slugFrom(title) || "page");
-      for (let count = 1; count <= 5; count++) {
-        const slug = count === 1 ? base : `${base}-${count}`;
-        const made = await session.makePage({ title, slug });
-        if (made.ok) {
-          opened = { id: made.id, slug };
-          return session.isOpen(made.id) ? null : "The new page did not open.";
-        }
-        if (!made.errors.some((error) => error.pointer === "/slug")) return made.errors[0]?.message ?? "The page could not be made.";
-      }
-      return "No free address was found for the new page.";
-    },
-    still: () => opened !== null && session.isOpen(opened.id),
-    document: () => env.store.getState().document,
-    apply(made, options) {
-      const selected = env.store.getState().selection;
-      const result = runMade(env, made);
-      if (!result.ok) return result.error.message;
-      // A picture put in leaves the person's selection, and their panel, as they were.
-      if (options?.quiet) env.store.getState().select(selected);
-      const last = env.store.getState().document.sections.at(-1);
-      if (made.ok && made.command.kind === "insert" && made.command.subject?.id === last?.id && last) {
-        afterRender(() => {
-          const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-          document.querySelector(`.canvas [data-block-id="${last.id}"]`)?.scrollIntoView?.({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
-        });
-      }
-      return null;
-    },
-    ...(library === null ? {} : {
-      async upload(file: File, picture: { width: number; height: number; alt: string }) {
-        const put = await library.put({ file, width: picture.width, height: picture.height, alt: picture.alt });
-        return put.ok ? { ok: true as const, mediaId: put.item.id } : put;
-      },
-    }),
-  };
+// What the pages of a run are written with here: aside, with the editor's
+// clock, each shown to the run window's preview as it grows.
+function aside(assistant: AssistantStore, session: Session, clock: AsideOptions["clock"], library: AsideOptions["library"]): AsideOptions {
+  return { session, clock, library, show: (page) => assistant.getState().showPage(page) };
 }
 
-// What a new site does through this editor (../assistant/site.ts): its
-// style saved as Site style saves it, the old one kept to be put back; its
-// header and footer saved as the parts' drafts, the drafts they replace
-// kept as versions; its pages made and written as a page is, and their
-// buttons to a page not made changed once it ends.
-function siteHooks(env: EditorEnv, session: Session, library: MediaService | null): SiteHooks {
-  return {
-    applyStyle: (style) => session.applySiteStyle({ ...style, kept: "now" }),
-    savePart: (kind, document, keep, ours, fence) => session.replacePart(kind, document, keep, ours, fence),
-    changePage: (id, change) => session.changeDraft(id, change),
-    taken: () => session.pages.flatMap((page) => (page.slug === null ? [] : [page.slug])),
-    header: () => env.ui.getState().parts.header,
-    isOpen: (id) => session.isOpen(id),
-    page: (planned) => pageHooks(env, session, library, planned),
-  };
-}
-
-// One run of the writer, stoppable from the drawer, its state shown there:
-// a page's, which takes the place of a site's summary.
+// One run of the writer, its state shown in the drawer and in the run
+// window, which opens as it begins: a page's, which takes the place of a
+// site's summary.
 async function run(assistant: AssistantStore, start: (signal: AbortSignal, tell: (writing: ShownWriting) => void) => Promise<unknown>, shown: Partial<ShownWriting>) {
   const signal = assistant.getState().begin();
   assistant.getState().setSite(null);
+  // The run before it shows nowhere, not even for a moment.
+  assistant.getState().setWriting(null);
+  assistant.getState().setRunWindow(true);
   try {
     await start(signal, (writing) => assistant.getState().setWriting({ ...writing, ...shown }));
   } finally {
@@ -186,6 +134,8 @@ async function run(assistant: AssistantStore, start: (signal: AbortSignal, tell:
 async function runSite(assistant: AssistantStore, start: (signal: AbortSignal, tell: (site: ShownSite) => void) => Promise<unknown>, shown: Partial<ShownSite>) {
   const signal = assistant.getState().begin();
   assistant.getState().setWriting(null);
+  assistant.getState().setSite(null);
+  assistant.getState().setRunWindow(true);
   try {
     await start(signal, (site) => assistant.getState().setSite({ ...site, ...shown }));
   } finally {
@@ -197,38 +147,18 @@ export function AssistantPanel() {
   const held = useAssistant((a) => a.held);
   const writing = useAssistant((a) => a.writing);
   const site = useAssistant((a) => a.site);
+  // While the run window is open, its status line is the one that speaks.
+  const quiet = useAssistant((a) => a.runWindow);
   return (
     <>
       <div className="drawer-body as-body">
-        {site && <SiteProgress site={site} />}
-        {writing && <Progress writing={writing} />}
+        {site && <SiteProgress site={site} quiet={quiet} />}
+        {writing && <Progress writing={writing} quiet={quiet} />}
         {held === null ? <Connect /> : <Brief />}
       </div>
       <Total />
     </>
   );
-}
-
-const going = (writing: ShownWriting): boolean => writing.phase === "asking" || writing.phase === "writing" || writing.phase === "pictures";
-const siteGoing = (site: ShownSite): boolean => site.phase === "asking" || site.phase === "style" || site.phase === "frame" || site.phase === "pages";
-
-// What the page written says it used, once it has ended: the page's words
-// and its pictures; nothing while it is being written, for a sample, or
-// when the provider said nothing.
-function shownTally(writing: ShownWriting | null): { words: Tally | null; pictures: Tally } | null {
-  if (writing === null || writing.sample || going(writing)) return null;
-  const words = writing.tally !== null && writing.tally.length > 0 ? writing.tally : null;
-  const pictures = addTallies(...writing.pictures.map((one) => one.tally ?? []));
-  return words === null && pictures.length === 0 ? null : { words, pictures };
-}
-
-// What a new site used, its direction's and its pages' words and its
-// pictures, as far as it has come.
-function siteTallies(site: ShownSite): { words: Tally; pictures: Tally } {
-  return {
-    words: addTallies(site.tally ?? [], ...site.pages.map((page) => page.writing?.tally ?? [])),
-    pictures: addTallies(...site.pages.flatMap((page) => page.writing?.pictures.map((one) => one.tally ?? []) ?? [])),
-  };
 }
 
 // The drawer's foot: the total since the key was connected, while it is
@@ -333,13 +263,13 @@ function Sample() {
     const facts = siteFacts(session, media, SAMPLE_BRIEF, style);
     void run(assistant, (signal, tell) => writePage({
       ask: sampleAnswer(samplePlan(facts.media), env.clock, signal),
-      facts, newId: env.newId, hooks: pageHooks(env, session, null), tell, signal,
+      facts, newId: env.newId, hooks: asideHooks(aside(assistant, session, env.clock, null)), tell, signal,
     }), { sample: true });
   };
   return (
     <section className="as-sample" aria-labelledby="as_sample_title">
       <h3 className="group-title" id="as_sample_title">No key at hand?</h3>
-      <p className="hint">Watch a sample: a plan written by hand for an open day at the swimming club goes through the same steps a model's plan takes, and the page builds itself.</p>
+      <p className="hint">Watch a sample: a plan written by hand for an open day at the swimming club goes through the same steps a model's plan takes, and the page builds itself as a new draft.</p>
       <button className="btn btn-small btn-secondary" type="button" aria-disabled={busy ? true : undefined} onClick={build}>Build the sample page</button>
     </section>
   );
@@ -459,7 +389,7 @@ function Brief() {
     const maker = !pictures ? undefined : kind === "photo" ? photoMaker(assistant, bound, quality) : illustrationMaker(assistant, bound, paletteTones(style));
     void run(assistant, (signal, tell) => writePage({
       ask: (written) => assistant.getState().ask((chosen) => pageQuestion(chosen, brief, words, pictures ? kind : null), written, signal, "words", bound),
-      facts, newId: env.newId, hooks: pageHooks(env, session, library), tell, signal, ...(maker ? { pictures: maker } : {}),
+      facts, newId: env.newId, hooks: asideHooks(aside(assistant, session, env.clock, library)), tell, signal, ...(maker ? { pictures: maker } : {}),
     }), { model: name, run: bound.run });
   };
 
@@ -496,7 +426,7 @@ function Brief() {
       style,
       facts: { media: facts.media, brief },
       ...(pictures ? { pictures: (look: { palette: Record<PaletteSlot, string>; imagery: string }) => (kind === "photo" ? photoMaker(assistant, bound, quality, undefined, look.imagery) : illustrationMaker(assistant, bound, look.palette, undefined, look.imagery)) } : {}),
-      hooks: siteHooks(env, session, library),
+      hooks: asideSiteHooks({ ...aside(assistant, session, env.clock, library), session, ui: env.ui }),
       newId: env.newId,
       tell,
       signal,
@@ -608,45 +538,6 @@ function Brief() {
   );
 }
 
-const PHASE_WORDS: Readonly<Record<ShownWriting["phase"], string>> = {
-  asking: "Asking",
-  writing: "Writing",
-  pictures: "Making pictures",
-  done: "Written",
-  stopped: "Stopped",
-  failed: "Not written",
-};
-
-const count = (n: number): string => `${n} ${n === 1 ? "section" : "sections"}`;
-const pictureCount = (n: number, kind: PictureKind): string => `${n} ${n === 1 ? kind : `${kind}s`}`;
-
-// Where a picture stands, after its name in the list.
-function pictureState(one: PictureWritten): string {
-  switch (one.state) {
-    case "waiting":
-      return "waiting";
-    case "making":
-      return one.kind === "photo" ? "being made…" : "being drawn…";
-    case "placing":
-      return "going into the library…";
-    case "placed": {
-      const tally = one.tally ?? [];
-      const priced = tally.filter((line) => line.cost.price !== null);
-      if (tally.length === 0) return "in";
-      if (priced.length === 0) return "in, no list price on file";
-      return `in, ${about(priced.reduce((nano, line) => nano + (line.cost.price === null ? 0 : line.cost.nano), 0))}`;
-    }
-    case "failed":
-      return "left out";
-    case "stopped":
-      return "stopped";
-  }
-}
-
-const PICTURE_ICONS: Readonly<Record<PictureWritten["state"], "clock" | "spinner" | "check" | "warning">> = {
-  waiting: "clock", making: "spinner", placing: "spinner", placed: "check", failed: "warning", stopped: "warning",
-};
-
 // What the run has cost so far, under the status line while the run goes
 // (../assistant/live.ts): the requests that ended as the provider counted
 // them, those in flight estimated, told a few times a second at most. No
@@ -659,243 +550,61 @@ function LiveCost({ sample = false }: { sample?: boolean }) {
   return <p className="hint as-live">{liveWords(cost)}</p>;
 }
 
-// A page's sections as they land, each with its pictures under it.
-function SectionSteps({ writing }: { writing: Writing }) {
-  return (
-    <>
-      {writing.sections.map((section, index) => (
-        <Fragment key={index}>
-          <li className={section.kept ? undefined : "as-left"}>
-            <Icon name={section.kept ? "check" : "warning"} />
-            <span>{section.label}</span>
-            {!section.kept && <span className="visually-hidden">, left out</span>}
-          </li>
-          {writing.pictures.map((one, at) => one.section !== index ? null : (
-            <li key={`picture-${at}`} className={`as-picture as-picture-${one.state}`}>
-              {one.state === "making" || one.state === "placing" ? <Icon name="spinner" className="i spin" /> : <Icon name={PICTURE_ICONS[one.state]} />}
-              <span>{KIND_NAMES[one.kind]} {one.behind ? "behind" : "in"} {section.label}</span>
-              <span className="as-picture-state"><span className="visually-hidden">, </span>{pictureState(one)}</span>
-            </li>
-          ))}
-        </Fragment>
-      ))}
-    </>
-  );
-}
-
-function Progress({ writing }: { writing: ShownWriting }) {
+// A page's run, as the drawer says it: its phase, its status line (no live
+// region while the run window speaks: `quiet`), what it has cost so far,
+// its sections and pictures, then what was left out and what it used.
+function Progress({ writing, quiet }: { writing: ShownWriting; quiet: boolean }) {
   const assistant = useAssistantStore();
   const moving = going(writing);
-  const shown = shownTally(writing);
-  const kept = writing.sections.filter((section) => section.kept).length;
-  const placed = writing.pictures.filter((one) => one.state === "placed");
-  const kind = writing.pictures[0]?.kind;
-  const page = writing.title ? `“${writing.title}”` : "the new page";
-  const onPage = placed.length > 0 && kind ? `${count(kept)} and ${pictureCount(placed.length, kind)}` : count(kept);
-  const line = writing.phase === "asking"
-    ? writing.sample ? "Reading the sample plan…" : `Asking ${writing.model ?? "the model"}…`
-    : writing.phase === "writing"
-      ? `Writing ${page}: ${count(kept)} so far.`
-      : writing.phase === "pictures"
-        ? `Making the pictures for ${page}: ${placed.length} of ${writing.pictures.length} in.`
-        : writing.phase === "done"
-          ? `${onPage} on ${page}. Each is a step in History: undo takes them back one at a time.`
-          : writing.phase === "stopped"
-            ? `Stopped. The ${onPage} on ${page} stay.`
-            : writing.error ?? "The page was not written.";
-  const kinds = shown ? (["photo", "illustration"] as const).map((which) => pictureWords(shown.pictures, which)).filter((words) => words !== null) : [];
-  const all = shown ? allWords(addTallies(shown.words ?? [], shown.pictures)) : null;
   return (
     <section className={`as-progress as-${writing.phase}`} aria-labelledby="as_progress_title" aria-busy={moving ? true : undefined}>
       <div className="as-progress-head">
-        <h3 className="group-title" id="as_progress_title">{PHASE_WORDS[writing.phase]}{writing.sample ? " · sample" : ""}</h3>
+        <h3 className="group-title" id="as_progress_title">{pageTitle(writing)}</h3>
         {moving
           ? <button className="btn btn-small btn-secondary" type="button" onClick={() => assistant.getState().stop()}>Stop</button>
           : <button className="ibtn" type="button" aria-label="Clear this summary" title="Clear" onClick={() => assistant.getState().setWriting(null)}><Icon name="close" /></button>}
       </div>
-      <p className={writing.phase === "failed" ? "error as-line" : "as-line"} role="status">
-        {moving && <Icon name="spinner" className="i spin" />}{writing.phase === "failed" && <Icon name="error" />}<span>{line}</span>
+      <p className={writing.phase === "failed" ? "error as-line" : "as-line"} role={quiet ? undefined : "status"}>
+        {moving && <Icon name="spinner" className="i spin" />}{writing.phase === "failed" && <Icon name="error" />}<span>{pageLine(writing)}</span>
       </p>
       {moving && <LiveCost sample={writing.sample === true} />}
       {writing.sections.length > 0 && <ol className="as-sections"><SectionSteps writing={writing} /></ol>}
-      {!moving && writing.notes.length > 0 && (
-        <details className="as-notes">
-          <summary>{writing.notes.length === 1 ? "One thing was left out" : `${writing.notes.length} things were left out`}</summary>
-          <ul>{writing.notes.map((note, index) => <li key={index}>{note}</li>)}</ul>
-        </details>
-      )}
-      {shown?.words && (
-        <>
-          <p className="hint as-used">{usedWords(shown.words)}</p>
-          <p className="hint as-cost">{estimateWords(shown.words)}</p>
-        </>
-      )}
-      {kinds.map((words) => <p key={words} className="hint as-pictures-cost">{words}</p>)}
-      {all && <p className="hint as-all">{all}</p>}
-      {writing.phase === "stopped" && !writing.sample && (shown?.words ?? null) === null && (
-        <p className="hint as-used">Its tokens are not known: the provider counts them when a request ends, and this one was stopped.</p>
-      )}
-      {!moving && writing.sample && <p className="hint">A sample written by hand: no model was asked.</p>}
+      {!moving && <Notes notes={writing.notes} />}
+      <PageCost writing={writing} />
     </section>
   );
 }
 
 // ------------------------------------------------------------ a new site
 
-const SITE_PHASE_WORDS: Readonly<Record<ShownSite["phase"], string>> = {
-  asking: "Asking for a direction",
-  style: "Giving the site its style",
-  frame: "Building the header and footer",
-  pages: "Writing the pages",
-  done: "Written",
-  stopped: "Stopped",
-  failed: "Not written",
-};
-
-const STEP_ICONS: Readonly<Record<SiteStep, "clock" | "check" | "warning">> = { waiting: "clock", doing: "clock", done: "check", failed: "warning", stopped: "warning" };
-const STEP_WORDS: Readonly<Record<SiteStep, string>> = { waiting: "waiting", doing: "", done: "", failed: "not made", stopped: "stopped" };
-const PAGE_WORDS: Readonly<Record<SitePage["state"], string>> = { waiting: "waiting", writing: "being written…", done: "written", failed: "not written", stopped: "stopped" };
-
-const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
-const and = (words: readonly string[]): string => (words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
-
-// What a new site has made, in words: "a new style, a new header and
-// footer, and 3 pages with 4 photos".
-function madeWords(site: ShownSite): string {
-  const parts: string[] = [];
-  if (site.steps.style === "done") parts.push("a new style");
-  // A part put back as it was is not one the site made.
-  const frame = (["header", "footer"] as const).filter((kind) => site.steps[kind] === "done" && site.frame[kind] !== "back");
-  if (frame.length > 0) parts.push(`a new ${frame.join(" and ")}`);
-  const pages = site.pages.filter((page) => page.id !== null);
-  const placed = pages.flatMap((page) => page.writing?.pictures ?? []).filter((one) => one.state === "placed");
-  if (pages.length > 0) parts.push(`${plural(pages.length, "page", "pages")}${placed.length > 0 ? ` with ${pictureCount(placed.length, placed[0]!.kind)}` : ""}`);
-  // Its parts hold an "and" of their own: the last one follows a comma.
-  return parts.length === 0 ? "nothing" : parts.length < 3 ? parts.join(" and ") : `${parts.slice(0, -1).join(", ")}, and ${parts.at(-1)}`;
-}
-
-function siteLine(site: ShownSite): string {
-  const name = site.direction ? `“${site.direction.name}”` : "the new site";
-  switch (site.phase) {
-    case "asking":
-      return `Asking ${site.model ?? "the model"} for the site's direction…`;
-    case "style":
-      return `Giving ${name} its style…`;
-    case "frame":
-      return `Building ${name}'s header and footer…`;
-    case "pages": {
-      const at = site.pages.findIndex((page) => page.state === "writing");
-      const page = site.pages[at];
-      if (!page) return `Writing ${name}'s pages…`;
-      const writing = page.writing;
-      const where = `“${page.title}”, page ${at + 1} of ${site.pages.length}`;
-      if (writing?.phase === "pictures") return `Making the pictures for ${where}: ${writing.pictures.filter((one) => one.state === "placed").length} of ${writing.pictures.length} in.`;
-      return writing && writing.phase !== "asking" ? `Writing ${where}: ${count(writing.sections.filter((section) => section.kept).length)} so far.` : `Asking for ${where}…`;
-    }
-    case "done": {
-      const kept = (["header", "footer"] as const).filter((kind) => site.frame[kind] === "new" || site.frame[kind] === "stale");
-      const back = (["header", "footer"] as const).filter((kind) => site.frame[kind] === "back");
-      const one = (kinds: readonly string[], single: string, many: string) => (kinds.length === 1 ? single : many);
-      return `${name}: ${madeWords(site)}.`
-        + (kept.length > 0 ? ` The ${and(kept)} it replaced ${one(kept, "is kept in its", "are kept in their")} versions, as “${BEFORE_NEW_SITE}”.` : "")
-        + (back.length > 0 ? ` The ${and(back)} ${one(back, "is back as it was", "are back as they were")}: no page was made.` : "");
-    }
-    case "stopped":
-      return `${site.error ? `${site.error} ` : "Stopped. "}What was made stays: ${madeWords(site)}.`;
-    case "failed":
-      return `${site.error ?? "The site was not written."}${site.steps.style === "done" ? ` What was made stays: ${madeWords(site)}.` : ""}`;
-  }
-}
-
-// Where a new site's header or footer stands, beside its step: a draft;
-// put back as it was; or one to check, which may lead to a page not made.
-function partWords(site: ShownSite, kind: "header" | "footer"): string {
-  if (site.frame[kind] === "back") return "put back";
-  if (site.frame[kind] === "stale") return "to check";
-  return site.steps[kind] === "done" ? "draft" : "";
-}
-
-function SiteProgress({ site }: { site: ShownSite }) {
+// A new site's run, as the drawer says it, the same way: its steps grouped
+// by page, then what to know, what it used, and what becomes of it.
+function SiteProgress({ site, quiet }: { site: ShownSite; quiet: boolean }) {
   const assistant = useAssistantStore();
   const moving = siteGoing(site);
   // As the site begins, the focus goes to its steps, at the drawer's top,
-  // above the brief its Write key was pressed under.
+  // above the brief its Write key was pressed under: where the run window,
+  // opening over it, gives it back once it closes.
   const title = useRef<HTMLHeadingElement>(null);
   const beginning = site.phase === "asking";
   useEffect(() => {
     if (beginning) title.current?.focus();
   }, [beginning]);
-  const { words, pictures } = siteTallies(site);
-  const all = addTallies(words, pictures);
-  const notes = [...site.notes, ...site.pages.flatMap((page) => (page.writing?.notes ?? []).map((note) => `“${page.title}”: ${note}`))];
-  const kinds = moving ? [] : (["photo", "illustration"] as const).map((which) => pictureWords(pictures, which)).filter((line) => line !== null);
-  const whole = moving ? null : allWords(all, "the site");
-  const direction = site.direction;
-  const step = (name: string, state: SiteStep, said: string) => (
-    <li className={`as-step as-step-${state}`}>
-      {state === "doing" ? <Icon name="spinner" className="i spin" /> : <Icon name={STEP_ICONS[state]} />}
-      <span>{name}</span>
-      <span className="as-picture-state"><span className="visually-hidden">, </span>{said || STEP_WORDS[state]}</span>
-    </li>
-  );
   return (
     <section className={`as-progress as-site as-${site.phase}`} aria-labelledby="as_site_title" aria-busy={moving ? true : undefined}>
       <div className="as-progress-head">
-        <h3 ref={title} className="group-title" id="as_site_title" tabIndex={-1}>{SITE_PHASE_WORDS[site.phase]} · new site</h3>
+        <h3 ref={title} className="group-title" id="as_site_title" tabIndex={-1}>{siteTitle(site)}</h3>
         {moving
           ? <button className="btn btn-small btn-secondary" type="button" onClick={() => assistant.getState().stop()}>Stop</button>
           : <button className="ibtn" type="button" aria-label="Clear this summary" title="Clear" onClick={() => assistant.getState().setSite(null)}><Icon name="close" /></button>}
       </div>
-      <p className={site.phase === "failed" ? "error as-line" : "as-line"} role="status">
+      <p className={site.phase === "failed" ? "error as-line" : "as-line"} role={quiet ? undefined : "status"}>
         {moving && <Icon name="spinner" className="i spin" />}{site.phase === "failed" && <Icon name="error" />}<span>{siteLine(site)}</span>
       </p>
       {moving && <LiveCost />}
-      <ol className="as-groups">
-        <li className="as-group">
-          <h4 className="as-group-title">The site{direction ? <span className="as-group-path">{direction.name}</span> : null}</h4>
-          <ol className="as-sections">
-            {step("Direction", site.steps.direction, site.steps.direction === "done" && direction ? plural(direction.pages.length, "page", "pages") : "")}
-            <li className={`as-step as-step-${site.steps.style}`}>
-              {site.steps.style === "doing" ? <Icon name="spinner" className="i spin" /> : <Icon name={STEP_ICONS[site.steps.style]} />}
-              <span>Style</span>
-              {direction && site.steps.style === "done" && (
-                <span className="as-swatches" role="img" aria-label={`The new palette: ${PALETTE_SLOTS.map((slot) => `${slotLabel(slot)} ${direction.palette[slot]?.hex ?? ""}`).join(", ")}`}>
-                  {PALETTE_SLOTS.map((slot) => <span key={slot} className="as-swatch" style={{ "--c": direction.palette[slot]?.hex } as CSSProperties} />)}
-                </span>
-              )}
-              <span className="as-picture-state"><span className="visually-hidden">, </span>{site.steps.style === "done" ? "applied" : STEP_WORDS[site.steps.style]}</span>
-            </li>
-            {step("Header", site.steps.header, partWords(site, "header"))}
-            {step("Footer", site.steps.footer, partWords(site, "footer"))}
-          </ol>
-        </li>
-        {site.pages.map((page) => (
-          <li key={page.path} className={`as-group as-page as-page-${page.state}`}>
-            <h4 className="as-group-title">
-              {page.title}<span className="as-group-path">{page.path}</span>
-              {/* Written goes without saying beside its sections, but to a screen reader. */}
-              {page.state === "done"
-                ? <span className="visually-hidden">, {PAGE_WORDS.done}</span>
-                : <span className="as-picture-state"><span className="visually-hidden">, </span>{PAGE_WORDS[page.state]}</span>}
-            </h4>
-            {page.writing && page.writing.sections.length > 0 && <ol className="as-sections"><SectionSteps writing={page.writing} /></ol>}
-          </li>
-        ))}
-      </ol>
-      {!moving && notes.length > 0 && (
-        <details className="as-notes">
-          <summary>{notes.length === 1 ? "One thing to know" : `${notes.length} things to know`}</summary>
-          <ul>{notes.map((note, index) => <li key={index}>{note}</li>)}</ul>
-        </details>
-      )}
-      {!moving && words.length > 0 && (
-        <>
-          <p className="hint as-used">{usedWords(words)}</p>
-          <p className="hint as-cost">{estimateWords(words)}</p>
-        </>
-      )}
-      {kinds.map((line) => <p key={line} className="hint as-pictures-cost">{line}</p>)}
-      {whole && <p className="hint as-all">{whole}</p>}
+      <SiteSteps site={site} />
+      {!moving && <Notes notes={siteNotes(site)} site />}
+      <SiteCost site={site} />
       {!moving && (site.steps.style === "done" || site.pages.some((page) => page.id !== null)) && <SiteOffer site={site} />}
     </section>
   );
@@ -945,6 +654,13 @@ function SiteOffer({ site }: { site: ShownSite }) {
     ...made.filter((page) => page.dangling).map((page) => `“${page.title}”`),
     ...(["header", "footer"] as const).filter((kind) => site.frame[kind] === "stale").map((kind) => `the ${kind}`),
   ];
+  // A page whose last changes were not saved has a draft that is not what
+  // was written: while one has, Publish all is not offered either.
+  const unsaved = made.filter((page) => page.writing?.unsaved !== undefined).map((page) => `“${page.title}”`);
+  const held = [
+    ...(dangling.length > 0 ? [`${and(dangling)} may still lead to a page that was not made`] : []),
+    ...(unsaved.length > 0 ? [`${and(unsaved)} ${unsaved.length === 1 ? "has" : "have"} changes that were not saved`] : []),
+  ];
   const old = style?.kept ?? site.before;
   const styled = site.steps.style === "done" && !outcome.styleBack && old !== null;
   const madeAll = and([...(made.length > 0 ? [`the ${plural(made.length, "new page", "new pages")}`] : []), ...parts.map((part) => `the ${part.kind}`)]);
@@ -992,7 +708,7 @@ function SiteOffer({ site }: { site: ShownSite }) {
               onNo={no(homeNo)}
             />
           : <button ref={homeKey} className="btn btn-small btn-secondary" type="button" aria-disabled={busy ? true : undefined} onClick={() => !busy && setAsking("home")}>Make “{home.title}” the home page</button>)}
-        {session.capabilities.publish && dangling.length === 0 && (made.length > 0 || parts.length > 0) && !outcome.published && (asking === "publish"
+        {session.capabilities.publish && held.length === 0 && (made.length > 0 || parts.length > 0) && !outcome.published && (asking === "publish"
           ? <Ask
               label="Publish all"
               question={`Publish ${madeAll}? ${live ? "Visitors see them at once." : "This browser shows them as published."}`}
@@ -1016,8 +732,8 @@ function SiteOffer({ site }: { site: ShownSite }) {
             />
           : <button ref={startKey} className="btn btn-small btn-secondary" type="button" aria-disabled={busy ? true : undefined} onClick={() => !busy && setAsking("start")}>Start over with the example site</button>)}
       </div>
-      {session.capabilities.publish && dangling.length > 0 && (
-        <p className="hint as-offer-held">Publish all is not offered: {and(dangling)} may still lead to a page that was not made, as the things to know say.</p>
+      {session.capabilities.publish && held.length > 0 && (
+        <p className="hint as-offer-held">Publish all is not offered: {held.join(", and ")}, as the things to know say.</p>
       )}
       <p ref={said} className="hint as-offer-said" role="status" tabIndex={-1}>{outcome.said ?? ""}</p>
     </div>

@@ -9,7 +9,7 @@
 import { createContext, useContext, useMemo } from "react";
 import type { Autosave } from "../storage/autosave.ts";
 import type { PageDocument } from "../shared/document.ts";
-import type { Capabilities, FieldError, NewPage, PageKind, PageLinks, PageSummary, PartKind, Published, Schedule, SiteStyleChange, Version } from "../storage/adapter.ts";
+import { StorageError, type Capabilities, type FieldError, type NewPage, type PageKind, type PageLinks, type PageSummary, type PartKind, type Published, type Schedule, type SiteStyleChange, type StorageAdapter, type Version } from "../storage/adapter.ts";
 import { DEFAULT_CMS_ORIGIN } from "../storage/config.ts";
 
 export interface OpenPage {
@@ -101,9 +101,16 @@ export interface Session {
   isOpen(id: number): boolean;
   // Makes a page and opens it; resolves with the server's findings, or null.
   createPage(page: NewPage): Promise<FieldError[] | null>;
-  // The same, giving the new page's id: for the Assistant, which writes
-  // into the page it made only while isOpen says it is still open.
+  // The same, giving the new page's id.
   makePage(page: NewPage): Promise<{ ok: true; id: number } | { ok: false; errors: FieldError[] }>;
+  // Makes a page and leaves the editor where it is: for the Assistant,
+  // which writes it aside (./assistant-aside.ts). The pages are read
+  // again; the new one's id, its draft's revision and its document, read
+  // as a page opened is, come back; or the server's findings.
+  makePageAside(page: NewPage): Promise<{ ok: true; id: number; revision: number; document: PageDocument } | { ok: false; errors: FieldError[] }>;
+  // The storage's own draft calls, for a page written aside, which an
+  // autosave of its own saves.
+  drafts: Pick<StorageAdapter, "getDraft" | "saveDraft">;
   // Changes the open page's address; resolves with the server's findings,
   // or null.
   setSlug(slug: string): Promise<FieldError[] | null>;
@@ -233,6 +240,15 @@ export function emptySession(changes: Partial<Session> = {}): Session {
     isOpen: (id) => changes.current?.id === id,
     createPage: async () => null,
     makePage: async () => ({ ok: false, errors: [{ pointer: "", keyword: "unknown", blockPointer: null, message: "No page can be made here." }] }),
+    makePageAside: async () => ({ ok: false, errors: [{ pointer: "", keyword: "unknown", blockPointer: null, message: "No page can be made here." }] }),
+    drafts: {
+      getDraft: async () => {
+        throw new StorageError({ kind: "not-found", message: "No draft is kept here." });
+      },
+      saveDraft: async () => {
+        throw new StorageError({ kind: "refused", status: 0, code: "no_storage", message: "No draft is kept here." });
+      },
+    },
     setSlug: async () => null,
     preview: () => {},
     publish: async () => {},

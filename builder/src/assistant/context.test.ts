@@ -11,7 +11,8 @@
 // input from the question until the provider says it, the provider's count
 // in its place as it ends, one stopped with none dropped; a photo at its
 // price per image meanwhile; told at most every LIVE_MS; and the cost of
-// the run shown, none for the sample.
+// the run shown, none for the sample. The run window, open or closed, and
+// the pages a run has written, as the window's preview draws them.
 import { expect, test } from "vitest";
 import { FakeClock, settle } from "../../test/fake-clock.ts";
 import { createAssistant, KEY_GONE, runCost, type ShownWriting } from "./context.tsx";
@@ -20,6 +21,7 @@ import { LIVE_MS, questionChars } from "./live.ts";
 import { AssistantError, type Answer, type PhotoAnswer, type ProviderClient, type Question, type Usage } from "./providers.ts";
 import type { SiteWriting } from "./site.ts";
 import { photoTallyOf, tallyOf } from "./tally.ts";
+import type { PageDocument } from "../shared/document.ts";
 
 const KEY = "sk-not-a-real-key-wxyz";
 // 1,000 tokens in and 100 out: on Claude Opus 5.5, 1,000 × $4 + 100 × $20 a million, $0.006.
@@ -412,6 +414,27 @@ test("the run's cost is told at most every LIVE_MS while its answer streams in, 
   provider.now.answer({ text: "{}", usage: USED });
   await asked;
   expect(told).toEqual([0, 250, 500, 500]);
+});
+
+test("the run window, closed until a run opens it and open until it is closed; the pages a run has written, each as it was last shown, in the order they came, emptied as the next run begins", () => {
+  const store = createAssistant(new FakeClock(), async () => {
+    throw new TypeError("No provider in this test.");
+  });
+  expect([store.getState().runWindow, store.getState().written]).toEqual([false, []]);
+  store.getState().setRunWindow(true);
+  expect(store.getState().runWindow).toBe(true);
+  const page = (title: string, sections: number): PageDocument => ({ schemaVersion: 1, title, sections: Array.from({ length: sections }, (_, at) => ({ id: `s${at}`, type: "section", props: {}, style: { base: {} }, children: [] })) as PageDocument["sections"] });
+  store.getState().showPage({ id: 7, title: "Home", document: page("Home", 1) });
+  store.getState().showPage({ id: 8, title: "Classes", document: page("Classes", 1) });
+  const grown = page("Home", 2);
+  store.getState().showPage({ id: 7, title: "Home", document: grown });
+  expect(store.getState().written.map((one) => [one.id, one.title, one.document.sections.length])).toEqual([[7, "Home", 2], [8, "Classes", 1]]);
+  expect(store.getState().written[0]!.document).toBe(grown);
+  // The next run starts with none; the window stays as it was until closed.
+  store.getState().begin();
+  expect([store.getState().written, store.getState().runWindow]).toEqual([[], true]);
+  store.getState().setRunWindow(false);
+  expect(store.getState().runWindow).toBe(false);
 });
 
 test("the cost of the run being shown, a page's or a new site's: its own, live, the same while nothing changes; none for the sample, for a run no longer kept, or with nothing shown", async () => {

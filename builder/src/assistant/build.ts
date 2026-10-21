@@ -49,7 +49,7 @@
 //   with what it shows, its alt text and its shape: the section goes in
 //   without it, under its veil and focus (a veil with no picture draws
 //   nothing), a column whose image is still to come kept empty for it;
-//   ./write.ts makes the picture, then puts it in as a step of its own.
+//   ./write.ts makes the picture, then puts it in by a command of its own.
 //   picturesFor() hands over a section's, once the section is in.
 import {
   COLUMN_WIDTHS_BY_COUNT, type ColumnBlock, type ColumnWidthsToken, type FormField, type HeadingLevel, type ImageProps, type PageDocument, type Paragraph,

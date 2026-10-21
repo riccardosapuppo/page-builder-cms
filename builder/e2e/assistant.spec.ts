@@ -1,35 +1,37 @@
 // The Assistant (src/assistant/README.md) in Chromium, the providers'
 // APIs answered inside the browser: no key is real and nothing leaves the
 // machine. A key is checked with its provider and kept; a brief becomes a
-// new page, section by section, each a step of the Assistant's in History;
-// the key goes to its provider and nowhere else, is found in no storage of
-// the browser's, and a reload forgets it. After the page, the tokens the
-// provider counted and what they come to at the model's list price, and at
-// the drawer's foot the total since the key was connected, forgotten with
-// it. Stats, steps and pricing land as blocks of their own, a plan's button
-// whose address the brief does not give leading to the top of the page,
-// said. A key the provider refuses is said and not kept; Forget key
-// forgets it; with no key, the sample builds its page the same way; the
-// drawer passes axe. In a block's panel, a heading is written again and an
-// image of the library described, each shown before it is taken, with what
-// it used, and taken as one step of the Assistant's. Pictures made for a
-// page: OpenAI's photos with GPT Image 2 at the quality chosen, priced
-// before and after, each a real WebP the fake answers with; Anthropic's
-// illustrations, drawn by the browser from a clean SVG to a WebP, a
-// hostile one refused; each into the CMS's library with its alt text, then
-// onto the page as a step of its own; Stop stops those being made, and so
-// do another page opened and the key forgotten, none asked after, nor
+// new page, section by section, written aside while the run window shows
+// it growing in its preview, the editor left on the page it had open; the
+// page arrives whole, as its draft, opened with Open the page, no section
+// of it a step in History. The key goes to its provider and nowhere else,
+// is found in no storage of the browser's, and a reload forgets it. After
+// the page, the tokens the provider counted and what they come to at the
+// model's list price, and at the drawer's foot the total since the key was
+// connected, forgotten with it. Stats, steps and pricing land as blocks of
+// their own, a plan's button whose address the brief does not give leading
+// to the top of the page, said. A key the provider refuses is said and not
+// kept; Forget key forgets it; with no key, the sample builds its page the
+// same way; the drawer and the run window pass axe. In a block's panel, a
+// heading is written again and an image of the library described, each
+// shown before it is taken, with what it used, and taken as one step of the
+// Assistant's. Pictures made for a page: OpenAI's photos with GPT Image 2
+// at the quality chosen, priced before and after, each a real WebP the fake
+// answers with; Anthropic's illustrations, drawn by the browser from a clean
+// SVG to a WebP, a hostile one refused; each into the CMS's library with its
+// alt text, then onto the page; Stop stops those being made, and so do the
+// window closed (asked first) and the key forgotten, none asked after, nor
 // with the key connected next. While they are made, what the page has cost
-// so far is under the status line: its words as counted, the photos in
-// flight at their price per image, the drawings estimated from their
-// questions; the sample's says nothing is spent. A new site from a gym's
-// brief: the two choices, the new site said plainly and its Write asked
-// twice, the cost of its pictures said before; its direction, its palette
-// held to AA and applied through Site style's own call, the old style
-// kept; a header and a footer of its own, the old ones kept as versions;
-// three pages with photos within the site's budget, the cost said after;
-// published when asked and met by a visitor, then the old style put back
-// in one click.
+// so far is in the window's meter and under the drawer's status line: its
+// words as counted, the photos in flight at their price per image, the
+// drawings estimated from their questions; the sample's says nothing is
+// spent. A new site from a gym's brief: the two choices, the new site said
+// plainly and its Write asked twice, the cost of its pictures said before;
+// its direction, its palette held to AA and applied through Site style's own
+// call, the old style kept; a header and a footer of its own, the old ones
+// kept as versions; three pages with photos within the site's budget, the
+// cost said after; its home page opened from the window; published when
+// asked and met by a visitor, then the old style put back in one click.
 import type { Page, Route } from "@playwright/test";
 import { axe } from "./helpers/axe.ts";
 import { block } from "./helpers/canvas.ts";
@@ -308,7 +310,24 @@ async function startOn(page: Page, request: Parameters<typeof makePage>[0], titl
   await open(page, id);
 }
 
-test("a key kept in this tab's memory writes a page from a brief, each section a step of the Assistant's; the key goes only to its provider, no storage holds it, and a reload forgets it", async ({ page, request }) => {
+// The run window, over the editor while a run goes, and once it is over
+// until it is closed.
+const runWindow = (page: Page) => page.locator(".dialog.dlg-run");
+
+// The run over: Open the page, or a new site's home page, opens it in the
+// editor, and the window goes.
+async function openWritten(page: Page, name: "Open the page" | "Open the home page" = "Open the page") {
+  await runWindow(page).getByRole("button", { name }).click();
+  await expect(runWindow(page)).toHaveCount(0);
+}
+
+// The run over: Done closes the window, the editor where it was.
+async function done(page: Page) {
+  await runWindow(page).getByRole("button", { name: "Done", exact: true }).click();
+  await expect(runWindow(page)).toHaveCount(0);
+}
+
+test("a key kept in this tab's memory writes a page from a brief, aside, the run window showing it as it grows, the page open left as it was; the page arrives whole as its draft, opened from the window; the key goes only to its provider, no storage holds it, and a reload forgets it", async ({ page, request }) => {
   const asked = await anthropic(page);
   await startOn(page, request, "Before the Assistant");
   const box = await assistant(page);
@@ -320,29 +339,39 @@ test("a key kept in this tab's memory writes a page from a brief, each section a
 
   await box.getByLabel("What is the page for?").fill("An open day at the club on Saturday 12 April, from 8 to 11, with trial swims and a booking form.");
   await box.getByRole("button", { name: "Write the page" }).click();
-  await expect(box.getByRole("status").filter({ hasText: "3 sections on “Open day”" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Switch page\. Open: Open day/ })).toBeVisible();
-  await expect(pageSections(page)).toHaveCount(3);
-  await expect(box.getByRole("listitem")).toHaveText(["Hero", "The morning", "Book"]);
+  const run = runWindow(page);
+  await expect(run.getByRole("status").filter({ hasText: "3 sections on “Open day”, saved as its draft." })).toBeVisible();
+  await expect(run.getByRole("heading", { name: "Written" })).toBeVisible();
+  await expect(run.getByRole("listitem")).toHaveText(["Hero", "The morning", "Book"]);
+  // Its preview drew it, and says so in words.
+  await expect(run.getByText("Preview of “Open day”, 3 sections")).toBeVisible();
+  await expect(run.locator(".ar-preview-page .sw-main > [data-block-type='section']")).toHaveCount(3);
+  // The run's live region is the window's: the drawer's line behind it says nothing.
+  await expect(box.locator(".as-progress .as-line")).not.toHaveAttribute("role", "status");
+  // The editor stayed where it was, on the page it had open, untouched.
+  await expect(page.getByRole("button", { name: /^Switch page\. Open: Before the Assistant/ })).toBeVisible();
+  await expect(pageSections(page)).toHaveCount(1);
 
   // What it used, as the provider counted it, and what that comes to at
   // Claude Opus 5.5's list price: 1,234 × $4 + 567 × $20 a million tokens.
+  await expect(run.locator(".ar-dollars")).toHaveText("≈ $0.0163");
+  await expect(run.locator(".as-used")).toHaveText("Used 1,234 tokens in and 567 out, on your key.");
+  await expect(run.locator(".as-cost")).toHaveText("≈ $0.016 at Claude Opus 5.5's list price ($4 in, $20 out per million tokens; prices of 20 Oct 2026).");
+  await openWritten(page);
+  await expect(page.getByRole("button", { name: /^Switch page\. Open: Open day/ })).toBeVisible();
+  await expect(pageSections(page)).toHaveCount(3);
+  // The drawer keeps the summary, and its foot the total.
   await expect(box.locator(".as-used")).toHaveText("Used 1,234 tokens in and 567 out, on your key.");
-  await expect(box.locator(".as-cost")).toHaveText("≈ $0.016 at Claude Opus 5.5's list price ($4 in, $20 out per million tokens; prices of 20 Oct 2026).");
   await expect(box.locator(".drawer-foot > p")).toHaveText([
     "Since you connected this key: 1 request, 1,234 tokens in and 567 out, ≈ $0.016.",
     "An estimate from the providers' list prices. The provider's bill is what counts: taxes, discounts and regional uplift are not included.",
   ]);
 
+  // The page arrived whole, as its draft: no section of it is a step in History.
   const history = page.getByRole("complementary", { name: "History", exact: true });
   await page.locator(".topbar").getByRole("button", { name: "History", exact: true }).click();
-  // The newest step first, as History lists them.
-  await expect(history.locator(".hist-what")).toHaveText([
-    "Assistant added section Book",
-    "Assistant added section The morning",
-    "Assistant added section Hero",
-    "Assistant changed the page description",
-  ]);
+  await expect(history.getByText("No changes yet.", { exact: false })).toBeVisible();
+  await expect(history.locator(".hist-what")).toHaveCount(0);
 
   // The key went to Anthropic, on each call, and in no request's body.
   const message = asked.find((call) => call.url.endsWith("/v1/messages"))!;
@@ -370,8 +399,12 @@ test("stats, steps and pricing land as blocks of their own; a plan's button whos
   await expect(box.getByText("key …a1b2")).toBeVisible();
   await box.getByLabel("What is the page for?").fill("Membership of the swimming club: 120 members, swimming since 1987. Swimmer €20 a month, Family €45 a month for two adults and their children. Come along any Saturday at eight.");
   await box.getByRole("button", { name: "Write the page" }).click();
-  await expect(box.getByRole("status").filter({ hasText: "3 sections on “Membership”" })).toBeVisible();
-  await expect(box.getByRole("listitem")).toHaveText(["Club", "How to join", "Plans"]);
+  const run = runWindow(page);
+  await expect(run.getByRole("status").filter({ hasText: "3 sections on “Membership”" })).toBeVisible();
+  await expect(run.getByRole("listitem")).toHaveText(["Club", "How to join", "Plans"]);
+  await run.getByText("One thing was left out").click();
+  await expect(run.getByText("Left out the link of the button “Join” of the plan “Family”: it would lead to an address the brief does not give.")).toBeVisible();
+  await openWritten(page);
 
   const canvas = page.locator(".canvas");
   await expect(canvas.locator("[data-block-type='stats'] dd")).toHaveText(["120", "1987"]);
@@ -386,6 +419,7 @@ test("stats, steps and pricing land as blocks of their own; a plan's button whos
   await expect(buttons.nth(0)).toHaveAttribute("href", "#how-to-join");
   await expect(buttons.nth(1)).toHaveAttribute("href", "#");
 
+  // The drawer says it too, once the window is closed.
   await box.getByText("One thing was left out").click();
   await expect(box.getByText("Left out the link of the button “Join” of the plan “Family”: it would lead to an address the brief does not give.")).toBeVisible();
 });
@@ -412,8 +446,12 @@ test("a page with rhythm: the library's picture behind its opening under a veil,
   await expect(box.getByText("key …a1b2")).toBeVisible();
   await box.getByLabel("What is the page for?").fill("A modern fitness gym offering strength training, cardio, functional workouts, and personal coaching. The first session is free.");
   await box.getByRole("button", { name: "Write the page" }).click();
-  await expect(box.getByRole("status").filter({ hasText: "5 sections on “Modern fitness gym”" })).toBeVisible();
-  await expect(box.getByText(/things? (was|were) left out/)).toHaveCount(0);
+  const run = runWindow(page);
+  await expect(run.getByRole("status").filter({ hasText: "5 sections on “Modern fitness gym”" })).toBeVisible();
+  await expect(run.getByText(/things? (was|were) left out/)).toHaveCount(0);
+  // The preview draws the library's picture behind the opening, as the page will.
+  await expect(run.locator(".ar-preview-page .sw-main > [data-block-type='section']").first().locator(":scope > picture.sw-picture > img")).toHaveJSProperty("complete", true);
+  await openWritten(page);
 
   const sections = pageSections(page);
   await expect(sections).toHaveCount(5);
@@ -457,7 +495,7 @@ test("OpenAI: the same page, asked with a strict schema; models it cannot use ar
   await expect(box.getByLabel("Model").locator("option")).toHaveText(["gpt-5"]);
   await box.getByLabel("What is the page for?").fill("An open day at the club.");
   await box.getByRole("button", { name: "Write the page" }).click();
-  await expect(box.getByRole("status").filter({ hasText: "3 sections on “Open day”" })).toBeVisible();
+  await expect(runWindow(page).getByRole("status").filter({ hasText: "3 sections on “Open day”" })).toBeVisible();
   const completion = asked.find((call) => call.url.endsWith("/v1/chat/completions"))!;
   expect(completion.headers.authorization).toBe(`Bearer ${OPENAI_KEY}`);
   expect(completion.body).toMatchObject({ model: "gpt-5", stream: true, response_format: { type: "json_schema", json_schema: { name: "page_plan", strict: true } } });
@@ -485,7 +523,7 @@ const MADE_PLAN = JSON.stringify({
   ],
 });
 
-test("OpenAI: photos made for the page with GPT Image 2 at the quality chosen, its price per photo said before; each into the library with its alt text, then onto its section or card as a step of its own; their cost after", async ({ page, request }) => {
+test("OpenAI: photos made for the page with GPT Image 2 at the quality chosen, its price per photo said before; each into the library with its alt text, then onto its section or card, the preview drawing them; their cost after", async ({ page, request }) => {
   await startOn(page, request, "Before the photos");
   const photo = await webp(page);
   const asked = await openai(page, { plan: MADE_PLAN, photo });
@@ -511,8 +549,15 @@ test("OpenAI: photos made for the page with GPT Image 2 at the quality chosen, i
 
   await box.getByLabel("What is the page for?").fill("A gym: strength and cardio, with a coach beside you.");
   await box.getByRole("button", { name: "Write the page" }).click();
-  await expect(box.getByRole("status").filter({ hasText: "2 sections and 3 photos on “Gym”" })).toBeVisible({ timeout: 30_000 });
-  await expect(box.getByRole("listitem")).toHaveText(["Opening", /^Photo behind Opening, in, under \$0\.01 \(\$0\.0051\)$/, "Classes", /^Photo in Classes, in, /, /^Photo in Classes, in, /]);
+  const run = runWindow(page);
+  await expect(run.getByRole("status").filter({ hasText: "2 sections and 3 photos on “Gym”" })).toBeVisible({ timeout: 30_000 });
+  await expect(run.getByRole("listitem")).toHaveText(["Opening", /^Photo behind Opening, in, under \$0\.01 \(\$0\.0051\)$/, "Classes", /^Photo in Classes, in, /, /^Photo in Classes, in, /]);
+  // The preview draws them, from the library they went into.
+  await expect(run.locator(".ar-preview-page :is(picture.sw-picture, [data-block-type='image']) img")).toHaveCount(3);
+  for (const img of await run.locator(".ar-preview-page :is(picture.sw-picture, [data-block-type='image']) img").all()) await expect(img).toHaveJSProperty("complete", true);
+  // After: the page's words, a line for the photos, the whole, in the window as in the drawer.
+  await expect(run.locator(".as-pictures-cost")).toHaveText("3 photos, ≈ $0.015: 150 tokens in and 480 out, at gpt-image-2's list price ($5 in, $30 out per million tokens).");
+  await openWritten(page);
 
   // The plan was asked with pictures it may make; each photo of GPT Image 2, low, its shape's size, a WebP.
   const completion = asked.find((call) => call.url.endsWith("/v1/chat/completions"))!.body as { response_format: { json_schema: { schema: unknown } } };
@@ -555,15 +600,11 @@ test("OpenAI: photos made for the page with GPT Image 2 at the quality chosen, i
   await expect(box.locator(".as-all")).toHaveText("In all, ≈ $0.02 for the page and its pictures.");
   await expect(box.locator(".as-total")).toHaveText("Since you connected this key: 1 request and 3 photos, 1,050 tokens in, 300 of them cached and 200 written to the cache, and 880 out, ≈ $0.02.");
 
-  // Each a step of the Assistant's, undone on its own: the section stays.
-  const history = await drawer(page, "History");
-  const steps = await history.locator(".hist-what").allTextContents();
-  expect(steps.filter((step) => /picture|Image/.test(step)).toSorted()).toEqual(["Assistant added Image to Column 1 in Classes", "Assistant added Image to Column 2 in Classes", "Assistant set a picture behind Opening"]);
+  // The page arrived whole with its pictures, as its draft: none is a step in History.
   const pictures = page.locator(".canvas :is(picture.sw-picture, [data-block-type='image']) img");
   await expect(pictures).toHaveCount(3);
-  await page.locator(".topbar").getByRole("button", { name: "Undo" }).click();
-  await expect(history.locator("li.hist-undone .hist-what")).toHaveText([steps[0]!]);
-  await expect(pictures).toHaveCount(2);
+  const history = await drawer(page, "History");
+  await expect(history.locator(".hist-what")).toHaveCount(0);
   await expect(sections).toHaveCount(2);
 });
 
@@ -591,10 +632,12 @@ test("Anthropic: illustrations drawn by the model in the site's colours, cleaned
   await expect(box.getByRole("radiogroup", { name: "Photo quality" })).toHaveCount(0);
   await box.getByLabel("What is the page for?").fill("A rowing club's page.");
   await box.getByRole("button", { name: "Write the page" }).click();
-  await expect(box.getByRole("status").filter({ hasText: "2 sections and 1 illustration on “Rowing club”" })).toBeVisible({ timeout: 30_000 });
-  await expect(box.getByRole("listitem")).toHaveText(["Opening", /^Illustration behind Opening, in, /, "Prizes", "Illustration in Prizes, left out"]);
-  await box.getByText("One thing was left out").click();
-  await expect(box.getByText("Left out the illustration for an image in the section “Prizes”: it was not clean: it holds a script element, which an illustration here may not hold.")).toBeVisible();
+  const run = runWindow(page);
+  await expect(run.getByRole("status").filter({ hasText: "2 sections and 1 illustration on “Rowing club”" })).toBeVisible({ timeout: 30_000 });
+  await expect(run.getByRole("listitem")).toHaveText(["Opening", /^Illustration behind Opening, in, /, "Prizes", "Illustration in Prizes, left out"]);
+  await run.getByText("One thing was left out").click();
+  await expect(run.getByText("Left out the illustration for an image in the section “Prizes”: it was not clean: it holds a script element, which an illustration here may not hold.")).toBeVisible();
+  await openWritten(page);
 
   // Each asked of the model chosen, in the site's palette, as one SVG in its schema.
   const drawings = asked.filter((call) => call.url.endsWith("/v1/messages") && JSON.stringify(call.body).includes("\"required\":[\"svg\"]")).map((call) => call.body as { model: string; system: unknown });
@@ -617,7 +660,15 @@ test("Anthropic: illustrations drawn by the model in the site's colours, cleaned
   await expect(box.locator(".as-total")).toHaveText(/^Since you connected this key: 1 request and 2 illustrations, /);
 });
 
-test("Stop stops the photos still being made: nothing more lands, and the drawer says so", async ({ page, request }) => {
+// The draft of the page made last with this title, as the CMS keeps it
+// (the tests of a run share one CMS).
+async function draftTitled(request: Parameters<typeof makePage>[0], title: string): Promise<{ id: number; document: unknown }> {
+  const listed = ((await (await request.get(`${cms()}/api/pages`)).json()) as { pages: Array<{ id: number; title: string }> }).pages;
+  const id = Math.max(...listed.filter((one) => one.title === title).map((one) => one.id));
+  return { id, document: (await draftOf(request, id)).document };
+}
+
+test("the window's Stop key asks, then stops the photos still being made: nothing more lands, the window stays to say what stays and what it cost, and the drawer says so too", async ({ page, request }) => {
   await startOn(page, request, "Before a stop");
   let answer: () => void = () => undefined;
   const asked = await openai(page, { plan: MADE_PLAN, photo: await webp(page), hold: new Promise((done) => (answer = done)) });
@@ -628,28 +679,43 @@ test("Stop stops the photos still being made: nothing more lands, and the drawer
   await expect(box.getByText("key …c3d4")).toBeVisible();
   await box.getByLabel("What is the page for?").fill("A gym.");
   await box.getByRole("button", { name: "Write the page" }).click();
+  const run = runWindow(page);
   // The sections are in; two photos are being made, the third waits.
-  await expect(box.getByRole("heading", { name: "Making pictures" })).toBeVisible({ timeout: 30_000 });
-  await expect(box.locator(".as-picture-making")).toHaveCount(2);
-  // What the page has cost so far, under the status line: its words as
-  // counted ($0.0047875), and the two photos being made at their price per
-  // image, at medium quality ($0.041 the landscape one, $0.053 the square).
+  await expect(run.getByRole("heading", { name: "Making pictures" })).toBeVisible({ timeout: 30_000 });
+  await expect(run.locator(".as-picture-making")).toHaveCount(2);
+  // What the page has cost so far, large in the window and under the
+  // drawer's status line: its words as counted ($0.0047875), and the two
+  // photos being made at their price per image, at medium quality ($0.041
+  // the landscape one, $0.053 the square).
+  await expect(run.locator(".ar-dollars")).toHaveText("≈ $0.0988");
+  await expect(run.locator(".ar-when")).toHaveText("so far");
+  await expect(run.locator(".ar-photos")).toHaveText("2 photos being made, counted at their price per image: $0.094");
   await expect(box.locator(".as-line + .as-live")).toHaveText("≈ $0.0988 so far · 900 tokens in, 400 out · 2 photos at their price per image · live estimate, exact as each request ends");
-  await box.getByRole("button", { name: "Stop" }).click();
-  await expect(box.getByRole("heading", { name: "Stopped" })).toBeVisible();
+  // The window passes axe as the run goes, and so does its question.
+  expect((await axe(page, { include: ".dlg-run" })).serious).toEqual([]);
+  await run.getByRole("button", { name: "Stop", exact: true }).click();
+  const question = page.getByRole("alertdialog", { name: "Stop the Assistant?" });
+  await expect(question).toContainText("What was made stays, as the page's draft. Nothing else is written.");
+  expect((await axe(page, { include: "[role=alertdialog]" })).serious).toEqual([]);
+  await question.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(run.getByRole("heading", { name: "Stopped" })).toBeVisible();
+  await expect(run.locator(".ar-when")).toHaveText("in all");
   await expect(box.locator(".as-live")).toHaveCount(0);
   answer();
-  await expect(box.locator(".as-picture")).toHaveText([/stopped$/, /stopped$/, /stopped$/]);
-  await expect(pageSections(page).first().locator(":scope > picture.sw-picture")).toHaveCount(0);
-  await expect(page.locator(".canvas [data-block-type='image']")).toHaveCount(0);
+  await expect(run.locator(".as-picture")).toHaveText([/stopped$/, /stopped$/, /stopped$/]);
   // The third was never asked for.
   expect(asked.filter((call) => call.url.endsWith("/v1/images/generations"))).toHaveLength(2);
+  await openWritten(page);
+  await expect(pageSections(page)).toHaveCount(2);
+  await expect(pageSections(page).first().locator(":scope > picture.sw-picture")).toHaveCount(0);
+  await expect(page.locator(".canvas [data-block-type='image']")).toHaveCount(0);
+  await expect(box.getByRole("heading", { name: "Stopped" })).toBeVisible();
   const history = await drawer(page, "History");
-  await expect(history.locator(".hist-what")).toHaveText(["Assistant added section Classes", "Assistant added section Opening", "Assistant changed the page description"]);
+  await expect(history.locator(".hist-what")).toHaveCount(0);
 });
 
-test("another page opened while photos are made: those in flight stop, the rest are never asked, nothing lands on the page left, and the drawer says what was not made", async ({ page, request }) => {
-  await startOn(page, request, "Before a leave");
+test("the window closed while photos are made: Esc asks, Keep writing goes on with the focus back, Esc again and Stop: the window goes, the run stops, those in flight stop and the rest are never asked, and the drawer says what stays", async ({ page, request }) => {
+  await startOn(page, request, "Before a close");
   const asked = await openai(page, { plan: MADE_PLAN, photo: await webp(page), hold: new Promise(() => undefined) });
   const box = await assistant(page);
   await box.getByRole("radio", { name: "OpenAI" }).click();
@@ -658,24 +724,38 @@ test("another page opened while photos are made: those in flight stop, the rest 
   await expect(box.getByText("key …c3d4")).toBeVisible();
   await box.getByLabel("What is the page for?").fill("A gym.");
   await box.getByRole("button", { name: "Write the page" }).click();
-  await expect(box.locator(".as-picture-making")).toHaveCount(2, { timeout: 30_000 });
-  const written = Number(new URL(page.url()).searchParams.get("page"));
-  // The person opens the page they started on.
-  await page.getByRole("button", { name: /^Switch page\. Open:/ }).click();
-  await page.getByRole("dialog", { name: "Pages" }).getByRole("button", { name: /^Before a leave/ }).first().click();
-  await expect(page.getByRole("button", { name: /^Switch page\. Open: Before a leave/ })).toBeVisible();
-  await expect(box.getByRole("heading", { name: "Not written" })).toBeVisible({ timeout: 10_000 });
-  await expect(box.getByRole("status")).toHaveText("Another page was opened: the Assistant stopped writing to this one.");
+  const run = runWindow(page);
+  await expect(run.locator(".as-picture-making")).toHaveCount(2, { timeout: 30_000 });
+  const focused = run.getByRole("button", { name: "Close" });
+  await focused.focus();
+  // Esc asks first; Keep writing, the safe answer, has the focus.
+  await page.keyboard.press("Escape");
+  const question = page.getByRole("alertdialog", { name: "Stop the Assistant?" });
+  await expect(question).toContainText("What was made stays, as the page's draft. Nothing else is written. The window closes.");
+  await expect(question.getByRole("button", { name: "Keep writing" })).toBeFocused();
+  await question.getByRole("button", { name: "Keep writing" }).click();
+  await expect(question).toHaveCount(0);
+  await expect(focused).toBeFocused();
+  await expect(run.getByRole("heading", { name: "Making pictures" })).toBeVisible();
+  // Esc again, and Stop: the run stops, and the window goes.
+  await page.keyboard.press("Escape");
+  await question.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(run).toHaveCount(0);
+  await expect(box.getByRole("heading", { name: "Stopped" })).toBeVisible({ timeout: 10_000 });
+  await expect(box.getByRole("status")).toHaveText("Stopped. The 2 sections on “Gym” stay, saved as its draft.");
   await expect(box.locator(".as-picture")).toHaveText([/stopped$/, /stopped$/, /stopped$/]);
   await box.getByText(/things? (was|were) left out/).click();
-  await expect(box.getByText("Did not make 3 pictures still to come: another page was opened.")).toBeVisible();
+  await expect(box.getByText("Did not make 3 pictures still to come: the writing was stopped.")).toBeVisible();
   // Two were asked, while the page was being written; none after.
   expect(asked.filter((call) => call.url.endsWith("/v1/images/generations"))).toHaveLength(2);
-  const draft = await draftOf(request, written);
-  expect(JSON.stringify(draft.document)).not.toContain("mediaId");
+  // The editor where it was; the page written kept as its draft, its sections and no picture.
+  await expect(page.getByRole("button", { name: /^Switch page\. Open: Before a close/ })).toBeVisible();
+  const written = await draftTitled(request, "Gym");
+  expect((written.document as { sections: unknown[] }).sections).toHaveLength(2);
+  expect(JSON.stringify(written.document)).not.toContain("mediaId");
 });
 
-test("Forget key while illustrations are drawn: those in flight stop, none is asked with the key connected next, and its total is untouched", async ({ page, request }) => {
+test("the key forgotten while illustrations are drawn, as when the page is left: those in flight stop, none is asked with the key connected next, and its total is untouched", async ({ page, request }) => {
   const illustrated = JSON.stringify({
     title: "Rowing club",
     description: "",
@@ -699,21 +779,27 @@ test("Forget key while illustrations are drawn: those in flight stop, none is as
   await expect(box.getByText("key …a1b2")).toBeVisible();
   await box.getByLabel("What is the page for?").fill("A rowing club.");
   await box.getByRole("button", { name: "Write the page" }).click();
-  await expect(box.locator(".as-picture-making")).toHaveCount(2, { timeout: 30_000 });
+  const run = runWindow(page);
+  await expect(run.locator(".as-picture-making")).toHaveCount(2, { timeout: 30_000 });
   // What it has cost so far: the page's words as counted, and the two
   // drawings asked, their input estimated from their questions, nothing
   // of them out yet.
   await expect(box.locator(".as-live")).toHaveText(/^≈ \$0\.\d{4} so far · [\d,]+ tokens in, 567 out · live estimate, exact as each request ends$/);
-  // The key forgotten, another provider's connected, while two are being drawn.
-  await box.getByRole("button", { name: "Forget key" }).click();
+  await expect(run.locator(".ar-dollars")).toHaveText(/^≈ \$0\.\d{4}$/);
+  // The key forgotten while two are being drawn, as when the page is left
+  // (the window keeps the drawer's Forget key out of reach meanwhile).
+  await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+  await expect(run.getByRole("heading", { name: "Written" })).toBeVisible({ timeout: 10_000 });
+  await expect(run.locator(".as-picture")).toHaveText([/stopped$/, /stopped$/, /stopped$/, /stopped$/]);
+  await run.getByText(/things? (was|were) left out/).click();
+  await expect(run.getByText("Did not make 4 pictures still to come: the key they were to be made with is no longer kept.")).toBeVisible();
+  await done(page);
+  // Another provider's key connected next.
+  await expect(box.getByText("Your key was forgotten when the page was left. Paste it again to go on.")).toBeVisible();
   await box.getByRole("radio", { name: "OpenAI" }).click();
   await box.getByLabel("Your OpenAI key").fill(OPENAI_KEY);
   await box.getByRole("button", { name: "Connect OpenAI" }).click();
   await expect(box.getByText("key …c3d4")).toBeVisible();
-  await expect(box.getByRole("heading", { name: "Written" })).toBeVisible({ timeout: 10_000 });
-  await expect(box.locator(".as-picture")).toHaveText([/stopped$/, /stopped$/, /stopped$/, /stopped$/]);
-  await box.getByText(/things? (was|were) left out/).click();
-  await expect(box.getByText("Did not make 4 pictures still to come: the key they were to be made with is no longer kept.")).toBeVisible();
   // Two drawings asked of Anthropic with its key, none after; nothing of OpenAI's but its models.
   const drawings = drawn.filter((call) => call.url.endsWith("/v1/messages") && JSON.stringify(call.body).includes("\"required\":[\"svg\"]"));
   expect(drawings).toHaveLength(2);
@@ -743,14 +829,23 @@ test.describe("a refused key", () => {
   });
 });
 
-test("with no key, the sample written by hand builds its page the same way, section by section", async ({ page, request }) => {
+test("with no key, the sample written by hand builds its page the same way, section by section, in the run window's preview; Open the page opens it", async ({ page, request }) => {
   await startOn(page, request, "Before the sample");
   const box = await assistant(page);
   await box.getByRole("button", { name: "Build the sample page" }).click();
+  const run = runWindow(page);
+  await expect(run.getByRole("heading", { name: /· sample$/ })).toBeVisible();
+  await expect(run.locator(".ar-meter")).toContainText("A sample written by hand: nothing is spent.");
   await expect(box.locator(".as-line + .as-live")).toHaveText("A sample written by hand: nothing is spent.");
-  await expect(box.getByRole("status").filter({ hasText: "4 sections on “Open day”" })).toBeVisible({ timeout: 20_000 });
-  await expect(box.getByText("A sample written by hand: no model was asked.")).toBeVisible();
+  await expect(run.getByRole("status").filter({ hasText: "4 sections on “Open day”" })).toBeVisible({ timeout: 20_000 });
+  await expect(run.locator(".ar-dollars")).toHaveText("$0.0000");
+  await expect(run.getByText("A sample written by hand: no model was asked.")).toBeVisible();
+  await expect(run.getByText("Preview of “Open day”, 4 sections")).toBeVisible();
   await expect(box.locator(".as-live")).toHaveCount(0);
+  // The editor stayed on its page until the sample's is opened.
+  await expect(pageSections(page)).toHaveCount(1);
+  await openWritten(page);
+  await expect(page.getByRole("button", { name: /^Switch page\. Open: Open day/ })).toBeVisible();
   await expect(pageSections(page)).toHaveCount(4);
 });
 
@@ -784,14 +879,22 @@ test.describe("in a phone's window, 390 by 844, with a finger", () => {
     await write.scrollIntoViewIfNeeded();
     const before = (await write.boundingBox())!;
 
-    // One tap, where the key is.
+    // One tap, where the key is: the run window, the whole window, its
+    // progress first and its preview a switch away.
     await page.touchscreen.tap(before.x + before.width / 2, before.y + before.height / 2);
-    await expect(box.getByRole("status").filter({ hasText: "3 sections on “Open day”" })).toBeVisible({ timeout: 10_000 });
+    const run = runWindow(page);
+    await expect(run.getByRole("status").filter({ hasText: "3 sections on “Open day”" })).toBeVisible({ timeout: 10_000 });
+    expect(await run.evaluate((dialog) => [dialog.getBoundingClientRect().width, dialog.getBoundingClientRect().height])).toEqual([390, 844]);
+    await run.getByRole("radio", { name: "Preview" }).tap();
+    await expect(run.getByText("Preview of “Open day”, 3 sections")).toBeVisible();
+    await expect(run.getByRole("status")).toBeHidden();
+    await run.getByRole("button", { name: "Done", exact: true }).tap();
+    await expect(run).toHaveCount(0);
     await expect(bar).toBeVisible();
   });
 });
 
-test("the Assistant's drawer passes axe, asking for a key, with one kept, and after a page, with what it used and the total", async ({ page, request }) => {
+test("the Assistant's drawer passes axe, asking for a key, with one kept, and after a page, with what it used and the total; so does its run window once the run is over", async ({ page, request }) => {
   await anthropic(page);
   await startOn(page, request, "Axe");
   const box = await assistant(page);
@@ -802,6 +905,10 @@ test("the Assistant's drawer passes axe, asking for a key, with one kept, and af
   expect((await axe(page, { include: ".drawer-assistant" })).serious).toEqual([]);
   await box.getByLabel("What is the page for?").fill("An open day at the club.");
   await box.getByRole("button", { name: "Write the page" }).click();
+  const run = runWindow(page);
+  await expect(run.getByRole("heading", { name: "Written" })).toBeVisible();
+  expect((await axe(page, { include: ".dlg-run" })).serious).toEqual([]);
+  await done(page);
   await expect(box.locator(".as-total")).toBeVisible();
   // The total comes as the request ends, a moment before the run does:
   // once Write the page takes a click again, its colours have begun their
@@ -979,7 +1086,7 @@ const blocksOf = (document: Doc) => document.sections.flatMap((one) => one.child
 test.describe("a new site", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("a whole new site from a gym's brief: a direction, its palette applied, a header with the new pages, three pages with photos, the cost shown; published when asked, then the old style put back", async ({ page, request }) => {
+  test("a whole new site from a gym's brief: a direction, its palette applied, a header with the new pages, three pages with photos, the cost shown, its pages in the run window's preview; its home page opened from the window; published when asked, then the old style put back", async ({ page, request }) => {
     test.setTimeout(240_000);
     // The tests of a run share one CMS: the style and the parts, drafts and
     // what every page draws, are put back as they were found.
@@ -1016,7 +1123,11 @@ test.describe("a new site", () => {
       await shoot(page, "02-asked-twice");
       await ask.getByRole("button", { name: "Write the new site" }).click();
 
-      await expect(box.getByRole("heading", { name: "Written · new site" })).toBeVisible({ timeout: 120_000 });
+      // The run window, while the pages are written aside: the editor stays on its page.
+      const run = runWindow(page);
+      await expect(run.getByRole("heading", { name: /· new site$/ })).toBeVisible();
+      await expect(run.getByRole("heading", { name: "Written · new site" })).toBeVisible({ timeout: 120_000 });
+      await expect(page.getByRole("button", { name: /^Switch page\. Open: Before the new site/ })).toBeVisible();
       await shoot(page, "03-steps");
 
       // The direction first, then each page, held to their schemas; eight
@@ -1030,26 +1141,40 @@ test.describe("a new site", () => {
       // Each page at its address: the direction's, or the next one free
       // where a page of an earlier test has it (the tests of a run share one
       // CMS).
-      const paths = await box.locator(".as-page .as-group-path").allTextContents();
+      const paths = await run.locator(".as-page .as-group-path").allTextContents();
       expect(paths.map((path, at) => new RegExp(`^/${["iron-forge", "classes", "membership"][at]}(-\\d+)?$`).test(path))).toEqual([true, true, true]);
       const [home, classes, membership] = paths as [string, string, string];
       // The steps, grouped by page; each page's sections and photos under it.
-      await expect(box.locator(".as-group-title")).toHaveText(["The siteIron Forge", `Home${home}, written`, `Classes${classes}, written`, `Membership${membership}, written`]);
-      await expect(box.locator(".as-group").first().locator(".as-sections > li")).toHaveText(["Direction, 3 pages", /^Style.*applied$/, "Header, draft", "Footer, draft"]);
-      await expect(box.locator(".as-picture-placed")).toHaveCount(8);
+      await expect(run.locator(".as-group-title")).toHaveText(["The siteIron Forge", `Home${home}, written`, `Classes${classes}, written`, `Membership${membership}, written`]);
+      await expect(run.locator(".as-group").first().locator(".as-sections > li")).toHaveText(["Direction, 3 pages", /^Style.*applied$/, "Header, draft", "Footer, draft"]);
+      await expect(run.locator(".as-picture-placed")).toHaveCount(8);
+      await expect(run.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "7 of 7 steps: the site's own 4, then its 3 pages");
       // The primary was too light to read on the background: made darker, said.
-      await box.getByText(/things to know$/).click();
-      const fixed = /Made the primary colour darker, #e8644a to (#[0-9a-f]{6}), so that button text reads on it, and links on the background/.exec(await box.locator(".as-notes").innerText());
+      await run.getByText(/things to know$/).click();
+      const fixed = /Made the primary colour darker, #e8644a to (#[0-9a-f]{6}), so that button text reads on it, and links on the background/.exec(await run.locator(".as-notes").innerText());
       expect(fixed).not.toBeNull();
       const primary = fixed![1]!;
-      await expect(box.locator(".as-notes")).toContainText("“Membership”: Left out an image to be made for the page: the site's pictures leave this page at most 2.");
+      await expect(run.locator(".as-notes")).toContainText("“Membership”: Left out an image to be made for the page: the site's pictures leave this page at most 2.");
 
-      // The cost: the four requests' words, the photos, the whole, and the total.
-      await expect(box.locator(".as-used")).toHaveText("Used 3,600 tokens in, 1,200 of them cached and 800 written to the cache, and 1,600 out, on your key.");
-      await expect(box.locator(".as-cost")).toHaveText("≈ $0.019 at gpt-5's list price ($1.25 in, $0.125 cached, $1.25 written to the cache, $10 out per million tokens; prices of 20 Oct 2026).");
-      await expect(box.locator(".as-pictures-cost")).toHaveText("8 photos, ≈ $0.04: 400 tokens in and 1,280 out, at gpt-image-2's list price ($5 in, $30 out per million tokens).");
-      await expect(box.locator(".as-all")).toHaveText("In all, ≈ $0.06 for the site and its pictures.");
+      // The cost: in all, large; the four requests' words, the photos, the whole; and the drawer's total.
+      await expect(run.locator(".ar-when")).toHaveText("in all");
+      await expect(run.locator(".as-used")).toHaveText("Used 3,600 tokens in, 1,200 of them cached and 800 written to the cache, and 1,600 out, on your key.");
+      await expect(run.locator(".as-cost")).toHaveText("≈ $0.019 at gpt-5's list price ($1.25 in, $0.125 cached, $1.25 written to the cache, $10 out per million tokens; prices of 20 Oct 2026).");
+      await expect(run.locator(".as-pictures-cost")).toHaveText("8 photos, ≈ $0.04: 400 tokens in and 1,280 out, at gpt-image-2's list price ($5 in, $30 out per million tokens).");
+      await expect(run.locator(".as-all")).toHaveText("In all, ≈ $0.06 for the site and its pictures.");
       await expect(box.locator(".as-total")).toHaveText("Since you connected this key: 4 requests and 8 photos, 4,000 tokens in, 1,200 of them cached and 800 written to the cache, and 2,880 out, ≈ $0.06.");
+
+      // The preview: the home page in the new site's colours, with its own header; each page a switch away.
+      const preview = run.locator(".ar-preview-page");
+      await expect(run.getByRole("radiogroup", { name: "Page shown" }).getByRole("radio")).toHaveText(["Iron Forge", "Classes", "Membership"]);
+      await expect(preview.locator(".site")).toHaveAttribute("data-primary", primary);
+      await expect(preview.locator(".sw-header .w-logo-word")).toHaveText("Iron Forge");
+      await expect(preview.locator(".sw-main h1")).toHaveText("Train stronger, every week");
+      await run.getByRole("radiogroup", { name: "Page shown" }).getByRole("radio", { name: "Classes" }).click();
+      await expect(preview.locator(".sw-main h1")).toHaveText("Classes for every week");
+      await expect(run.getByText(/^Preview of “Classes”, 4 sections$/)).toBeVisible();
+      expect((await axe(page, { include: ".dlg-run" })).serious).toEqual([]);
+      await shoot(page, "03b-window-end");
 
       // The palette applied, through Site style's own call, the old style kept.
       const styled = (await (await request.get(`${cms()}/api/site-style`)).json()) as { palette: Record<string, string>; typeScale: string; letterWidth: string; kept: { palette: Record<string, string>; typeScale: string } | null };
@@ -1076,10 +1201,15 @@ test.describe("a new site", () => {
       // Three pages, each with its photos placed, from the CMS's library.
       const listed = ((await (await request.get(`${cms()}/api/pages`)).json()) as { pages: Array<{ id: number; slug: string; title: string; home: boolean }> }).pages;
       const made = paths.map((path) => listed.find((one) => `/${one.slug}` === path)!);
-      // The page still open is saved after its pause, as any edit is.
+      // Each saved as its draft at its page's end.
       const placed = () => Promise.all(made.map(async (one) => (JSON.stringify((await draftOf(request, one.id)).document).match(/"mediaId"/g) ?? []).length));
-      await expect.poll(placed, { timeout: 15_000 }).toEqual([3, 3, 2]);
+      expect(await placed()).toEqual([3, 3, 2]);
       expect(made.some((one) => one.home)).toBe(false);
+
+      // Its home page, opened from the window, which goes.
+      await openWritten(page, "Open the home page");
+      await expect(page.getByRole("button", { name: /^Switch page\. Open: Iron Forge/ })).toBeVisible();
+      await expect(pageSections(page)).toHaveCount(5);
 
       // What becomes of it, each asked. Making it the home page is only
       // asked here: the tests of a run share one CMS.
@@ -1176,12 +1306,16 @@ test.describe("a new site", () => {
         await box.getByLabel("What is the site for?").fill(GYM_BRIEF);
         await box.getByRole("button", { name: "Write the new site" }).click();
         await box.getByRole("group", { name: "Write the new site" }).getByRole("button", { name: "Write the new site" }).click();
-        await expect(box.getByRole("heading", { name: "Written · new site" })).toBeVisible({ timeout: 120_000 });
+        const run = runWindow(page);
+        await expect(run.getByRole("heading", { name: "Written · new site" })).toBeVisible({ timeout: 120_000 });
 
         // Each part told as it is: a draft of the new site's, neither to check.
-        await expect(box.locator(".as-group").first().locator(".as-sections > li")).toHaveText(["Direction, 3 pages", /^Style.*applied$/, "Header, draft", "Footer, draft"]);
-        await box.getByText(/things to know$/).click();
-        await expect(box.locator(".as-notes")).not.toContainText("may have been saved");
+        await expect(run.locator(".as-group").first().locator(".as-sections > li")).toHaveText(["Direction, 3 pages", /^Style.*applied$/, "Header, draft", "Footer, draft"]);
+        await run.getByText(/things to know$/).click();
+        await expect(run.locator(".as-notes")).not.toContainText("may have been saved");
+        await done(page);
+        // The focus back where the window found it: the site's summary, where the site began.
+        await expect(box.locator("#as_site_title")).toBeFocused();
         // The footer's save, which never came, sent again.
         expect(lost.footer).toBeGreaterThanOrEqual(2);
         for (const part of [header, footer]) {

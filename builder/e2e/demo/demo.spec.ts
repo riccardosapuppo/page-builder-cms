@@ -42,10 +42,13 @@
 //   its own site and the Assistant's two providers, and lets an
 //   illustration the Assistant has drawn be drawn from a blob: address to
 //   a canvas and kept in this browser's library;
-// - a new site from a gym's brief, made here: its palette applied, its own
-//   header, three illustrated pages, its cost; its home page made the
-//   site's and everything published, each asked; the old style put back;
-//   and Start over with the example site brings the example site back;
+// - the sample, the demo's main path, written aside in the Assistant's run
+//   window, its preview growing, opened from the window and kept here;
+// - a new site from a gym's brief, made here in the run window: its palette
+//   applied, its own header, three illustrated pages, its cost; its home
+//   page made the site's and everything published, each asked; the old
+//   style put back; and Start over with the example site brings the
+//   example site back;
 // - and no request leaves the demo's own path: no CMS, no other site.
 // With DEMO_SHOTS set to a folder, each screen is photographed there.
 import { join } from "node:path";
@@ -929,7 +932,13 @@ test("under the page's policy, an illustration is drawn from a blob: address and
     await expect(box.getByText("key …e5f6")).toBeVisible();
     await box.getByLabel("What is the page for?").fill("A morning swim at dawn.");
     await box.getByRole("button", { name: "Write the page" }).click();
-    await expect(box.getByRole("status").filter({ hasText: "1 section and 1 illustration on “Dawn swim”" })).toBeVisible({ timeout: 30_000 });
+    // Written aside, in the run window, its preview drawing the picture from this browser's library.
+    const run = page.locator(".dialog.dlg-run");
+    await expect(run.getByRole("status").filter({ hasText: "1 section and 1 illustration on “Dawn swim”" })).toBeVisible({ timeout: 30_000 });
+    await expect(run.locator(".ar-preview-page picture.sw-picture > img")).toHaveJSProperty("complete", true);
+    await run.getByRole("button", { name: "Open the page" }).click();
+    await expect(run).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Switch page\. Open: Dawn swim/ })).toBeVisible();
     const picture = page.locator(".canvas [data-block-type='section']:not([data-theme-part] *)").first().locator(":scope > picture.sw-picture > img");
     await expect(picture).toHaveJSProperty("complete", true);
     expect(await picture.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([1536, 1024]);
@@ -943,6 +952,35 @@ test("under the page's policy, an illustration is drawn from a blob: address and
   } finally {
     await context.close();
   }
+});
+
+// The sample, the demo's main path: with no key, a plan written by hand
+// goes through the Assistant's steps in its run window, the page written
+// aside in this browser while the editor stays on the home page, its preview
+// growing; Open the page opens it, saved as its draft, there after a reload.
+test("with no key, the sample builds its page in the run window, aside, its preview growing and nothing spent; Open the page opens it, kept in this browser", async ({ page }) => {
+  await openDemo(page);
+  await page.locator(".topbar").getByRole("button", { name: "Assistant", exact: true }).click();
+  const box = page.getByRole("complementary", { name: "Assistant", exact: true });
+  await box.getByRole("button", { name: "Build the sample page" }).click();
+  const run = page.locator(".dialog.dlg-run");
+  await expect(run.getByRole("heading", { name: /· sample$/ })).toBeVisible();
+  await expect(run.locator(".ar-meter")).toContainText("A sample written by hand: nothing is spent.");
+  await expect(run.getByRole("status").filter({ hasText: "4 sections on “Open day”, saved as its draft." })).toBeVisible({ timeout: 30_000 });
+  await expect(run.locator(".ar-dollars")).toHaveText("$0.0000");
+  await expect(run.getByText("Preview of “Open day”, 4 sections")).toBeVisible();
+  await expect(run.locator(".ar-preview-page .sw-main > [data-block-type='section']")).toHaveCount(4);
+  await expect(page.getByRole("button", { name: "Switch page. Open: Slack Water" })).toBeVisible();
+  await shoot(page, "sample-window");
+  await noSeriousFinding(page, "the run window");
+  await run.getByRole("button", { name: "Open the page" }).click();
+  await expect(run).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Switch page\. Open: Open day/ })).toBeVisible();
+  const sections = page.locator(".canvas [data-block-type='section']:not([data-theme-part] *)");
+  await expect(sections).toHaveCount(4);
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^Switch page\. Open: Open day/ })).toBeVisible({ timeout: 30_000 });
+  await expect(sections).toHaveCount(4);
 });
 
 // A new site from a gym's brief in this browser (src/assistant/site.ts),
@@ -1018,12 +1056,21 @@ test("a whole new site from a gym's brief in this browser: its palette, its head
     await box.getByLabel("What is the site for?").fill("A modern fitness gym offering strength training, cardio, functional workouts, and personal coaching.");
     await box.getByRole("button", { name: "Write the new site" }).click();
     await box.getByRole("group", { name: "Write the new site" }).getByRole("button", { name: "Write the new site" }).click();
-    await expect(box.getByRole("heading", { name: "Written · new site" })).toBeVisible({ timeout: 90_000 });
+    // Written aside, in the run window: the editor stays on the home page meanwhile.
+    const run = page.locator(".dialog.dlg-run");
+    await expect(run.getByRole("heading", { name: "Written · new site" })).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByRole("button", { name: "Switch page. Open: Slack Water" })).toBeVisible();
     expect(asked.filter((one) => !one.startsWith("illustration"))).toEqual(["direction", "page Home", "page Classes", "page Membership"]);
     expect(asked.filter((one) => one === "illustration")).toHaveLength(3);
-    await expect(box.locator(".as-picture-placed")).toHaveCount(3);
-    await expect(box.locator(".as-group-title")).toHaveText(["The siteIron Forge", "Home/iron-forge, written", "Classes/classes, written", "Membership/membership, written"]);
-    await expect(box.locator(".as-pictures-cost")).toHaveText(/^3 illustrations, ≈ \$[0-9.]+: 300 tokens in and 600 out, at Claude Opus 5\.5's list price/);
+    await expect(run.locator(".as-picture-placed")).toHaveCount(3);
+    await expect(run.locator(".as-group-title")).toHaveText(["The siteIron Forge", "Home/iron-forge, written", "Classes/classes, written", "Membership/membership, written"]);
+    await expect(run.locator(".as-pictures-cost")).toHaveText(/^3 illustrations, ≈ \$[0-9.]+: 300 tokens in and 600 out, at Claude Opus 5\.5's list price/);
+    // Its preview: the home page in the new colours, with its own header and its illustration.
+    await expect(run.locator(".ar-preview-page .site")).toHaveAttribute("data-primary", "#a8321c");
+    await expect(run.locator(".ar-preview-page .sw-header .w-logo-word")).toHaveText("Iron Forge");
+    await expect(run.locator(".ar-preview-page .sw-main picture.sw-picture > img")).toHaveJSProperty("complete", true);
+    await run.getByRole("button", { name: "Done", exact: true }).click();
+    await expect(run).toHaveCount(0);
     // The palette applied in this browser, and the header of the new site's own on the canvas.
     await expect(page.locator(".canvas .site")).toHaveAttribute("data-primary", "#a8321c");
     await expect(page.locator(".canvas .sw-header .w-logo-word")).toHaveText("Iron Forge");

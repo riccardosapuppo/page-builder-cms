@@ -129,6 +129,13 @@ function priceWords(price: Price, usage: Usage): string {
 // A price that is one of two by the prompt's length says which.
 const bandWords = (band: Band | null): string => (band === null ? "" : ` for prompts ${band.over ? "over" : "up to"} ${count(band.tokens)} tokens`);
 
+// A line's model and the list price its calls are counted at, a price for
+// each kind of token they used: "Claude Opus 5.5: $4 in, $20 out per
+// million tokens". Null where no price is on file.
+export function linePriceWords(line: TallyLine): string | null {
+  return isPriced(line) ? `${line.name}${bandWords(line.cost.band)}: ${priceWords(line.cost.price, line.usage)} per million tokens` : null;
+}
+
 // The model a line has no list price on file for, and when.
 const noPriceWords = (line: TallyLine): string =>
   line.cost.price === null && line.cost.why === "prompt" ? `${line.name} with ${line.calls === 1 ? "a prompt" : "prompts"} over ${count(line.cost.tokens)} tokens` : line.name;

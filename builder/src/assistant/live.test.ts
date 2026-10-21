@@ -5,10 +5,11 @@
 // comes, then replaced by it; a request stopped with no count dropped; a
 // photo in flight at its price per image, the dearest for its size where
 // its model has none, an illustration counted as words; what the drawer is
-// told, at most every LIVE_MS while answers stream in; and the drawer's line.
+// told, at most every LIVE_MS while answers stream in; the run window's
+// meter; and the drawer's line.
 import { expect, test } from "vitest";
 import { FakeClock } from "../../test/fake-clock.ts";
-import { calibrated, CHARS_PER_TOKEN, charsPerToken, createLiveBook, LIVE_MS, liveWords, NO_RATIO, photoPrice, questionChars, tokensFor, type RunCost } from "./live.ts";
+import { calibrated, CHARS_PER_TOKEN, charsPerToken, createLiveBook, LIVE_MS, liveWords, meterWords, NO_RATIO, photoPrice, questionChars, tokensFor, type RunCost } from "./live.ts";
 import { NO_USAGE, type Usage } from "./providers.ts";
 import { photoTallyOf, tallyOf } from "./tally.ts";
 
@@ -155,6 +156,49 @@ test("the drawer is told at most every LIVE_MS while answers stream in, the last
   asking.end(tallyOf("openai", "gpt-6.1-sol", usage(100, 41)));
   expect(told.map(({ at }) => at)).toEqual([0, 0, 250, 500, 1500, 1500]);
   expect([last().flying, clock.pending]).toEqual([[], 0]);
+});
+
+test("the run window's meter: the dollars to four decimals; the tokens in, of them cached, and out; each model at its list price; the photos being made at their price per image; what has no list price on file; the requests that ended with no count", () => {
+  const { book, last } = booked();
+  book.begin(1);
+  // Nothing asked yet: nothing counted, nothing spent.
+  expect(meterWords(last())).toEqual({ amount: "$0.0000", tokensIn: "0", cached: null, tokensOut: "0", prices: [], unpriced: null, photos: null, uncounted: null });
+  book.start(1, { ...SOL, kind: "words", chars: 8 }).end(tallyOf("openai", "gpt-6.1-sol", usage(2120, 1415, 1024)));
+  expect(meterWords(last())).toEqual({
+    amount: "$0.0185", tokensIn: "3,144", cached: "1,024 of them cached", tokensOut: "1,415",
+    prices: ["gpt-6.1-sol: $2 in, $0.10 cached, $10 out per million tokens"],
+    unpriced: null, photos: null, uncounted: null,
+  });
+  // Two photos being made at their price per image; a model with no price on
+  // file, counted; a request stopped before the provider counted it.
+  book.start(1, { provider: "openai", model: "gpt-image-2", kind: "photo", each: 41_000_000 });
+  book.start(1, { provider: "openai", model: "gpt-image-2", kind: "photo", each: 53_000_000 });
+  book.start(1, { provider: "openai", model: "gpt-5-2025-08-07", kind: "words", chars: 8 }).end(tallyOf("openai", "gpt-5-2025-08-07", usage(1000, 100)));
+  book.start(1, { ...SOL, kind: "words", chars: 400 }).end(null);
+  expect(meterWords(last())).toEqual({
+    amount: "$0.1125", tokensIn: "4,144", cached: "1,024 of them cached", tokensOut: "1,515",
+    prices: ["gpt-6.1-sol: $2 in, $0.10 cached, $10 out per million tokens"],
+    unpriced: "No list price on file for gpt-5-2025-08-07: its tokens are counted, not its cost.",
+    photos: "2 photos being made, counted at their price per image: $0.094",
+    uncounted: "1 request ended before the provider counted it: what it cost, if anything, is not known.",
+  });
+  // A photo counted, at its model's prices; one still being made; written to the cache, said; two uncounted.
+  book.begin(2);
+  book.start(2, { provider: "openai", model: "gpt-image-2", kind: "photo", each: 41_000_000 }).end(photoTallyOf("gpt-image-2", { textInput: 50, imageInput: 0, output: 1372 }));
+  book.start(2, { provider: "openai", model: "gpt-image-2", kind: "photo", each: 53_000_000 });
+  book.start(2, { ...SOL, kind: "words", chars: 8 }).end(tallyOf("openai", "gpt-6.1-sol", usage(900, 400, 300, 200)));
+  book.start(2, { ...SOL, kind: "words", chars: 8 }).end(null);
+  book.start(2, { ...SOL, kind: "words", chars: 8 }).end(null);
+  expect(meterWords(last())).toMatchObject({
+    tokensIn: "1,450", cached: "300 of them cached and 200 written to the cache", tokensOut: "1,772",
+    prices: ["gpt-image-2: $5 in, $30 out per million tokens", "gpt-6.1-sol: $2 in, $0.10 cached, $2.50 written to the cache, $10 out per million tokens"],
+    photos: "1 photo being made, counted at its price per image: $0.053",
+    uncounted: "2 requests ended before the provider counted them: what they cost, if anything, is not known.",
+  });
+  // Nothing with a price on file: no amount, the model said.
+  book.begin(3);
+  book.start(3, { provider: "openai", model: "gpt-5-2025-08-07", kind: "words", chars: 8 }).end(tallyOf("openai", "gpt-5-2025-08-07", usage(1000, 100)));
+  expect(meterWords(last())).toMatchObject({ amount: null, tokensIn: "1,000", tokensOut: "100", prices: [], unpriced: "No list price on file for gpt-5-2025-08-07: its tokens are counted, not its cost." });
 });
 
 test("the drawer's line: the dollars to four decimals, the tokens in and out, and that it is a live estimate; what has no list price said; photos in flight said", () => {

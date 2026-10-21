@@ -2,14 +2,16 @@
 // answer of the test's own that comes in pieces: the page is made from the
 // plan's title, each section goes in as a command of the Assistant's, a
 // button whose section never came goes (a plan's loses its link), and a
-// stop, a failure or another page opened midway keep what is in and add
-// nothing more. What the answer used, priced, is said at the end, an
+// stop, a failure or the page left midway keep what is in and add nothing
+// more. What the answer used, priced, is said at the end, an
 // answer cut short's too. Pictures made for the page: asked for as their
-// sections land, two at once, into the library, then onto the page as
-// steps of their own; one that fails leaves its section as it was, a
-// refused key asks for no more, and a stop stops those being made. Another
-// page opened, or the run's key gone, stops those in flight at once and
-// asks for none of the rest; what was not made is said.
+// sections land, two at once, into the library, then onto the page by
+// commands of their own; one that fails leaves its section as it was, a
+// refused key asks for no more, and a stop stops those being made. A page
+// its hooks say was left (the editor's never are: they write aside), or
+// the run's key gone, stops those in flight at once and asks for none of
+// the rest; what was not made is said. The page's end, told once all of it
+// is in, a page whose last changes were not saved said and marked.
 import { expect, test } from "vitest";
 import type { Made } from "../document/commands.ts";
 import { createEditorStore, type EditorStore } from "../store/editor-store.ts";
@@ -203,7 +205,7 @@ test("stopped while the new page is still being made: the sections that had come
   expect(page()!.getState().document.sections).toEqual([]);
 });
 
-test("stats, steps and pricing stream in like the others; a plan's button whose section never came keeps its plan and loses its link, as the Assistant's step", async () => {
+test("stats, steps and pricing stream in like the others; a plan's button whose section never came keeps its plan and loses its link, by the Assistant's command", async () => {
   const { hooks, page } = editor();
   const plan = (name: string, target: string) => ({ name, price: "€20", period: "a month", text: "", features: ["Two swims a week"], buttonLabel: "Join", buttonTarget: target, featured: false, badge: "" });
   const text = JSON.stringify({
@@ -304,7 +306,7 @@ const PICTURED = {
   ],
 };
 
-test("pictures made for the page: each asked for once its section is in, two at once at most, into the library with its alt text, then onto its section or into its column as a step of its own", async () => {
+test("pictures made for the page: each asked for once its section is in, two at once at most, into the library with its alt text, then onto its section or into its column by a command of its own", async () => {
   const { hooks, page } = editor();
   const pictures = maker();
   const kept = library();
@@ -536,6 +538,77 @@ test("with no picture maker, or no library to put pictures in, the plan's pictur
     expect(written.pictures).toEqual([]);
     expect(written.notes).toEqual(["Left out the picture of the section “Hero”: no picture is made for this page."]);
   }
+});
+
+// ------------------------------------------------------------- the end
+
+// The page's end as the hooks are told it: when, and what the page held then.
+function ending(hooks: PageHooks, page: () => EditorStore | null, said: (count: number) => string | null | Error = () => null) {
+  const ends: Array<{ sections: string[]; buttons: number }> = [];
+  const end: NonNullable<PageHooks["end"]> = async () => {
+    const doc = page()!.getState().document;
+    ends.push({ sections: doc.sections.map((s) => s.props.label ?? ""), buttons: doc.sections.flatMap((s) => s.children.flatMap((c) => c.children)).filter((b) => b.type === "button").length });
+    await Promise.resolve();
+    const answer = said(ends.length);
+    if (answer instanceof Error) throw answer;
+    return answer;
+  };
+  return { hooks: { ...hooks, end }, ends };
+}
+
+test("the page's end, however the run ends: told once, after the buttons whose section never came are taken out and the pictures are in; a page never made has none", async () => {
+  const { hooks, page } = editor();
+  const done = ending(hooks, page);
+  const told: Writing["phase"][] = [];
+  const result = await writePage({ ask: answer(JSON.stringify(PLAN)), facts: FACTS, newId, hooks: done.hooks, tell: (writing) => told.push(writing.phase) });
+  // Prices' button gone, Book's kept: what the end has is the page whole.
+  expect(done.ends).toEqual([{ sections: ["Hero", "Join"], buttons: 1 }]);
+  expect(result).toMatchObject({ phase: "done", error: null });
+  expect(result.unsaved).toBeUndefined();
+  expect(told.at(-1)).toBe("done");
+
+  // Stopped midway: what is in, told at its end too.
+  const stopped = editor();
+  const halted = ending(stopped.hooks, stopped.page);
+  const text = JSON.stringify(PLAN);
+  const cut = text.indexOf("\"label\":\"Join\"");
+  const result2 = await writePage({ ask: answer(text.slice(0, cut), 7, () => new AssistantError("Stopped.", "stopped")), facts: FACTS, newId, hooks: halted.hooks, tell: () => undefined });
+  expect(result2.phase).toBe("stopped");
+  expect(halted.ends).toEqual([{ sections: ["Hero"], buttons: 0 }]);
+
+  // With its pictures: told once they are all in.
+  const pictured = editor();
+  const withPictures = ending(pictured.hooks, pictured.page);
+  const picturedResult = await writePage({ ask: answer(JSON.stringify(PICTURED)), facts: MADE_FACTS, newId, hooks: { ...withPictures.hooks, upload: library().upload }, tell: () => undefined, pictures: maker().made });
+  expect(picturedResult.pictures.map((one) => one.state)).toEqual(["placed", "placed", "placed", "placed"]);
+  expect(withPictures.ends).toHaveLength(1);
+  expect(pictured.page()!.getState().document.sections[0]!.props.picture).toEqual({ mediaId: "m-1" });
+
+  // Refused before a word: no page, no end.
+  const refused = editor();
+  let asked = 0;
+  await writePage({
+    ask: async () => {
+      throw new AssistantError("Anthropic did not accept this key.", "key");
+    },
+    facts: FACTS, newId, hooks: { ...refused.hooks, end: async () => (asked += 1, null) }, tell: () => undefined,
+  });
+  expect(asked).toBe(0);
+});
+
+test("an end that says the page's last changes were not saved, or fails, is said in the notes, and the page is marked so", async () => {
+  const { hooks, page } = editor();
+  const unsaved = ending(hooks, page, () => "the CMS refused the save: the page was saved somewhere else.");
+  const result = await writePage({ ask: answer(JSON.stringify(PLAN)), facts: FACTS, newId, hooks: unsaved.hooks, tell: () => undefined });
+  expect(result.phase).toBe("done");
+  expect(result.unsaved).toBe("the CMS refused the save: the page was saved somewhere else.");
+  expect(result.notes.at(-1)).toBe("Its last changes were not saved: the CMS refused the save: the page was saved somewhere else.");
+
+  const broken = editor();
+  const thrown = ending(broken.hooks, broken.page, () => new Error("the storage broke."));
+  const failed = await writePage({ ask: answer(JSON.stringify(PLAN)), facts: FACTS, newId, hooks: thrown.hooks, tell: () => undefined });
+  expect(failed).toMatchObject({ phase: "done", unsaved: "the storage broke." });
+  expect(failed.notes.at(-1)).toBe("Its last changes were not saved: the storage broke.");
 });
 
 test("an answer that fails after a button's section was named but never written: the button still goes, as at a whole answer's end", async () => {

@@ -15,16 +15,20 @@
 // asked: the home page, Publish all, and the old style put back. While a
 // page or a new site is written, what it has cost so far grows under the
 // status line, in no live region of its own, and goes once it is written;
-// the sample's says nothing is spent.
+// the sample's says nothing is spent. The pages are written aside: the page
+// open stays as it was, and the page written is its own draft; the drawer's
+// status line says nothing while the run window speaks.
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
+import { asideStorage } from "../../test/aside-storage.ts";
 import { describedText, editorKit } from "../../test/editor-kit.tsx";
 import { questionChars } from "../assistant/live.ts";
 import { liveDollars } from "../assistant/prices.ts";
 import { AssistantError, type Answer, type ModelChoice, type ProviderClient, type Question, type Usage } from "../assistant/providers.ts";
 import type { SiteStyle } from "../storage/adapter.ts";
 import { AssistantPanel } from "./AssistantPanel.tsx";
+import { AssistantRun } from "./AssistantRun.tsx";
 import { createMediaService, type MediaAdapter, type MediaService } from "./library/service.ts";
 import type { UiStore } from "./ui-store.ts";
 
@@ -38,7 +42,6 @@ const PLAN = JSON.stringify({
 const USED: Usage = { input: 2120, cacheRead: 1024, cacheWrite: 0, output: 1415 };
 
 function setUp(models: ModelChoice[] = [{ id: "gpt-6.1-sol", name: "gpt-6.1-sol" }]) {
-  let pages = 0;
   const client: ProviderClient = {
     models: async () => models,
     ask: async (_key, _question, written) => {
@@ -48,12 +51,15 @@ function setUp(models: ModelChoice[] = [{ id: "gpt-6.1-sol", name: "gpt-6.1-sol"
   };
   const kit = editorKit({
     document: { schemaVersion: 1, title: "Start", sections: [] },
-    session: { makePage: async () => ({ ok: true, id: ++pages }), isOpen: (id) => id === pages },
+    session: asideStorage().session,
     providers: async () => client,
   });
   kit.render(<AssistantPanel />);
   return kit;
 }
+
+// The run window closed, as Done closes it: the drawer's status line speaks again.
+const closeWindow = (kit: ReturnType<typeof editorKit>) => act(() => kit.assistant.getState().setRunWindow(false));
 
 const connect = async (kit: ReturnType<typeof editorKit>) => {
   await act(async () => {
@@ -223,9 +229,10 @@ test("after a page with photos: each one's step in the list with its cost, then 
     ] }],
   });
   const made = { asked: [] as unknown[] };
+  const kept = asideStorage();
   const kit = editorKit({
     document: KIT_DOC, media: library,
-    session: { makePage: async () => ({ ok: true, id: 1 }), isOpen: (id) => id === 1 },
+    session: kept.session,
     providers: async () => picturing(plan, "gpt-image-2", made),
   });
   // The browser's decoding of a picture, as jsdom has none.
@@ -241,17 +248,18 @@ test("after a page with photos: each one's step in the list with its cost, then 
   vi.unstubAllGlobals();
   expect(made.asked).toMatchObject([{ quality: "low", size: "1024x1024" }, { quality: "low", size: "1024x1024" }]);
   expect(screen.getByRole("heading", { level: 3, name: "Written" })).toBeTruthy();
-  expect(screen.getByRole("status").textContent).toBe("1 section and 2 photos on “Gym”. Each is a step in History: undo takes them back one at a time.");
+  closeWindow(kit);
+  expect(screen.getByRole("status").textContent).toBe("1 section and 2 photos on “Gym”, saved as its draft.");
   expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Cards", "Photo in Cards, in, ≈ $0.041", "Photo in Cards, in, ≈ $0.041"]);
   expect(document.querySelector(".as-cost")?.textContent).toBe("≈ $0.018 at gpt-6.1-sol's list price ($2 in, $0.10 cached, $10 out per million tokens; prices of 20 Oct 2026).");
   expect(document.querySelector(".as-pictures-cost")?.textContent).toBe("2 photos, ≈ $0.083: 100 tokens in and 2,744 out, at gpt-image-2's list price ($5 in, $30 out per million tokens).");
   expect(document.querySelector(".as-all")?.textContent).toBe("In all, ≈ $0.10 for the page and its pictures.");
   expect(foot()?.querySelector(".as-total")?.textContent).toBe("Since you connected this key: 1 request and 2 photos, 3,244 tokens in, 1,024 of them cached, and 4,159 out, ≈ $0.10.");
-  // Into the library, onto the page.
+  // Into the library, onto the page written aside, saved as its draft.
   expect([...kit.ui.getState().media.values()].map((item) => [item.filename, item.alt])).toEqual([["gym-rowers-at-the-gym.webp", "Rowers at the gym"], ["gym-weights-at-the-gym.webp", "Weights at the gym"]]);
-  expect(kit.doc().sections[0]!.children.map((column) => column.children[0]!.props)).toEqual([{ mediaId: "made-1", alt: "Weights at the gym" }, { mediaId: "made-2", alt: "Rowers at the gym" }]);
-  // Put in quietly: the selection is where the page's own steps left it, on its section.
-  expect(kit.store.getState().selection).toBe(kit.doc().sections[0]!.id);
+  expect(kept.draftAt("gym")!.sections[0]!.children.map((column) => column.children[0]!.props)).toEqual([{ mediaId: "made-1", alt: "Weights at the gym" }, { mediaId: "made-2", alt: "Rowers at the gym" }]);
+  // The page open stays as it was: nothing on it, nothing selected, nothing in its History.
+  expect([kit.doc(), kit.store.getState().selection, kit.store.getState().past]).toEqual([KIT_DOC, null, []]);
 });
 
 // ------------------------------------------------------------ a new site
@@ -292,28 +300,21 @@ function siteWriter(models: ModelChoice[] = [{ id: "claude-opus-5-5", name: "Cla
   };
 }
 
-// The editor's session for a new site: pages made one after the other,
-// the style and the parts kept (a part's draft kept first unless it is the
-// run's own), a page's change answered `changed`, what the person chooses
-// after recorded. `parts` answers the parts' saves in turn: "lost", its
-// answer lost and not to be told; "failed"; "saved", as every save is once
-// it says no more.
-function siteSession(kit: () => ReturnType<typeof editorKit>, calls: string[], changed: string | null = null, parts: Array<"lost" | "failed" | "saved"> = []) {
-  let next = 10;
-  let open = 1;
+// The editor's session for a new site: pages made aside one after the
+// other, from id 10 on, the style and the parts kept (a part's draft kept
+// first unless it is the run's own), a page's change answered `changed`,
+// what the person chooses after recorded. `parts` answers the parts' saves
+// in turn: "lost", its answer lost and not to be told; "failed"; "saved",
+// as every save is once it says no more.
+function siteSession(calls: string[], changed: string | null = null, parts: Array<"lost" | "failed" | "saved"> = [], elsewhere?: string) {
+  const { session } = asideStorage({ first: 10, made: (page) => calls.push(`make /${page.slug}`), ...(elsewhere ? { elsewhere } : {}) });
   return {
+    ...session,
     pages: [{ id: 1, kind: "page" as const, title: "Slack Water", slug: "home", home: true, revision: 1, updatedAt: "2026-10-20T08:00:00.000Z", published: null, scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null } }],
     parts: [
       { id: 2, kind: "header" as const, title: "Header", slug: null, home: false, revision: 1, updatedAt: "2026-10-20T08:00:00.000Z", published: null, scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null } },
       { id: 3, kind: "footer" as const, title: "Footer", slug: null, home: false, revision: 1, updatedAt: "2026-10-20T08:00:00.000Z", published: null, scheduled: null, links: { self: "", draft: "", versions: "", publish: "", schedules: "", preview: "", live: null } },
     ],
-    makePage: async (page: { title: string; slug: string }) => {
-      calls.push(`make /${page.slug}`);
-      open = next++;
-      kit().store.getState().load({ schemaVersion: 1, title: page.title, sections: [] });
-      return { ok: true as const, id: open };
-    },
-    isOpen: (id: number) => id === open,
     applySiteStyle: async (change: { kept?: string; palette: Record<string, string> }) => {
       calls.push(`style ${change.kept ?? ""} ${change.palette.primary}`);
       return null;
@@ -382,9 +383,7 @@ test("before a new site is written: what its pictures may cost at most, the site
 test("Write the new site asks twice: Cancel asks nothing and gives the focus back; yes writes the site, its steps grouped by page, its cost, then what becomes of it, each asked", async () => {
   const calls: string[] = [];
   const asked: string[] = [];
-  let kitRef: ReturnType<typeof editorKit> | null = null;
-  const kit = editorKit({ document: KIT_DOC, session: siteSession(() => kitRef!, calls), providers: async () => siteWriter(undefined, asked) });
-  kitRef = kit;
+  const kit = editorKit({ document: KIT_DOC, session: siteSession(calls), providers: async () => siteWriter(undefined, asked) });
   kit.ui.getState().setSiteStyle(STYLE_NOW);
   kit.render(<AssistantPanel />);
   await act(async () => {
@@ -414,6 +413,9 @@ test("Write the new site asks twice: Cancel asks nothing and gives the focus bac
   expect(asked).toEqual(["site_direction", "page_plan", "page_plan", "page_plan"]);
   expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "make /iron-forge", "make /classes", "make /join"]);
   expect(screen.getByRole("heading", { level: 3, name: "Written · new site" })).toBeTruthy();
+  // Written aside: the page open is as it was.
+  expect(kit.doc()).toEqual(KIT_DOC);
+  closeWindow(kit);
   expect(screen.getAllByRole("status")[0]!.textContent).toBe("“Iron Forge”: a new style, a new header and footer, and 3 pages. The header and footer it replaced are kept in their versions, as “Before the new site”.");
   // The steps, grouped: the site's own, then each page.
   expect([...document.querySelectorAll(".as-group-title")].map((title) => title.textContent)).toEqual(["The siteIron Forge", "Home/iron-forge, written", "Classes/classes, written", "Join/join, written"]);
@@ -457,12 +459,11 @@ test("Write the new site asks twice: Cancel asks nothing and gives the focus bac
   expect(screen.queryByRole("button", { name: "Start over with the example site" })).toBeNull();
 });
 
-// A new site written from the drawer, asked and answered yes, with no pictures.
-async function writeNewSite(plan: (title: string) => string, changed: string | null = null, parts: Array<"lost" | "failed" | "saved"> = []) {
+// A new site written from the drawer, asked and answered yes, with no
+// pictures; the page at `elsewhere` saved in another tab each time.
+async function writeNewSite(plan: (title: string) => string, changed: string | null = null, parts: Array<"lost" | "failed" | "saved"> = [], elsewhere?: string) {
   const calls: string[] = [];
-  let kitRef: ReturnType<typeof editorKit> | null = null;
-  const kit = editorKit({ document: KIT_DOC, session: siteSession(() => kitRef!, calls, changed, parts), providers: async () => siteWriter(undefined, [], plan) });
-  kitRef = kit;
+  const kit = editorKit({ document: KIT_DOC, session: siteSession(calls, changed, parts, elsewhere), providers: async () => siteWriter(undefined, [], plan) });
   kit.ui.getState().setSiteStyle(STYLE_NOW);
   kit.render(<AssistantPanel />);
   await act(async () => {
@@ -476,6 +477,7 @@ async function writeNewSite(plan: (title: string) => string, changed: string | n
   await act(async () => {
     await new Promise((done) => setTimeout(done, 50));
   });
+  closeWindow(kit);
   return calls;
 }
 
@@ -502,6 +504,18 @@ test("a page made whose buttons to a page not made could not be changed: Publish
   expect(document.querySelector(".as-offer-held")?.textContent).toBe("Publish all is not offered: “Home” and “Join” may still lead to a page that was not made, as the things to know say.");
   fireEvent.click(screen.getByText(/things to know$/));
   expect(document.querySelector(".as-notes")?.textContent).toContain("“Home”: Its buttons that lead to pages not made keep their links, as the change was not saved: the storage did not answer.");
+  // What else becomes of it is offered as ever.
+  expect(screen.getByRole("button", { name: "Make “Home” the home page" })).toBeTruthy();
+});
+
+test("a page of the new site whose last changes were not saved: its title says so, the things to know say why, and Publish all is not offered, said", async () => {
+  // Join's draft is saved in another tab each time the Assistant saves it.
+  await writeNewSite((title) => pagePlan(title), null, [], "join");
+  expect([...document.querySelectorAll(".as-group-title")].map((title) => title.textContent)).toEqual(["The siteIron Forge", "Home/iron-forge, written", "Classes/classes, written", "Join/join, last changes not saved"]);
+  expect(screen.queryByRole("button", { name: "Publish all" })).toBeNull();
+  expect(document.querySelector(".as-offer-held")?.textContent).toBe("Publish all is not offered: “Join” has changes that were not saved, as the things to know say.");
+  fireEvent.click(screen.getByText(/things? to know$/));
+  expect(document.querySelector(".as-notes")?.textContent).toContain("“Join”: Its last changes were not saved: the page was saved somewhere else meanwhile.");
   // What else becomes of it is offered as ever.
   expect(screen.getByRole("button", { name: "Make “Home” the home page" })).toBeTruthy();
 });
@@ -547,8 +561,8 @@ test("while a page is written, its cost grows under the status line, a live esti
       held.end = () => done({ text: PLAN, usage: USED });
     }),
   };
-  const kit = editorKit({ document: KIT_DOC, session: { makePage: async () => ({ ok: true, id: 1 }), isOpen: (id) => id === 1 }, providers: async () => client });
-  kit.render(<AssistantPanel />);
+  const kit = editorKit({ document: KIT_DOC, session: asideStorage().session, providers: async () => client });
+  kit.render(<><AssistantPanel /><AssistantRun /></>);
   await connect(kit);
   fireEvent.change(screen.getByLabelText("What is the page for?"), { target: { value: "An open day at the club." } });
   fireEvent.click(screen.getByRole("button", { name: "Write the page" }));
@@ -560,10 +574,12 @@ test("while a page is written, its cost grows under the status line, a live esti
   const line = () => document.querySelector(".as-progress .as-live");
   const said = (out: number) => `≈ ${liveDollars(tokensIn * 2000 + out * 10_000)} so far · ${tokensIn.toLocaleString("en-US")} tokens in, ${out} out · live estimate, exact as each request ends`;
   expect(line()?.textContent).toBe(said(0));
-  // Under the status line, which stays the only live region: the line is none.
-  expect(line()?.previousElementSibling?.getAttribute("role")).toBe("status");
+  // Under the status line; the line is no live region, and while the run
+  // window speaks, nor is the drawer's status line: the window's is the one.
+  expect(line()?.previousElementSibling?.classList.contains("as-line")).toBe(true);
   expect([line()?.getAttribute("role"), line()?.getAttribute("aria-live")]).toEqual([null, null]);
-  expect(within(document.querySelector<HTMLElement>(".as-progress")!).getAllByRole("status")).toHaveLength(1);
+  expect(within(document.querySelector<HTMLElement>(".as-progress")!).queryAllByRole("status")).toHaveLength(0);
+  expect(screen.getAllByRole("status")).toEqual([within(screen.getByRole("dialog", { name: "Asking" })).getByRole("status")]);
   // The answer streams in, its output grows: told within a quarter of a second.
   await act(async () => {
     held.write(PLAN.slice(0, 100));
@@ -578,7 +594,7 @@ test("while a page is written, its cost grows under the status line, a live esti
   });
   expect(screen.getByRole("heading", { level: 3, name: "Written" })).toBeTruthy();
   expect(line()).toBeNull();
-  expect(screen.getByText("Used 3,144 tokens in, 1,024 of them cached, and 1,415 out, on your key.")).toBeTruthy();
+  expect(within(document.querySelector<HTMLElement>(".as-progress")!).getByText("Used 3,144 tokens in, 1,024 of them cached, and 1,415 out, on your key.")).toBeTruthy();
 });
 
 test("while a new site is written, its cost grows under its status line, in place of its So far: the requests that ended exact, the one in flight estimated, its input as the provider said it", async () => {
@@ -600,9 +616,7 @@ test("while a new site is written, its cost grows under its status line, in plac
       return { text, usage: USED };
     },
   };
-  let kitRef: ReturnType<typeof editorKit> | null = null;
-  const kit = editorKit({ document: KIT_DOC, session: siteSession(() => kitRef!, calls), providers: async () => client });
-  kitRef = kit;
+  const kit = editorKit({ document: KIT_DOC, session: siteSession(calls), providers: async () => client });
   kit.ui.getState().setSiteStyle(STYLE_NOW);
   kit.render(<AssistantPanel />);
   await act(async () => {

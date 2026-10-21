@@ -60,6 +60,7 @@ import { DragLayer } from "./drag/DragLayer.tsx";
 import { DrawerShell } from "./Drawer.tsx";
 import { HistoryPanel } from "./HistoryPanel.tsx";
 import { AssistantPanel } from "./AssistantPanel.tsx";
+import { AssistantRun } from "./AssistantRun.tsx";
 import { AssistantProvider, createAssistant } from "../assistant/context.tsx";
 import { versionInSentence } from "./history-words.ts";
 import { Icon } from "./icons.tsx";
@@ -491,7 +492,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     live.current.autosave?.dispose();
   }, []);
 
-  const makePage = useCallback(async (page: NewPage): Promise<{ ok: true; id: number } | { ok: false; errors: FieldError[] }> => {
+  // A page made, and the pages read again; the editor stays where it is.
+  // Its draft read as a page opened is (openDocument), for the Assistant,
+  // which writes it aside.
+  const makePageAside = useCallback(async (page: NewPage): Promise<{ ok: true; id: number; revision: number; document: PageDocument } | { ok: false; errors: FieldError[] }> => {
     let outcome;
     try {
       outcome = await adapter.createPage(page);
@@ -500,10 +504,24 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
     }
     if (!outcome.ok) return { ok: false, errors: outcome.problem.errors.length > 0 ? outcome.problem.errors : [{ pointer: "", keyword: "invalid", blockPointer: null, message: outcome.problem.message }] };
     await refreshPages().catch(() => undefined);
-    const why = await openPage(outcome.value.page.id);
+    const taken = openDocument(outcome.value.draft.document);
+    if (!taken.ok) return { ok: false, errors: [{ pointer: "", keyword: "invalid", blockPointer: null, message: `The new page could not be read: ${taken.errors[0]?.message ?? "its document is not valid"}.` }] };
+    return { ok: true, id: outcome.value.page.id, revision: outcome.value.draft.revision, document: taken.document };
+  }, [adapter, refreshPages]);
+
+  const makePage = useCallback(async (page: NewPage): Promise<{ ok: true; id: number } | { ok: false; errors: FieldError[] }> => {
+    const made = await makePageAside(page);
+    if (!made.ok) return made;
+    const why = await openPage(made.id);
     if (why) ui.getState().say(why);
-    return { ok: true, id: outcome.value.page.id };
-  }, [adapter, openPage, refreshPages, ui]);
+    return { ok: true, id: made.id };
+  }, [makePageAside, openPage, ui]);
+
+  // The storage's own draft calls, for the Assistant's pages written aside.
+  const drafts = useMemo<Session["drafts"]>(() => ({
+    getDraft: (pageId, options) => adapter.getDraft(pageId, options),
+    saveDraft: (pageId, save, options) => adapter.saveDraft(pageId, save, options),
+  }), [adapter]);
 
   const createPage = useCallback(async (page: NewPage): Promise<FieldError[] | null> => {
     const made = await makePage(page);
@@ -1323,10 +1341,10 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   const isOpen = useCallback((id: number) => loaded.current === id, []);
   const session = useMemo<Session>(() => ({
     pages, parts, current, autosave, capabilities: adapter.capabilities, cmsOrigin, publishedView, entryView, publishing, styleSave,
-    openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
+    openPage, isOpen, createPage, makePage, makePageAside, drafts, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle,
     applySiteStyle, replacePart, changeDraft, setHome, publishAll, startOver,
     versions, loadVersions, saveVersion, restoreVersion, restoring,
-  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, entryView, publishing, styleSave, openPage, isOpen, createPage, makePage, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, applySiteStyle, replacePart, changeDraft, setHome, publishAll, startOver, versions, loadVersions, saveVersion, restoreVersion, restoring]);
+  }), [pages, parts, current, autosave, adapter, cmsOrigin, publishedView, entryView, publishing, styleSave, openPage, isOpen, createPage, makePage, makePageAside, drafts, setSlug, preview, publish, schedulePublish, scheduling, cancelSchedule, reload, keepMine, saveSiteStyle, applySiteStyle, replacePart, changeDraft, setHome, publishAll, startOver, versions, loadVersions, saveVersion, restoreVersion, restoring]);
   // The form responses' screen reads through the adapter, when it keeps
   // them (./responses/context.ts), and the collections' screen and the
   // shop's the same way (./collections/context.ts, ./shop/context.ts).
@@ -1381,6 +1399,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
             <BlockMenu />
             <ShortcutsDialog />
             <AboutDialog />
+            <AssistantRun />
             <CollectionsScreen />
             <ShopScreen />
             <SaveToast />

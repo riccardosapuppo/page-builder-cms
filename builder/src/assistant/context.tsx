@@ -10,11 +10,14 @@
 // replaced. What the run being written has cost so far is kept too, live
 // (./live.ts): its requests that ended as the provider counted them, and
 // an estimate for each one in flight, told at most every LIVE_MS while
-// answers stream in; runCost reads it for the run shown. One per editor,
+// answers stream in; runCost reads it for the run shown. So are whether
+// the run window is open (../editor/AssistantRun.tsx), and the pages the
+// run has written, in memory, as its preview draws them. One per editor,
 // made by the shell (../editor/App.tsx) or a test, which gives the clock
 // and, for a test, the providers.
 import { createContext, useContext, type ReactNode } from "react";
 import { createStore, useStore, type StoreApi } from "zustand";
+import type { PageDocument } from "../shared/document.ts";
 import type { Clock } from "../storage/clock.ts";
 import { createKeyKeeper, type ForgetReason, type Held, type KeyKeeper, type ProviderId } from "./key.ts";
 import { createLiveBook, photoPrice, questionChars, type RunCost } from "./live.ts";
@@ -60,6 +63,14 @@ export interface Bound {
 // What a request made with a key no longer kept is told.
 export const KEY_GONE = "The key this was begun with is no longer kept: nothing more is asked with it.";
 
+// A page the run has written, as far as it has come, by the page's id: its
+// title and its document in memory, which the run window's preview draws.
+export interface WrittenPage {
+  id: number;
+  title: string;
+  document: PageDocument;
+}
+
 export interface AssistantState {
   held: Held | null;
   // Why the last key went, until another is kept.
@@ -87,6 +98,14 @@ export interface AssistantState {
   // estimate; told at most every LIVE_MS while answers stream in. Null
   // before any run is bound.
   live: RunCost | null;
+  // The run window (../editor/AssistantRun.tsx) is open: from the moment a
+  // page's run, a new site's or the sample's begins, until the person
+  // closes it.
+  runWindow: boolean;
+  // The pages the run has written, in the order they were made, each as
+  // it was shown last (showPage): what the window's preview draws. Emptied
+  // as a run begins.
+  written: readonly WrittenPage[];
   // Checks the key with its provider (the models it may use) and keeps it
   // only then.
   connect(provider: ProviderId, key: string): Promise<boolean>;
@@ -110,7 +129,13 @@ export interface AssistantState {
   photo(ask: { prompt: string; size: ImageSize; quality: ImageQuality }, signal?: AbortSignal, bound?: Bound): Promise<PhotoAnswer & { tally: Tally }>;
   setWriting(writing: ShownWriting | null): void;
   setSite(site: ShownSite | null): void;
-  // A run starts, to be stopped with stop(); its end lets it go.
+  // The run window opened, or closed.
+  setRunWindow(open: boolean): void;
+  // A page of the run, as it is now: in place of the one with its id, or
+  // after the others.
+  showPage(page: WrittenPage): void;
+  // A run starts, to be stopped with stop(); its end lets it go. The
+  // pages written before it go.
   begin(): AbortSignal;
   stop(): void;
   end(): void;
@@ -150,6 +175,8 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     running: null,
     spent: [],
     live: null,
+    runWindow: false,
+    written: [],
     async connect(provider, key) {
       const given = key.trim();
       if (given === "") {
@@ -258,10 +285,15 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     },
     setWriting: (writing) => set({ writing }),
     setSite: (site) => set({ site }),
+    setRunWindow: (runWindow) => set({ runWindow }),
+    showPage: (page) => set((state) => {
+      const at = state.written.findIndex((one) => one.id === page.id);
+      return { written: at === -1 ? [...state.written, page] : state.written.map((one, index) => (index === at ? page : one)) };
+    }),
     begin() {
       get().running?.abort();
       const running = new AbortController();
-      set({ running });
+      set({ running, written: [] });
       return running.signal;
     },
     stop: () => get().running?.abort(),

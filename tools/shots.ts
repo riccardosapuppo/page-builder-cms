@@ -4,7 +4,8 @@
 //
 // The README's pictures, made from the running system and nothing else,
 // into docs/images/ (--out for another folder): the editor with a block
-// selected, in a desktop's window and on a phone, the published page on a desktop and on a phone, the version
+// selected, in a desktop's window and on a phone, the Assistant's run window
+// and the page it wrote, the published page on a desktop and on a phone, the version
 // history, Form responses, the browser demo with its bottom line and the
 // picture a shared link to it previews with, the GIF of a real
 // publication, the site's header open in the editor as a page is, the
@@ -410,19 +411,33 @@ async function phoneEditorShot(browser: Browser, shots: Staging, editor: string,
   await page.context().close();
 }
 
-// The Assistant after writing a page from the sample written by hand (no
-// key, no model: builder/src/assistant/sample.ts): its four sections on the
-// canvas and in the drawer, the new page's top in view, its heading selected
-// with Write it again among its settings. Last of the CMS's
-// pictures, since it makes a page the others do not show.
+// The Assistant's run window at the end of the sample written by hand (no
+// key, no model: builder/src/assistant/sample.ts): its steps and its cost on
+// its left, the page it wrote drawn in its preview on its right, the editor
+// behind it still on the home page. Then the page opened with Open the
+// page: its four sections on the canvas and in the drawer, the new page's
+// top in view, its heading selected with Write it again among its settings.
+// Last of the CMS's pictures, since it makes a page the others do not show.
 async function assistantShot(browser: Browser, shots: Staging, editor: string, cms: string): Promise<void> {
   const page = await openEditor(browser, editor, cms, { width: 1440, height: 900 }, "assistant");
   await page.locator(".topbar").getByRole("button", { name: "Assistant", exact: true }).click();
   const box = page.getByRole("complementary", { name: "Assistant", exact: true });
   await box.getByRole("button", { name: "Build the sample page" }).click();
-  await box.getByRole("status").filter({ hasText: "4 sections on “Open day”" }).waitFor();
+  const run = page.locator(".dialog.dlg-run");
+  await run.getByRole("status").filter({ hasText: "4 sections on “Open day”" }).waitFor();
+  must((await run.locator(".ar-preview-page .sw-main > [data-block-type='section']").count()) === 4, "the run window's preview does not draw the sample's four sections");
+  await parked(page);
+  await settled(page);
+  await shots.shoot(page, "assistant-run.png");
+  await run.getByRole("button", { name: "Open the page" }).click();
+  await run.waitFor({ state: "detached" });
+  await page.getByRole("button", { name: /^Switch page\. Open: Open day/ }).waitFor();
   must((await page.locator(".canvas [data-block-type='section']:not([data-theme-part] *)").count()) === 4, "the sample's four sections are not on the canvas");
   await page.locator(".canvas").evaluate((canvas) => canvas.scrollTo(0, 0));
+  // The drawer from its top, where the run's summary lists the four sections:
+  // the focus, back on Build the sample page as the window closed, took it down.
+  must((await box.locator(".as-progress .as-sections > li").count()) === 4, "the drawer does not list the sample's four sections");
+  await box.locator(".drawer-body").evaluate((body) => body.scrollTo(0, 0));
   // Its heading selected: the heading's settings beside it, Write it again among them.
   await page.locator(".canvas [data-block-type='heading']:not([data-theme-part] *)").first().click();
   await page.locator(".topbar .save-state").filter({ hasText: /^Saved$/ }).waitFor();
@@ -671,7 +686,7 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
   try {
     const needsSystem = [
       "published-desktop.png", "published-phone.png", "editor.png", "editor-phone.png", "header.png", "collections.png", "template.png", "entry-desktop.png", "entry-phone.png",
-      "shop-page.png", "product-desktop.png", "product-phone.png", "cart.png", "shop-orders.png", "history.png", "form-responses.png", "publish.gif", "assistant.png",
+      "shop-page.png", "product-desktop.png", "product-phone.png", "cart.png", "shop-orders.png", "history.png", "form-responses.png", "publish.gif", "assistant.png", "assistant-run.png",
     ].some((name) => wanted.has(name));
     browser = await chromium.launch({ headless: true });
     if (needsSystem) {
@@ -706,7 +721,7 @@ async function make(shots: Staging, wanted: Set<string>, work: string, cmsPort: 
         await page.context().close();
       }
       if (wanted.has("publish.gif")) await publicationGif(browser, shots, editor.url, cms.url);
-      if (wanted.has("assistant.png")) await assistantShot(browser, shots, editor.url, cms.url);
+      if (wanted.has("assistant.png") || wanted.has("assistant-run.png")) await assistantShot(browser, shots, editor.url, cms.url);
       for (const server of [editor, cms, stripe]) {
         for (const line of await server.stop()) console.log(line);
         servers.splice(servers.indexOf(server), 1);

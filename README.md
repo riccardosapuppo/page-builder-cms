@@ -72,15 +72,21 @@ OpenAI's. The person brings the key. It is kept in the tab's memory only,
 and the browser sends it to that provider and nowhere else. The Assistant
 can do four things:
 
-- **Write a page from a brief.** The page grows on the canvas section by
-  section, and each section is a step in History. It is planned with
+- **Write a page from a brief.** A window opens over the editor and
+  shows the run as it goes: its steps, a bar of how far it has come, what
+  it has cost so far, large and growing as the model writes, and a
+  preview of the page drawn as the site draws it, section by section. The
+  page is written aside, so the editor stays on the page it had open and
+  never waits on the Assistant; it arrives whole, as a draft, opened from
+  the window. Closing the window midway asks first, since it stops the
+  run. The page is planned with
   rhythm: a strong opening, a picture behind it, bands that alternate,
   points side by side as icon boxes, one call to action said again at the
   end, and a little motion. Its pictures come from the library or are made
   for it, a few where they matter: photos with an OpenAI key, at a price
   shown before; illustrations in the site's colours with an Anthropic key,
   whose models make no photos. Each goes into the library with its alt
-  text, then onto the page as a step of its own.
+  text, then onto the page.
 - **Make a new site from a brief**, asked twice: a direction first (a name,
   a voice, a palette held to WCAG's AA contrast, type, imagery, motion and
   three or four pages), then the site style it gives, the old one kept to
@@ -302,12 +308,17 @@ left, the page in the middle, the heading's settings on the right.
 The same editor on a 390 by 844 phone, at twice the pixels: the heading
 tapped, and its settings risen from the bar at the foot.
 
+![The Assistant's run window at the end of a page](docs/images/assistant-run.png)
+
+The Assistant's run window at the end of the sample written by hand: its
+steps and its cost on the left, the page it wrote drawn in its preview on
+the right, the editor behind it still on the home page.
+
 ![The Assistant after writing a page](docs/images/assistant.png)
 
-The Assistant after writing a page, the sample written by hand: each of its
-four sections went onto the canvas as it came, and each is a step in
-History. The page's heading is selected, with Write it again among its
-settings.
+The same page opened from the window: its four sections on the canvas, the
+run's summary in the drawer, the page's heading selected, with Write it
+again among its settings.
 
 ![The site's header open in the editor](docs/images/header.png)
 

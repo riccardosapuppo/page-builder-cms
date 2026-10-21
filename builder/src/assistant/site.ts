@@ -19,10 +19,11 @@
 //    through one queue for the whole site, two at a time, and share one
 //    budget (SITE_PICTURES_MOST): each page is told how many it may make,
 //    keeping one for each page still to come, and is held to it. A page
-//    waits for its pictures before the next one opens.
+//    waits for its pictures, and for its end (PageHooks.end, where the
+//    editor saves it), before the next one is asked for.
 // 5. The frame settled, however the run ends once a part is saved (done,
-//    stopped, failed, another page opened, the key forgotten): the header
-//    and the footer are built again from the pages made, at the addresses
+//    stopped, failed, the key forgotten), once every page made has ended:
+//    the header and the footer are built again from the pages made, at the addresses
 //    they were made at, and the header's call to action leads to the home
 //    page's form, by its section's anchor, or to its first section; each is
 //    saved again where it changed. Where no page was made, each is put back
@@ -43,12 +44,13 @@
 // with that key alone, its pictures through the one maker made for it.
 //
 // Stop stops all of it: the request on its way, the pictures in flight, the
-// pages still to come. So does another page opened by the person: before a
-// page is asked for and before it is made, the page the Assistant opened
-// last must still be the one open. A page that is refused or cut short is
-// said, and the next one is written; a key refused, a model gone, no credit
-// or no network stops the run, the same being bound to come again. What was
-// made stays and is said.
+// pages still to come. The person stays on the page they had open: the
+// editor writes the site's pages aside, and its run window keeps the
+// person from opening another page while the run goes, so no page of the
+// site is left midway (no longer a reason for the site to stop). A page
+// that is refused or cut short is said, and the next one is written; a key
+// refused, a model gone, no credit or no network stops the run, the same
+// being bound to come again. What was made stays and is said.
 import { makeSetItem, makeSetProps } from "../document/commands.ts";
 import type { NewId } from "../document/ids.ts";
 import { sameJson } from "../document/json.ts";
@@ -68,7 +70,8 @@ import { HALTS, inTurn, LEFT, PICTURES_AT_ONCE, writePage, type PageHooks, type 
 export const SITE_PICTURES_MOST = 8;
 // The name of the version each part keeps of the draft a new site replaces.
 export const BEFORE_NEW_SITE = "Before the new site";
-// Why a new site stopped when the person opened another page.
+// Why a new site stopped where a page's hooks said its page was left
+// (PageHooks.still): never the editor's, which write the pages aside.
 export const LEFT_SITE = "Another page was opened: the Assistant stopped the new site.";
 
 export type SiteStep = "waiting" | "doing" | "done" | "failed" | "stopped";
@@ -176,11 +179,8 @@ export interface SiteHooks {
   // The header as it is now, for whether it stays at the top of the window.
   header(): PageDocument | null;
   // The hooks a page of the site is written with: it is made at `slug`, or
-  // the next free address, titled as its plan says, once `after` (the page
-  // the Assistant opened before it) is still the one open.
-  page(planned: { slug: string; after: number | null }): SitePageHooks;
-  // Whether the page of `id` is the one open now.
-  isOpen(id: number): boolean;
+  // the next free address, titled as its plan says.
+  page(planned: { slug: string }): SitePageHooks;
 }
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
@@ -298,7 +298,7 @@ export async function writeSite(options: {
     }
   };
   // The home page as written, for where the header's call to action
-  // leads; each page made as written, where it was still open once it was.
+  // leads; each page made as written, as its hooks hold it.
   let home: PageDocument | null = null;
   const written: Array<PageDocument | null> = planned.map(() => null);
 
@@ -313,15 +313,13 @@ export async function writeSite(options: {
     const maker = options.pictures?.(look);
     const queue = inTurn(PICTURES_AT_ONCE);
     let left = maker ? (options.budget ?? SITE_PICTURES_MOST) : 0;
-    let last: number | null = null;
     const ink = { text: direction.palette.text?.hex ?? look.palette.text, background: direction.palette.background?.hex ?? look.palette.background };
     for (const [index, plan] of planned.entries()) {
       if (stopped()) return { phase: "stopped", error: null };
-      if (last !== null && !hooks.isOpen(last)) return { phase: "stopped", error: LEFT_SITE };
       // Its share of the pictures: as many as are left, keeping one for each
       // page still to come, and never more than a page takes.
       const most = Math.max(0, Math.min(PLAN_MADE_MOST, left - (planned.length - index - 1)));
-      const page = hooks.page({ slug: plan.slug, after: last });
+      const page = hooks.page({ slug: plan.slug });
       const path = site.pages[index]!.path;
       setPage(index, { state: "writing" });
       // Why its request failed, if it did: whether the same would come again.
@@ -347,11 +345,8 @@ export async function writeSite(options: {
       const made = page.made();
       if (made !== null) {
         setPage(index, { id: made.id, path: `/${made.slug}` });
-        last = made.id;
-        if (hooks.isOpen(made.id)) {
-          written[index] = page.document();
-          if (index === 0) home = written[index];
-        }
+        written[index] = page.document();
+        if (index === 0) home = written[index];
       }
       if (result.phase === "done" && made !== null) {
         setPage(index, { state: "done" });

@@ -84,8 +84,8 @@ import { insertTarget, useInsert } from "./insert.ts";
 import { placeBeside, placeKey, placeWords } from "./insert-place.ts";
 import { closeInserter, InsertPicker, openInserter, PICKER_ID } from "./InsertPicker.tsx";
 import { entry, entryKeysText } from "./keymap.ts";
-import { collectionResolver, templateEntry } from "./collections/content.ts";
-import { mediaResolver } from "./media.ts";
+import { templateEntry } from "./collections/content.ts";
+import { useSiteRender } from "./site-render.ts";
 import { ImagePicker } from "./pickers.tsx";
 import { PRESET_PICTURES } from "./preset-pictures.tsx";
 import { PRESET_LABELS, presetSection, type Preset } from "./presets.ts";
@@ -886,7 +886,6 @@ function CanvasView() {
   const sections = useEditor((s) => (s.drag?.preview ?? s.document).sections.length);
   const selection = useEditor((s) => s.selection);
   const preview = useUi((u) => u.preview);
-  const media = useUi((u) => u.media);
   // A colour being picked (./color-preview.ts) is drawn before it is kept:
   // a slot of the site style's, or a block's own.
   const colorPreview = useUi((u) => u.colorPreview);
@@ -936,8 +935,8 @@ function CanvasView() {
   );
   // The context's hook must stay the same function: the library's lookup,
   // the collections, the entry and the shop are the parts that change, and
-  // only when they do.
-  const ctx = useMemo<RenderContext>(() => ({ media: mediaResolver(media), collections: collectionResolver(siteEntries), entry, shop: siteShop, useDecoration }), [media, siteEntries, entry, siteShop]);
+  // only when they do (./site-render.ts).
+  const ctx = useSiteRender(entry, useDecoration);
   const entryShown = useMemo(() => ({ entry, template: kind === "template", shop: siteShop }), [entry, kind, siteShop]);
   const layout = useLayoutMode();
   const { width, scale } = fitPreview(preview, room, layout === "narrow");

@@ -1,30 +1,35 @@
 // A page written from a brief (./README.md): the model's plan streams in
-// (./plan-stream.ts); the page is made and opened as soon as the plan's
-// title has come; each section is built (./build.ts) and put on it by a
-// command of its own the moment it closes, so the person watches the page
-// grow and History holds each step, each one undoable. What the editor
-// does is passed in (PageHooks), so this runs the same in a test.
+// (./plan-stream.ts); the page is made as soon as the plan's title has
+// come; each section is built (./build.ts) and put on it by a command of
+// its own the moment it closes, so the page grows as the model writes.
+// What the editor does is passed in (PageHooks), so this runs the same in
+// a test: the editor writes the page aside, never in the page open
+// (../editor/assistant-aside.ts), and shows it growing in the run window.
 //
 // A stop, a refusal or a fault keeps what is already on the page, and a
 // stop lets nothing more land, not even sections that had come while the
 // page was being made. However the answer ends, a button that leads to a
 // section the page does not have is taken out (a plan's button loses its
-// link instead), while the page is open. The page is left alone once
-// another one is opened in its place: nothing written for it lands on
-// another page. What the request used, priced (./tally.ts), is said at the
-// end, a refused or cut answer's too: a sample written by hand used none.
+// link instead). The page is left alone once its hooks say it is no longer
+// the one written (PageHooks.still): nothing written for it lands on
+// another page. Then the page's end is told (PageHooks.end), once all of
+// it is in: the editor saves it there, and a page whose last changes were
+// not saved is said, and marked (Writing.unsaved). What the request used,
+// priced (./tally.ts), is said at the end, a refused or cut answer's too: a
+// sample written by hand used none.
 //
 // Pictures made for the page (./pictures.ts), where the person wants them:
 // each is asked for the moment its section is in (./build.ts,
 // picturesFor), two at once at most, made by the person's provider
 // (PictureMaker), put in the site's library with its alt text
 // (PageHooks.upload), then put on its section, or as an image in its
-// column, as a step of the Assistant's of its own. One that fails, for
+// column, by a command of the Assistant's of its own. One that fails, for
 // whatever reason, leaves its section as it was, and is said; a refusal
 // of the key (or no network, or no credit) asks for no more. The page is
-// written once its pictures are in. A stop, another page opened (looked
-// for before each picture is asked, after each that fails, and every
-// PAGE_WATCH_MS meanwhile), or the key the run began with forgotten or
+// written once its pictures are in. A stop, the page left as its hooks
+// say (looked for before each picture is asked, after each that fails,
+// and every PAGE_WATCH_MS meanwhile; the editor's, written aside, never
+// are), or the key the run began with forgotten or
 // replaced (PictureMaker.gone) stops the pictures still being made, those
 // in flight too; one already made goes into the library, not onto the
 // page; and what was not made is said.
@@ -39,19 +44,25 @@ import { AssistantError, type Answer } from "./providers.ts";
 import type { Tally } from "./tally.ts";
 
 export interface PageHooks {
-  // Makes and opens a page with this title: null once it is open, or why not.
+  // Makes a page with this title: null once it is made, or why not.
   open(title: string): Promise<string | null>;
-  // Whether the page opened is still the one in the editor.
+  // Whether the page made is still the one being written: the editor's
+  // pages, written aside, are while the run goes.
   still(): boolean;
   document(): PageDocument;
   // Applies a command: null once applied, or the page's refusal, in a
-  // sentence. A quiet one (a picture put in, which may come while the
-  // person is at work on the page) leaves the selection where it is.
+  // sentence. A quiet one is a picture put in after its section: where
+  // the page is the one a person works on, it leaves their selection as it
+  // is.
   apply(made: Made, options?: { quiet?: boolean }): string | null;
   // Puts a picture made for the page in the site's library, as an upload
   // is, with its alt text: its id there, or why not. Without it, no
   // picture is made.
   upload?(file: File, picture: { width: number; height: number; alt: string }): Promise<{ ok: true; mediaId: string } | { ok: false; reason: string }>;
+  // The page's end, however the run ends, once all of it is in (its
+  // pictures, its buttons tidied): what was written saved. Null once it
+  // is, or why its last changes were not saved. Told only for a page made.
+  end?(): Promise<string | null>;
 }
 
 // A picture made, ready for the library: its bytes, its kind and size, and
@@ -114,6 +125,9 @@ export interface Writing {
   // before its end. The pictures' are their own.
   tally: Tally | null;
   error: string | null;
+  // Why the page's last changes were not saved, its end said so
+  // (PageHooks.end); absent while they are, or may yet be.
+  unsaved?: string;
 }
 
 // How many pictures are made at once.
@@ -379,8 +393,9 @@ export async function writePage(options: {
   };
 
   // The buttons whose section never came go, however the answer ended:
-  // once the steps waiting are through, while the page made is the one open.
-  // A plan's button stays with its plan and leads to the top of the page.
+  // once the steps waiting are through, while the page made is still the
+  // one being written. A plan's button stays with its plan and leads to the
+  // top of the page.
   const tidy = async (): Promise<void> => {
     if (opening === null || lost !== null || (await opening) !== null || !hooks.still()) return;
     for (const button of builder.unmet(hooks.document())) {
@@ -392,6 +407,22 @@ export async function writePage(options: {
       hooks.apply(asAssistants(makeDelete(hooks.document(), button.id)));
       builder.notes.push(`Took out the button “${button.label}”: the section it leads to was not written.`);
     }
+  };
+
+  // The page's end, once all of it is in, told to its hooks, which save it:
+  // its last changes not saved are said, and the page is marked so. A page
+  // never made has no end.
+  const ended = async (): Promise<void> => {
+    if (opening === null || hooks.end === undefined || (await opening) !== null) return;
+    let why: string | null;
+    try {
+      why = await hooks.end();
+    } catch (error) {
+      why = error instanceof Error ? error.message : String(error);
+    }
+    if (why === null) return;
+    builder.notes.push(`Its last changes were not saved: ${why}`);
+    update({ unsaved: why });
   };
 
   try {
@@ -407,6 +438,7 @@ export async function writePage(options: {
     }
     await picturesDone();
     await tidy();
+    await ended();
     if (stopped()) {
       update({ phase: "stopped", tally: answer.tally ?? null, error: null });
       return writing;
@@ -417,9 +449,10 @@ export async function writePage(options: {
     await steps;
     await picturesDone();
     await tidy();
-    const ended = stopped() || (error instanceof AssistantError && error.kind === "stopped");
+    await ended();
+    const halted = stopped() || (error instanceof AssistantError && error.kind === "stopped");
     const tally = error instanceof AssistantError ? error.tally : null;
-    update({ phase: ended ? "stopped" : "failed", tally, error: ended ? null : error instanceof Error ? error.message : String(error) });
+    update({ phase: halted ? "stopped" : "failed", tally, error: halted ? null : error instanceof Error ? error.message : String(error) });
   }
   return writing;
 }

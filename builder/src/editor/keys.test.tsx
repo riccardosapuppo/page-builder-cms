@@ -13,6 +13,7 @@ import { clipboardText, copyBlock } from "../document/clipboard.ts";
 import type { SectionBlock } from "../shared/document.ts";
 import { BlockMenu } from "./BlockMenu.tsx";
 import { Canvas } from "./Canvas.tsx";
+import { Dialog } from "./dialog.tsx";
 import { EditorKeys, waitForText } from "./keys.ts";
 import { createUiStore } from "./ui-store.ts";
 import { entryCaps, KEY_GROUPS, KEYMAP } from "./keymap.ts";
@@ -447,6 +448,32 @@ test("with a modal dialog open, the editor behind it takes no key even with the 
   act(() => (document.activeElement as HTMLElement | null)?.blur());
   press("Escape");
   expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).toBeNull();
+});
+
+test("with a question open over the editor, an alertdialog, the editor behind it takes no key, from the question or from the page", () => {
+  const kit = editorKit({ document: page(), selection: "h1" });
+  kit.render(
+    <>
+      <div className="app">
+        <Canvas />
+        <EditorKeys />
+      </div>
+      <Dialog title="Stop the Assistant?" role="alertdialog" onClose={() => undefined}><p>What was made stays.</p></Dialog>
+    </>,
+  );
+  const question = screen.getByRole("alertdialog", { name: "Stop the Assistant?" });
+  // From the question, and from the page, the focus lost to it.
+  press("?");
+  press("Delete");
+  act(() => (document.activeElement as HTMLElement | null)?.blur());
+  expect(document.activeElement).toBe(document.body);
+  press("?");
+  press("Delete");
+  press("d", { ctrlKey: true });
+  expect(kit.ui.getState().shortcutsOpen).toBe(false);
+  expect(kit.store.getState().selection).toBe("h1");
+  expect(kit.store.getState().past).toEqual([]);
+  expect(question.isConnected).toBe(true);
 });
 
 test("with a heading's line open, the keys on its clamp are the clamp's: none is kept back as if the line were on its way", () => {

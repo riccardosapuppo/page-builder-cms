@@ -1,8 +1,8 @@
 /* The Assistant's drawer (AssistantPanel.tsx), in the drawers' own words:
-   the same fields, keys and hints as Outline and History. The one moment
-   it has of its own is each section's line coming in as the section lands
-   on the canvas, which is where the person looks, and each picture's under
-   its section, as it is made and put in. */
+   the same fields, keys and hints as Outline and History; and its run
+   window (AssistantRun.tsx), in the dialogs' own. The one moment it has of
+   its own is each section's line coming in as the section lands, and each
+   picture's under its section, as it is made and put in. */
 .as-body { padding-top: 2px; }
 .as-lead { margin: 10px 0 0; font-size: 13px; line-height: 19px; color: var(--graphite); }
 .as-forgotten { margin-top: 10px; color: var(--warn); }
@@ -125,6 +125,82 @@
    estimate leaves out. */
 .as-total { color: var(--graphite); }
 .as-foot p + p { margin-top: 4px; }
+
+/* A page of a new site whose last changes were not saved, beside its title. */
+.as-group-title .as-unsaved { color: var(--warn); }
+
+/* ---------- The run window (AssistantRun.tsx) ----------
+   Most of the window, over the editor: on its left, 380 wide and
+   scrolling, the status line, the bar, the cost and the steps; on its
+   right, on the bench's grey, the page being written, drawn at a desktop's
+   width and made smaller to fit. On a phone's window it is the whole
+   window, the two a switch apart. */
+.dialog.dlg-run { width: min(1200px, calc(100vw - 48px)); height: min(860px, calc(100vh - 48px)); }
+.dlg-run .dlg-body.ar-body { display: grid; grid-template-columns: 380px minmax(0, 1fr); padding: 0; overflow: hidden; box-shadow: inset 0 1px 0 var(--alloy), inset 0 -1px 0 var(--alloy); }
+.ar-side { min-height: 0; overflow: auto; padding: 14px 20px 20px; scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+.ar-line { margin: 0; font-size: 14px; line-height: 20px; }
+.ar-line .i { margin-top: 2px; }
+
+/* How far the run has come: graphite on the key's grey; with no measure
+   yet, a short length that moves across, still where less motion was asked
+   for. */
+.ar-progress { position: relative; height: 6px; margin-top: 12px; border-radius: 3px; background: var(--key); overflow: hidden; }
+.ar-progress-fill { position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 3px; background: var(--graphite); }
+.ar-progress-unknown .ar-progress-fill { width: 28%; left: 36%; opacity: .55; }
+@media (prefers-reduced-motion: no-preference) {
+  .ar-progress-fill { transition: width 240ms cubic-bezier(.16, 1, .3, 1); }
+  .ar-progress-unknown .ar-progress-fill { left: 0; animation: ar-across 1.6s cubic-bezier(.45, 0, .25, 1) infinite; }
+}
+@keyframes ar-across { from { transform: translateX(-100%); } to { transform: translateX(360%); } }
+
+/* The cost, large, its figures one width so they stand still as they grow. */
+.ar-meter { margin-top: 16px; padding: 12px 14px 14px; background: var(--white); border: 1px solid var(--alloy); border-radius: var(--r-control); }
+.ar-meter .group-title { margin: 0; }
+.ar-amount { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin: 2px 0 0; }
+.ar-dollars { font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: -.01em; color: var(--graphite); font-variant-numeric: tabular-nums; }
+.ar-when { font-size: 13px; line-height: 18px; color: var(--steel); }
+.ar-amount-none { font-size: 18px; line-height: 26px; font-weight: 600; color: var(--graphite); }
+.ar-tokens { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin: 10px 0 0; padding-top: 10px; box-shadow: inset 0 1px 0 var(--alloy); }
+.ar-tokens dt { font-size: 12px; line-height: 16px; color: var(--steel); }
+.ar-tokens dd { margin: 2px 0 0; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--graphite); font-variant-numeric: tabular-nums; }
+.ar-cached { display: block; font-size: 12px; line-height: 16px; font-weight: 400; color: var(--steel); }
+.ar-meter .hint { font-variant-numeric: tabular-nums; }
+.ar-price, .ar-photos { margin-top: 8px; }
+.ar-breakdown > :first-child { margin-top: 10px; }
+.ar-meter .ar-note { margin-top: 10px; }
+
+.ar-steps { margin-top: 18px; }
+.ar-steps .group-title { margin: 0; }
+.ar-steps .as-sections, .ar-steps .as-groups { margin-top: 6px; }
+.ar-none { margin-top: 4px; }
+.ar-stays { margin: 4px 0 0; font-size: 13px; line-height: 19px; color: var(--graphite); }
+
+/* The preview: what it shows, in words; on the bench's grey, the page. */
+.ar-preview { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 12px 16px 16px; background: var(--plate); box-shadow: inset 1px 0 0 var(--alloy); }
+.ar-preview-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-height: 30px; margin-bottom: 10px; }
+.ar-preview-says { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 0; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--graphite); }
+.ar-preview-says .i { width: 16px; height: 16px; color: var(--steel); }
+.ar-pages { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ar-pages > button { height: 24px; font-size: 12px; }
+.ar-preview-box { position: relative; flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; border-radius: var(--r-control); background: var(--white); box-shadow: 0 0 0 1px var(--alloy), 0 10px 28px -18px rgb(27 31 36 / .35); scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+.ar-preview-box:focus-visible { outline: 2px solid var(--graphite); outline-offset: 2px; }
+.ar-preview-fit { position: relative; overflow: hidden; }
+.ar-preview-page { transform-origin: 0 0; }
+/* Drawn still, as the canvas draws it: a section's motion would hold it
+   hidden until the preview is scrolled to it; and a header that stays at
+   the top of the window stays at the top of the page here. */
+.ar-preview .site :is([data-motion], [data-tablet-motion], [data-phone-motion]) { animation: none; }
+.ar-preview .site .sw-header[data-sticky] { position: static; }
+.ar-preview-empty { display: grid; place-items: center; padding: 24px; font-size: 13px; line-height: 19px; color: var(--steel); text-align: center; }
+
+@media (max-width: 699px) {
+  .dialog.dlg-run { top: 0; left: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; transform: none; border-radius: 0; }
+  .dlg-run .dlg-body.ar-body { display: flex; flex-direction: column; }
+  .ar-switch { flex: none; margin: 10px 16px 0; }
+  .ar-side, .ar-preview { flex: 1; }
+  .ar-side { padding: 12px 16px 16px; }
+  .ar-preview { padding: 10px 12px 12px; box-shadow: none; }
+}
 
 /* The Assistant in a block's panel (AssistantTools.tsx): the ways to write
    a text again as keys, a line for one of the person's own, and what the

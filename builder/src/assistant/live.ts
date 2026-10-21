@@ -31,9 +31,9 @@
 // ends is told at once.
 import type { Clock, ClockTimer } from "../storage/clock.ts";
 import type { ProviderId } from "./key.ts";
-import { dearestPerImage, imagePrice, liveDollars, type ImageQuality, type ImageSize, type Nano } from "./prices.ts";
+import { dearestPerImage, dollars, imagePrice, liveDollars, type ImageQuality, type ImageSize, type Nano } from "./prices.ts";
 import { NO_USAGE, type Question, type Usage } from "./providers.ts";
-import { addTallies, tallyOf, usageIn, type Tally, type TallyKind } from "./tally.ts";
+import { addTallies, linePriceWords, tallyOf, usageIn, type Tally, type TallyKind } from "./tally.ts";
 
 // Characters a token, before a request of the run has been counted.
 export const CHARS_PER_TOKEN = 4;
@@ -277,14 +277,66 @@ export const LIVE_NOTE = "live estimate, exact as each request ends";
 // The sample's line, while it is built: no model is asked.
 export const SAMPLE_SPENDS = "A sample written by hand: nothing is spent.";
 
+// What of a run's cost has a list price on file, and the models whose
+// tokens are counted with none: a line's, or a photo's in flight.
+function pricing(cost: RunCost): { priced: boolean; none: string[] } {
+  const photos = cost.flying.filter((one) => one.kind === "photo");
+  return {
+    priced: cost.lines.some((line) => line.cost.price !== null) || photos.some((one) => one.each !== null),
+    none: [...new Set([...cost.lines.filter((line) => line.cost.price === null).map((line) => line.name), ...photos.filter((one) => one.each === null).map((one) => one.model)])],
+  };
+}
+
+// A run's cost as the run window's meter says it (../editor/AssistantRun.tsx),
+// each figure apart: the dollars, to four decimals, of what has a list price
+// on file (nothing yet, $0.0000; null where what there is has none); the
+// tokens in, of them cached and
+// written to the cache, and out; each model at its list price; the photos
+// being made, counted at their price per image; the models with no list
+// price on file; and the requests that ended before the provider counted
+// them, whose cost is not known.
+export interface MeterWords {
+  amount: string | null;
+  tokensIn: string;
+  cached: string | null;
+  tokensOut: string;
+  prices: readonly string[];
+  unpriced: string | null;
+  photos: string | null;
+  uncounted: string | null;
+}
+
+export function meterWords(cost: RunCost): MeterWords {
+  const { priced, none } = pricing(cost);
+  const photos = cost.flying.filter((one) => one.kind === "photo");
+  const each = photos.flatMap((one) => (one.each === null ? [] : [one.each]));
+  const kinds: Array<[number, string]> = [[cost.usage.cacheRead, "cached"], [cost.usage.cacheWrite, "written to the cache"]];
+  const cache = kinds.filter(([n]) => n > 0).map(([n, what], at) => `${count(n)}${at === 0 ? " of them" : ""} ${what}`);
+  const one = photos.length === 1;
+  const nothing = cost.lines.length === 0 && photos.length === 0;
+  return {
+    amount: priced || nothing ? liveDollars(cost.nano) : null,
+    tokensIn: count(cost.usage.input + cost.usage.cacheRead + cost.usage.cacheWrite),
+    cached: cache.length === 0 ? null : cache.join(" and "),
+    tokensOut: count(cost.usage.output),
+    prices: [...new Set(cost.lines.flatMap((line) => linePriceWords(line) ?? []))],
+    unpriced: none.length === 0 ? null : `No list price on file for ${and(none)}: ${none.length === 1 ? "its tokens are counted, not its cost" : "their tokens are counted, not their cost"}.`,
+    photos: photos.length === 0 ? null
+      : each.length === 0 ? `${photos.length} ${one ? "photo" : "photos"} being made, with no price per image on file`
+      : `${photos.length} ${one ? "photo" : "photos"} being made, counted at ${one ? "its" : "their"} price per image: ${dollars(each.reduce((sum, nano) => sum + nano, 0))}`,
+    uncounted: cost.uncounted === 0 ? null
+      : cost.uncounted === 1 ? "1 request ended before the provider counted it: what it cost, if anything, is not known."
+      : `${count(cost.uncounted)} requests ended before the provider counted them: what they cost, if anything, is not known.`,
+  };
+}
+
 // A run's cost as the drawer's line says it while the run goes: "≈ $0.0123
 // so far · 3,144 tokens in, 1,215 out · live estimate, exact as each
 // request ends". What has no list price on file is said; so are the photos
 // in flight, counted at their price per image.
 export function liveWords(cost: RunCost): string {
   const photos = cost.flying.filter((one) => one.kind === "photo");
-  const none = [...new Set([...cost.lines.filter((line) => line.cost.price === null).map((line) => line.name), ...photos.filter((one) => one.each === null).map((one) => one.model)])];
-  const priced = cost.lines.some((line) => line.cost.price !== null) || photos.some((one) => one.each !== null);
+  const { priced, none } = pricing(cost);
   const tokens = `${count(cost.usage.input + cost.usage.cacheRead + cost.usage.cacheWrite)} tokens in, ${count(cost.usage.output)} out`;
   const parts = !priced && none.length > 0
     ? [`No list price on file for ${and(none)}`, `${tokens} so far`]
