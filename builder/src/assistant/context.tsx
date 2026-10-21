@@ -113,6 +113,24 @@ function settledWriting<W extends Writing>(writing: W, how: keyof typeof SETTLED
   return { ...rest, notes: writing.notes.map((note) => (note === said ? SETTLED_WORDS[how] : note)) } as W;
 }
 
+// How each page released since the run began was settled, by id.
+type Settled = ReadonlyMap<number, keyof typeof SETTLED_WORDS>;
+
+// A new site as its run tells it, with each of its pages released since
+// the run began told so: the run keeps the mark it gave a page, and tells
+// it again with every later step.
+function settledSite(site: ShownSite, settled: Settled): ShownSite {
+  if (settled.size === 0) return site;
+  let changed = false;
+  const pages = site.pages.map((page) => {
+    const how = page.id === null ? undefined : settled.get(page.id);
+    if (how === undefined || page.writing === null || page.writing.unsaved === undefined) return page;
+    changed = true;
+    return { ...page, writing: settledWriting(page.writing, how) };
+  });
+  return changed ? { ...site, pages } : site;
+}
+
 export interface AssistantState {
   held: Held | null;
   // Why the last key went, until another is kept.
@@ -182,8 +200,10 @@ export interface AssistantState {
   // A page whose last changes were not saved, kept; or kept anew.
   keepPending(page: PendingPage): void;
   // The page of `id`, kept no more: saved after all, or opened, which its
-  // run's summary says, where it is the one shown. Given back for the
-  // caller to let go; null where none is kept.
+  // run's summary says, where it is the one shown, and goes on saying with
+  // each later step of that run, which still carries the mark it gave the
+  // page (setSite, setWriting). Given back for the caller to let go; null
+  // where none is kept.
   releasePending(id: number, how: keyof typeof SETTLED_WORDS): PendingPage | null;
   // A run starts, to be stopped with stop(); its end lets it go. The
   // pages written before it go from the preview; those kept with their
@@ -214,6 +234,9 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
   // The cost of the run bound last, as its requests are answered.
   let runs = 0;
   const book = createLiveBook(clock, (live) => store.setState({ live }));
+  // The pages released since the run began (releasePending), and how: the
+  // run still tells each with the mark it gave it, and is corrected.
+  let settled = new Map<number, keyof typeof SETTLED_WORDS>();
   const store = createStore<AssistantState>()((set, get) => ({
     held: null,
     forgotten: null,
@@ -336,8 +359,12 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
       live?.end(answer.usage === null ? null : tally);
       return { ...answer, tally };
     },
-    setWriting: (writing) => set({ writing }),
-    setSite: (site) => set({ site }),
+    // A run's step, its pages released since it began told so (settled).
+    setWriting: (writing) => set((state) => {
+      const how = writing === null ? undefined : state.written.map((page) => settled.get(page.id)).find((one) => one !== undefined);
+      return { writing: writing === null || how === undefined ? writing : settledWriting(writing, how) };
+    }),
+    setSite: (site) => set({ site: site === null ? null : settledSite(site, settled) }),
     setRunWindow: (runWindow) => set({ runWindow }),
     showPage: (page) => set((state) => {
       const at = state.written.findIndex((one) => one.id === page.id);
@@ -350,6 +377,7 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
       if (page === undefined) return null;
       const left = new Map(pending);
       left.delete(id);
+      settled.set(id, how);
       set({
         pending: left,
         // Said in its run's summary, where that run is the one shown: a
@@ -364,6 +392,7 @@ export function createAssistant(clock: Clock, load: (id: ProviderId) => Promise<
     begin() {
       get().running?.abort();
       const running = new AbortController();
+      settled = new Map();
       set({ running, written: [] });
       return running.signal;
     },

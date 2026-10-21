@@ -503,6 +503,52 @@ test("a page whose last changes were not saved is kept whatever run begins next,
   expect(store.getState().pending.size).toBe(0);
 });
 
+test("a page saved after all while its run still goes: the run's later updates, which still carry its mark, are told it too, a new site's and a page's; a run begun after is told nothing of it", () => {
+  const store = createAssistant(new FakeClock(), async () => {
+    throw new TypeError("No provider in this test.");
+  });
+  const gone: string[] = [];
+  const why = "the CMS refused them: Forbidden. Open it to try again; they are kept in this tab until then.";
+  const ended = (title: string): ShownWriting => ({ phase: "done", title, sections: [], pictures: [], notes: [unsavedNote(why)], tally: null, error: null, unsaved: why });
+  const writingPage = (title: string, sections: number): ShownWriting => ({ phase: "writing", title, sections: Array.from({ length: sections }, (_, at) => ({ label: `Section ${at + 1}`, kept: true })), pictures: [], notes: [], tally: null, error: null });
+  const siteNow = (join: ShownWriting): ShownSite => ({
+    phase: "pages", direction: null, steps: { direction: "done", style: "done", header: "done", footer: "done" }, frame: { header: "new", footer: "new" }, notes: [], tally: null, error: null, before: null,
+    pages: [
+      { title: "Home", path: "/home", state: "done", id: 10, writing: ended("Home"), dangling: false },
+      { title: "Join", path: "/join", state: "writing", id: 11, writing: join, dangling: false },
+    ],
+  });
+
+  // A new site: its home page kept, then saved after all while Join is written.
+  store.getState().begin();
+  store.getState().setSite(siteNow(writingPage("Join", 1)));
+  store.getState().keepPending(pendingPage(10, "Home", gone));
+  store.getState().releasePending(10, "saved");
+  // The site's next update still carries the mark it began with.
+  store.getState().setSite(siteNow(writingPage("Join", 2)));
+  const [home, join] = store.getState().site!.pages;
+  expect(home!.writing!.unsaved).toBeUndefined();
+  expect(home!.writing!.notes).toEqual(["Its last changes were saved after all."]);
+  expect(join!.writing!.sections).toHaveLength(2);
+
+  // A page's run, its page saved after all before the run's last word.
+  store.getState().begin();
+  store.getState().setSite(null);
+  store.getState().showPage({ id: 7, title: "Open day", document: { schemaVersion: 1, title: "Open day", sections: [] } });
+  store.getState().setWriting(ended("Open day"));
+  store.getState().keepPending(pendingPage(7, "Open day", gone));
+  store.getState().releasePending(7, "saved");
+  store.getState().setWriting(ended("Open day"));
+  expect(store.getState().writing!.unsaved).toBeUndefined();
+  expect(store.getState().writing!.notes).toEqual(["Its last changes were saved after all."]);
+
+  // A run begun after: its own pages' marks are its own.
+  store.getState().begin();
+  store.getState().setWriting(null);
+  store.getState().setSite(siteNow(writingPage("Join", 1)));
+  expect(store.getState().site!.pages[0]!.writing!.unsaved).toBe(why);
+});
+
 test("the cost of the run being shown, a page's or a new site's: its own, live, the same while nothing changes; none for the sample, for a run no longer kept, or with nothing shown", async () => {
   const provider = streaming();
   const store = createAssistant(new FakeClock(), async () => provider.client);
