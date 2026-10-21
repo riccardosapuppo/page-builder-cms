@@ -1122,4 +1122,72 @@ test.describe("a new site", () => {
       }
     }
   });
+
+  // The saves cut off here are said in the console, as any request that fails.
+  test.describe("its parts' answers lost", () => {
+    test.use({ allowConsole: /net::ERR_FAILED/ });
+
+    test("the header's first save kept by the CMS but its answer lost on the way back, the footer's lost on its way there: each told from its draft read back, counted as saved or sent again, and kept as a version once", async ({ page, request }) => {
+      test.setTimeout(240_000);
+      const styleBefore = (await (await request.get(`${cms()}/api/site-style`)).json()) as { palette: Record<string, string>; typeScale: string; letterWidth: string };
+      const partsBefore = await Promise.all((await partsOf(request)).map(async (part) => ({ part, draft: (await draftOf(request, part.id)).document, live: await liveOf(request, part) })));
+      const kept = async (id: number) => ((await (await request.get(`${cms()}/api/pages/${id}/versions`)).json()) as { versions: Array<{ name: string | null }> }).versions.filter((version) => version.name === "Before the new site").length;
+      const header = partsBefore.find(({ part }) => part.kind === "header")!.part;
+      const footer = partsBefore.find(({ part }) => part.kind === "footer")!.part;
+      const keptBefore = { header: await kept(header.id), footer: await kept(footer.id) };
+      try {
+        await startOn(page, request, "Before a new site, answers lost");
+        // The header's first save reaches the CMS, which keeps it; the answer
+        // never reaches the editor. The footer's never reaches the CMS.
+        const lost = { header: 0, footer: 0 };
+        await page.route(`**/api/pages/${header.id}/draft`, async (route) => {
+          if (route.request().method() !== "PUT" || lost.header++ > 0) return route.fallback();
+          await route.fetch();
+          return route.abort("failed");
+        });
+        await page.route(`**/api/pages/${footer.id}/draft`, async (route) => {
+          if (route.request().method() !== "PUT" || lost.footer++ > 0) return route.fallback();
+          return route.abort("failed");
+        });
+        await openai(page, { plan: gymAnswer });
+        const box = await assistant(page);
+        await box.getByRole("radio", { name: "OpenAI" }).click();
+        await box.getByLabel("Your OpenAI key").fill(OPENAI_KEY);
+        await box.getByRole("button", { name: "Connect OpenAI" }).click();
+        await expect(box.getByText("key …c3d4")).toBeVisible();
+        await box.getByRole("radiogroup", { name: "What to write" }).getByRole("radio", { name: "A new site" }).click();
+        // No image model on this key: the site is written without photos.
+        await expect(box.getByRole("switch", { name: "Make photos for the site" })).toBeDisabled();
+        await box.getByLabel("What is the site for?").fill(GYM_BRIEF);
+        await box.getByRole("button", { name: "Write the new site" }).click();
+        await box.getByRole("group", { name: "Write the new site" }).getByRole("button", { name: "Write the new site" }).click();
+        await expect(box.getByRole("heading", { name: "Written · new site" })).toBeVisible({ timeout: 120_000 });
+
+        // Each part told as it is: a draft of the new site's, neither to check.
+        await expect(box.locator(".as-group").first().locator(".as-sections > li")).toHaveText(["Direction, 3 pages", /^Style.*applied$/, "Header, draft", "Footer, draft"]);
+        await box.getByText(/things to know$/).click();
+        await expect(box.locator(".as-notes")).not.toContainText("may have been saved");
+        // The footer's save, which never came, sent again.
+        expect(lost.footer).toBeGreaterThanOrEqual(2);
+        for (const part of [header, footer]) {
+          const blocks = blocksOf((await draftOf(request, part.id)).document as unknown as Doc);
+          expect(blocks.find((block) => block.type === "logo")?.props).toEqual({ name: "Iron Forge", mark: false });
+        }
+        // The draft each replaced kept once: the footer's, met twice, not kept again.
+        expect({ header: await kept(header.id), footer: await kept(footer.id) }).toEqual({ header: keptBefore.header + 1, footer: keptBefore.footer + 1 });
+        await expect(box.getByRole("group", { name: "The new site, now" }).getByRole("button", { name: "Publish all" })).toBeVisible();
+      } finally {
+        const put = await request.put(`${cms()}/api/site-style`, { data: { palette: styleBefore.palette, typeScale: styleBefore.typeScale, letterWidth: styleBefore.letterWidth, kept: "none" } });
+        expect(put.status()).toBe(200);
+        for (const { part, draft, live } of partsBefore) {
+          const now = (await partsOf(request)).find((one) => one.id === part.id)!;
+          if (JSON.stringify(await liveOf(request, now)) !== JSON.stringify(live)) {
+            await saveDraftOf(request, part.id, live, `put-back-live-${part.kind}-lost`);
+            expect((await request.post(`${cms()}/api/pages/${part.id}/publish`, { data: {} })).status()).toBe(200);
+          }
+          await saveDraftOf(request, part.id, draft, `put-back-${part.kind}-lost`);
+        }
+      }
+    });
+  });
 });

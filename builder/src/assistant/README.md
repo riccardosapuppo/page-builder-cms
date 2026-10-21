@@ -273,11 +273,13 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
    replaced (`replacePart`, [`../editor/App.tsx`](../editor/App.tsx)). A
    save whose answer is lost is told from the draft read back: saved where
    the draft's last save is this one, or where the draft moved past the
-   revision it was sent at and is the document sent; where the draft cannot
-   be read either, what became of it is unknown, and the run counts the
-   part as saved, with the revision that save was sent at, for its
-   clean-up to make sure of (5). A header that stayed at the top of the
-   window keeps doing so.
+   revision it was sent at and is the document sent; not moved, it may
+   land still, and stays in doubt while the save is tried again, so that a
+   failure after it is no sure one. Where the draft cannot be read either,
+   or the tries end with a save still in doubt, what became of it is
+   unknown, and the run counts the part as saved, with the revision that
+   save was sent at, for its clean-up to make sure of (5). A header that
+   stayed at the top of the window keeps doing so.
 4. **The pages**, one after the other, each written as a page is (above),
    with the direction in its question (`pageQuestion` with a
    `PageDirection`): the site's name and voice, its colours with their

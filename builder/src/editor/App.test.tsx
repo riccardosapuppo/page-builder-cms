@@ -111,6 +111,10 @@ class FakeSite {
   onVersion: (() => void) | null = null;
   // The same as a draft is read, once.
   onDraft: (() => void) | null = null;
+  // What the next reads of a draft meet, one each, before they read: no
+  // answer ("fail"), something done first (another tab at work, a late
+  // save landing), or nothing (null).
+  readonly reads: Array<"fail" | (() => void) | null> = [];
   refuseStyle = false;
   // While set, a change of the site style waits for it before it is
   // answered: one on its way.
@@ -228,6 +232,9 @@ class FakeSite {
           this.loseRead = false;
           throw new StorageError({ kind: "unknown", cause: "network", status: null, message: "The network failed." });
         }
+        const met = this.reads.shift();
+        if (met === "fail") throw new StorageError({ kind: "unknown", cause: "network", status: null, message: "The network failed." });
+        met?.();
         const draft = this.page(id).draft;
         const elsewhere = this.onDraft;
         this.onDraft = null;
@@ -811,6 +818,137 @@ test("a part's save whose answer is lost, its draft not to be read back either: 
   // The CMS kept it all the same: what the caller is to make sure of.
   expect(site.drafts.get(HEADER)!.document).toEqual(mine);
   expect(keptOf(site, HEADER)).toEqual([["Before the new site", original]]);
+});
+
+// A save of the part with no answer whose draft, read back, has not moved:
+// it may land still, so however the call ends after, short of the save
+// that fences it, the outcome is unknown, over the draft that save found.
+test("a save of the part with no answer, its draft read back not moved, then the next read fails: unknown, over the original, at the revision that save was sent at, which lands after", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.loseAnswer = "late";
+  // The first try's read, the read back, then the next try's read: no answer.
+  site.reads.push(null, null, "fail");
+  let outcome: PartReplaced | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: false, unknown: true, why: "The network failed, and an earlier save of the header, which got no answer, may be kept still.", replaced: original, revision: 0 });
+  // As it may: it lands.
+  expect(site.lateSaves.map((late) => late())).toEqual(["kept"]);
+  expect(site.drafts.get(HEADER)!.document).toEqual(mine);
+});
+
+test("a save of the part with no answer, its draft read back not moved, then the next try's save refused for its document: unknown all the same, the draft it found kept once, not again", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.loseAnswer = "late";
+  site.reads.push(null, null, () => {
+    site.refuseNext = [{ pointer: "/sections", keyword: "type", blockPointer: null, message: "must be an array" }];
+  });
+  let outcome: PartReplaced | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: false, unknown: true, why: "must be an array, and an earlier save of the header, which got no answer, may be kept still.", replaced: original, revision: 0 });
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original]]);
+  expect(site.lateSaves.map((late) => late())).toEqual(["kept"]);
+});
+
+test("every try's save of the part with no answer, each draft read back not moved, until the tries run out: unknown, over the original, at that revision; the first late save lands, the others are refused", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  const late = () => {
+    site.loseAnswer = "late";
+  };
+  site.reads.push(late, null, late, null, late, null);
+  let outcome: PartReplaced | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: false, unknown: true, why: "no answer came about the header's last save, and its draft, read back, had not taken it yet: it may be kept still.", replaced: original, revision: 0 });
+  expect(site.saves.map((save) => save.revision)).toEqual([0, 0, 0]);
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original]]);
+  expect(site.lateSaves.map((save) => save())).toEqual(["kept", "refused", "refused"]);
+  expect(site.drafts.get(HEADER)).toMatchObject({ revision: 1, document: mine });
+});
+
+test("a save of the part with no answer, its draft read back not moved, the save landing before the next read: done, the original said to be what it replaced, the canvas drawing the new part; put back, the original returns", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site, env } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.loseAnswer = "late";
+  site.reads.push(null, null, () => {
+    site.lateSaves[0]!();
+  });
+  let outcome: PartReplaced | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: true, replaced: original });
+  expect(site.drafts.get(HEADER)).toMatchObject({ revision: 1, document: mine });
+  expect(env.ui.getState().parts.header).toEqual(mine);
+  // Put back as the clean-up does when no page was made: the original returns.
+  let back: PartReplaced | null = null;
+  await act(async () => {
+    back = await grab.session!.replacePart("header", original, "Before the new site", mine);
+  });
+  expect(back).toEqual({ ok: true, replaced: mine });
+  expect(site.drafts.get(HEADER)!.document).toEqual(original);
+  expect(env.ui.getState().parts.header).toEqual(original);
+});
+
+test("a save of the part with no answer, then another tab's save before the next read: the first can never land, so a refusal after is a sure one, and it is refused when it comes", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const theirs: PageDocument = { ...structuredClone(original), title: "Header, from another tab" };
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.loseAnswer = "late";
+  site.reads.push(null, null, () => {
+    site.savedElsewhere(HEADER, theirs);
+    site.refuseNext = [{ pointer: "/sections", keyword: "type", blockPointer: null, message: "must be an array" }];
+  });
+  let outcome: PartReplaced | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: false, why: "must be an array" });
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original], ["Before the new site", theirs]]);
+  expect(site.lateSaves.map((late) => late())).toEqual(["refused"]);
+  expect(site.drafts.get(HEADER)!.document).toEqual(theirs);
+});
+
+test("saves of the part with no answer until the last, whose draft read back is moved on by another tab's save: none can land any more, and the tries run out as a sure failure", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const theirs: PageDocument = { ...structuredClone(original), title: "Header, from another tab" };
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  const late = () => {
+    site.loseAnswer = "late";
+  };
+  site.reads.push(late, null, late, null, late, () => site.savedElsewhere(HEADER, theirs));
+  let outcome: PartReplaced | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: false, why: "the header was saved somewhere else each time the Assistant went to replace it: it is left as it is there, each draft it met kept as a version, “Before the new site”." });
+  expect(site.lateSaves.map((save) => save())).toEqual(["refused", "refused", "refused"]);
+  expect(site.drafts.get(HEADER)!.document).toEqual(theirs);
 });
 
 test("a part's save that may land late, its answer lost and its draft not to be read back: put back at the revision read, though the draft is the document already, the late save is refused when it comes", async () => {
