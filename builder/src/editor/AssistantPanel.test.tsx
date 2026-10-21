@@ -313,11 +313,11 @@ function siteSession(kit: () => ReturnType<typeof editorKit>, calls: string[], c
       calls.push(`style ${change.kept ?? ""} ${change.palette.primary}`);
       return null;
     },
-    replacePart: async (kind: string, _document: unknown, keep: string, ours?: unknown) => {
-      calls.push(`${kind}${ours ? "" : ` (${keep})`}`);
+    replacePart: async (kind: string, _document: unknown, keep: string, ours?: unknown, fence?: number | null) => {
+      calls.push(`${kind}${ours ? "" : ` (${keep})`}${fence === null || fence === undefined ? "" : `, fenced at ${fence}`}`);
       const replaced = { schemaVersion: 1 as const, title: kind, sections: [] };
       const answer = parts.shift();
-      if (answer === "lost") return { ok: false as const, unknown: true as const, why: `no answer came about the ${kind}'s save, and its draft could not be read back to tell whether it was kept.`, replaced };
+      if (answer === "lost") return { ok: false as const, unknown: true as const, why: `no answer came about the ${kind}'s save, and its draft could not be read back to tell whether it was kept.`, replaced, revision: 0 };
       if (answer === "failed") return { ok: false as const, why: "the storage did not answer." };
       return { ok: true as const, replaced };
     },
@@ -504,7 +504,8 @@ test("a page made whose buttons to a page not made could not be changed: Publish
 test("a header whose save had its answer lost, and could not be put back either: its step says to check it, and the drawer says why Publish all is not offered", async () => {
   // Every page refused. The header's save: its answer lost; putting it back: failed. The footer: saved, then put back.
   const calls = await writeNewSite(refused, null, ["lost", "saved", "failed", "saved"]);
-  expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "header", "footer"]);
+  // The header put back at the revision its doubtful save was sent at.
+  expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "header, fenced at 0", "footer"]);
   expect([...document.querySelectorAll(".as-group:first-child .as-sections > li")].map((li) => li.textContent)).toEqual(["Direction, 3 pages", "Style, applied", "Header, to check", "Footer, put back"]);
   expect(document.querySelector(".as-offer-held")?.textContent).toBe("Publish all is not offered: the header may still lead to a page that was not made, as the things to know say.");
   fireEvent.click(screen.getByText(/things to know$/));

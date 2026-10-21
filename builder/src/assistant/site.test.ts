@@ -8,8 +8,9 @@
 // frame settled at the end on the pages made, its call to action leading
 // to the home page's form, however the run ends: put back as it was where
 // no page was made, a Stop during its first save included, and a first
-// save whose answer was lost counted as saved, made sure of or marked to
-// check; the buttons of the pages made that lead to a page not made
+// save whose answer was lost counted as saved, made sure of at the
+// revision it was sent at, or marked to check; the buttons of the pages
+// made that lead to a page not made
 // losing their links. A stop,
 // another page opened, a refused key end it; a page the model refused is
 // said and the next written; a direction that is none, or a style the
@@ -120,6 +121,9 @@ function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: s
   const calls: string[] = [];
   const parts: Record<PartKind, PageDocument[]> = { header: [], footer: [] };
   const drafts: Record<PartKind, PageDocument> = structuredClone(ORIGINAL);
+  // Each draft's revision, moved by every save; and the fence each save of a part was given.
+  const revisions: Record<PartKind, number> = { header: 0, footer: 0 };
+  const fences: Array<[PartKind, number | null]> = [];
   const versions: Record<PartKind, PageDocument[]> = { header: [], footer: [] };
   const styles: unknown[] = [];
   const hooks: SiteHooks = {
@@ -128,9 +132,10 @@ function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: s
       styles.push(style);
       return options.style ?? null;
     },
-    async savePart(kind, document, keep, ours) {
+    async savePart(kind, document, keep, ours, fence) {
       options.onSave?.(kind);
       const call = ++partSaves;
+      fences.push([kind, fence]);
       await Promise.resolve();
       if (options.failing?.includes(call)) {
         calls.push(`${kind}, not saved`);
@@ -140,9 +145,11 @@ function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: s
       const mine = ours !== null && sameJson(was, ours);
       if (!mine) versions[kind].push(was);
       calls.push(mine ? kind : `${kind}, “${keep}” kept`);
+      const sentAt = revisions[kind];
       drafts[kind] = document;
+      revisions[kind] += 1;
       parts[kind].push(document);
-      if (options.losing?.includes(call)) return { ok: false, unknown: true, why: `no answer came about the ${kind}'s save, and its draft could not be read back to tell whether it was kept.`, replaced: was };
+      if (options.losing?.includes(call)) return { ok: false, unknown: true, why: `no answer came about the ${kind}'s save, and its draft could not be read back to tell whether it was kept.`, replaced: was, revision: sentAt };
       return { ok: true, replaced: was };
     },
     async changePage(id, change) {
@@ -183,7 +190,7 @@ function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: s
       };
     },
   };
-  return { hooks, calls, parts, drafts, versions, styles, pages, leave: () => (open = -1) };
+  return { hooks, calls, parts, drafts, versions, fences, styles, pages, leave: () => (open = -1) };
 }
 
 // The page made at `slug`, as its store has it now.
@@ -427,8 +434,10 @@ test("the header's first save kept but its answer lost, not to be told, then Sto
     signal: stop.signal,
   });
   expect(result.phase).toBe("stopped");
-  // Saved (unknown to the run), then put back over the run's own header.
+  // Saved (unknown to the run), then put back over the run's own header,
+  // fenced at the revision the doubtful save was sent at.
   expect(site.calls).toEqual(["style", `header, “${BEFORE_NEW_SITE}” kept`, "header"]);
+  expect(site.fences).toEqual([["header", null], ["header", 0]]);
   expect(site.drafts).toEqual(ORIGINAL);
   expect(result.frame).toEqual({ header: "back", footer: null });
   expect(result.steps).toMatchObject({ header: "done", footer: "stopped" });
@@ -474,6 +483,8 @@ test("the header's first save kept but its answer lost, the pages then made: the
   });
   expect(result.phase).toBe("done");
   expect(site.calls.filter((call) => call.startsWith("header"))).toEqual([`header, “${BEFORE_NEW_SITE}” kept`, "header"]);
+  // Saved again at the revision the doubtful save was sent at; the footer, sure, left alone.
+  expect(site.fences).toEqual([["header", null], ["footer", null], ["header", 0]]);
   expect(site.parts.header[1]).toEqual(site.parts.header[0]);
   expect(result.frame).toEqual({ header: "new", footer: "new" });
   expect(result.steps.header).toBe("done");

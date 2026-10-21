@@ -1060,11 +1060,17 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   // conflict, Reload or Keep mine (which keeps the other one as a version).
   // A save whose answer is lost (no answer, no network, the time ran out)
   // is told by the draft read back: saved where its saveId is the draft's
-  // last or the draft is the document sent, else tried again; where the
-  // draft cannot be read either, the outcome is unknown, and said so, with
-  // the draft it may have replaced. A draft that is the document already
-  // needs nothing. Resolves with the document it replaced, or why not.
-  const replacePart = useCallback(async (kind: PartKind, document: PageDocument, keep: string, ours: PageDocument | null = null): Promise<PartReplaced> => {
+  // last, or the draft moved past the revision it was sent at and is the
+  // document sent; else tried again. Where the draft cannot be read
+  // either, the outcome is unknown, and said so, with the draft it may have
+  // replaced and the revision it was sent at. A save that may still land
+  // so (`fence`, that revision) is fenced: while the draft has not moved
+  // past it, the part is saved again at the revision read, even where the
+  // draft is the document already (no version kept then: nothing would be
+  // lost), since any save there turns the doubtful one into a conflict.
+  // Else a draft that is the document already needs nothing but the
+  // canvas told. Resolves with the document it replaced, or why not.
+  const replacePart = useCallback(async (kind: PartKind, document: PageDocument, keep: string, ours: PageDocument | null = null, fence: number | null = null): Promise<PartReplaced> => {
     const said = problemWords;
     const failed = (why: string) => ({ ok: false as const, why });
     try {
@@ -1083,7 +1089,13 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
         const settled = await saving.flush();
         if (settled.phase !== "saved") return failed(unsavedWhy(settled.phase, words.server));
         const was = store.getState().document;
-        if (sameJson(was, document)) return { ok: true, replaced: was };
+        // The canvas draws an open part from the store already.
+        if (sameJson(was, document)) {
+          // Held at the revision a doubtful save was sent at, with nothing
+          // to send that would fence it: what became of it is still unknown.
+          if (fence !== null && settled.revision <= fence) return { ok: false, unknown: true, why: `what became of the ${kind}'s earlier save cannot be told yet: the editor holds the ${kind} at the revision it was sent at, with nothing to save that would settle it.`, replaced: was, revision: fence };
+          return { ok: true, replaced: was };
+        }
         const why = await keepFirst(was);
         if (why !== null) return failed(why);
         // Closed meanwhile: replaced as a draft, below. Edited while it was
@@ -1096,8 +1108,9 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
         if (!outcome.ok) return failed(outcome.error.message);
         const after = await saving.flush();
         if (after.phase === "saved") return { ok: true, replaced: was };
-        // The autosave sends the very same save again until an answer comes.
-        if (after.phase === "retrying") return { ok: false, unknown: true, why: `no answer came about the ${kind}'s save, and the editor is sending it again: it may be saved.`, replaced: was };
+        // The autosave sends the very same save again until an answer comes,
+        // from the revision it holds until then.
+        if (after.phase === "retrying") return { ok: false, unknown: true, why: `no answer came about the ${kind}'s save, and the editor is sending it again: it may be saved.`, replaced: was, revision: after.revision };
         return failed(after.phase === "conflict"
           ? `the ${kind} was saved in another tab meanwhile: Reload takes that one, Keep mine saves the Assistant's over it, keeping that one as a version.`
           : unsavedWhy(after.phase, words.server));
@@ -1105,14 +1118,21 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       if (saving && live.current.autosave === saving) return failed(`the ${kind} was edited each time the Assistant went to replace it: it is left as it is.`);
       for (let attempt = 0; attempt < REPLACE_TRIES; attempt += 1) {
         const draft = await adapter.getDraft(part.id);
-        if (sameJson(draft.document, document)) return { ok: true, replaced: draft.document };
-        const why = await keepFirst(draft.document);
-        if (why !== null) return failed(why);
-        const save = { revision: draft.revision, saveId: `assistant-${kind}-${clock.now().toString(36)}-${attempt}`, document };
+        // The part as stored, drawn so on the canvas.
         const done = () => {
           ui.getState().setParts({ [kind]: document });
           return refreshPages().catch(() => undefined).then(() => ({ ok: true as const, replaced: draft.document }));
         };
+        // A doubtful save sent at `fence` may still land while nothing has
+        // moved the draft past it.
+        const unsettled = fence !== null && draft.revision <= fence;
+        const already = sameJson(draft.document, document);
+        if (already && !unsettled) return done();
+        if (!already) {
+          const why = await keepFirst(draft.document);
+          if (why !== null) return failed(why);
+        }
+        const save = { revision: draft.revision, saveId: `assistant-${kind}-${clock.now().toString(36)}-${attempt}`, document };
         let saved;
         try {
           saved = await adapter.saveDraft(part.id, save);
@@ -1123,9 +1143,11 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
           try {
             back = await adapter.getDraft(part.id);
           } catch {
-            return { ok: false, unknown: true, why: `no answer came about the ${kind}'s save (${describe(error)}), and its draft could not be read back to tell whether it was kept.`, replaced: draft.document };
+            return { ok: false, unknown: true, why: `no answer came about the ${kind}'s save (${describe(error)}), and its draft could not be read back to tell whether it was kept.`, replaced: draft.document, revision: save.revision };
           }
-          if (back.lastSaveId === save.saveId || sameJson(back.document, document)) return done();
+          // A save always moves the revision: the document alone, which the
+          // draft may hold already, tells nothing.
+          if (back.lastSaveId === save.saveId || (back.revision > save.revision && sameJson(back.document, document))) return done();
           // Not kept, or saved over since: read again, kept again, tried again.
           continue;
         }

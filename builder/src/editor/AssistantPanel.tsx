@@ -157,7 +157,7 @@ function pageHooks(env: EditorEnv, session: Session, library: MediaService | nul
 function siteHooks(env: EditorEnv, session: Session, library: MediaService | null): SiteHooks {
   return {
     applyStyle: (style) => session.applySiteStyle({ ...style, kept: "now" }),
-    savePart: (kind, document, keep, ours) => session.replacePart(kind, document, keep, ours),
+    savePart: (kind, document, keep, ours, fence) => session.replacePart(kind, document, keep, ours, fence),
     changePage: (id, change) => session.changeDraft(id, change),
     taken: () => session.pages.flatMap((page) => (page.slug === null ? [] : [page.slug])),
     header: () => env.ui.getState().parts.header,

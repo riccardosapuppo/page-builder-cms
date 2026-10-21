@@ -272,10 +272,12 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
    conflict, and that draft is read and kept in turn before it is
    replaced (`replacePart`, [`../editor/App.tsx`](../editor/App.tsx)). A
    save whose answer is lost is told from the draft read back: saved where
-   the draft's last save is this one, or the draft is the document sent;
-   where the draft cannot be read either, what became of it is unknown,
-   and the run counts the part as saved, for its clean-up to make sure of
-   (5). A header that stayed at the top of the window keeps doing so.
+   the draft's last save is this one, or where the draft moved past the
+   revision it was sent at and is the document sent; where the draft cannot
+   be read either, what became of it is unknown, and the run counts the
+   part as saved, with the revision that save was sent at, for its
+   clean-up to make sure of (5). A header that stayed at the top of the
+   window keeps doing so.
 4. **The pages**, one after the other, each written as a page is (above),
    with the direction in its question (`pageQuestion` with a
    `PageDirection`): the site's name and voice, its colours with their
@@ -297,9 +299,14 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
    again from the pages made, at the addresses they were made at, and the
    header's call to action leads to the home page's form, by the anchor of
    its section, or else to its first section; each is saved again where it
-   changed, and saved again all the same where its first save is only
-   maybe made, which makes sure of it. Where no page was made, each is put
-   back as it was, said, and its step says so.
+   changed. Where no page was made, each is put back as it was, said, and
+   its step says so. A part whose first save is only maybe made is saved
+   again, or put back, at the revision read, even where its draft is the
+   document already, as long as the draft has not moved past the revision
+   that save was sent at: the storage moves the revision with every save
+   and takes a save only at the revision it was sent at, so the doubtful
+   save can never land after it. Held open in the editor at that revision
+   with nothing to save, the part stays one to check.
    - **The pages' links.** A button of a page made that leads to a page of
      the site not made loses its link: it leads to the top of its own page
      (`#`), as a plan's button whose section never came; one that leads to

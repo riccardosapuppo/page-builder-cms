@@ -18,8 +18,9 @@
 // around every page. The Assistant's new site replaces a part keeping
 // every draft it saves over as a version, another tab's save in between
 // too, tells a save whose answer is lost from its draft read back (or
-// says it cannot), and changes a page's draft without losing a save from
-// elsewhere.
+// says it cannot, and at what revision it was sent), fences one that may
+// land late by saving at the revision read, draws the part as stored, and
+// changes a page's draft without losing a save from elsewhere.
 // An editor that cannot start says why, with the one button that can help.
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -87,10 +88,14 @@ function tokenStyle(palette: Record<string, string> = {}): SiteStyle {
 // and a 422 when the test asks for one.
 class FakeSite {
   readonly drafts = new Map<number, { kind: PageKind; title: string; slug: string | null; home: boolean; revision: number; document: PageDocument; published: Published | null; scheduled?: Schedule | null; lastSaveId?: string }>();
-  // The next save is kept, but no answer comes back: and, for "save and
-  // read", no answer to the draft's next read either.
-  loseAnswer: "save" | "save and read" | null = null;
+  // The next save gets no answer: kept ("save"), and no answer to the
+  // draft's next read either ("save and read"); or not kept yet, landing
+  // when the test lets it ("late", "late and read").
+  loseAnswer: "save" | "save and read" | "late" | "late and read" | null = null;
   private loseRead = false;
+  // The saves still to land, in the order they were sent: each kept at the
+  // revision it was sent at, or refused as a conflict where it moved.
+  readonly lateSaves: Array<() => "kept" | "refused"> = [];
   readonly saves: DraftSave[] = [];
   readonly publishes: Array<{ id: number; revision: number | undefined }> = [];
   // Scheduling, when a test turns it on: what was asked, and how many
@@ -267,6 +272,18 @@ class FakeSite {
           return { ok: false, problem: { kind: "invalid", code: "invalid_document", message: "The document is not valid.", errors } };
         }
         const d = this.drafts.get(id)!;
+        if (this.loseAnswer === "late" || this.loseAnswer === "late and read") {
+          this.loseRead = this.loseAnswer === "late and read";
+          this.loseAnswer = null;
+          this.lateSaves.push(() => {
+            if (d.revision !== save.revision) return "refused";
+            d.revision += 1;
+            d.document = save.document;
+            d.lastSaveId = save.saveId;
+            return "kept";
+          });
+          throw new StorageError({ kind: "unknown", cause: "timeout", status: null, message: "The save got no answer within 15 s." });
+        }
         if (save.revision !== d.revision) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: d.revision, lastSaveId: null } };
         d.revision += 1;
         d.document = save.document;
@@ -790,10 +807,103 @@ test("a part's save whose answer is lost, its draft not to be read back either: 
   await act(async () => {
     outcome = await grab.session!.replacePart("header", mine, "Before the new site");
   });
-  expect(outcome).toEqual({ ok: false, unknown: true, why: "no answer came about the header's save (The save got no answer within 15 s.), and its draft could not be read back to tell whether it was kept.", replaced: original });
+  expect(outcome).toEqual({ ok: false, unknown: true, why: "no answer came about the header's save (The save got no answer within 15 s.), and its draft could not be read back to tell whether it was kept.", replaced: original, revision: 0 });
   // The CMS kept it all the same: what the caller is to make sure of.
   expect(site.drafts.get(HEADER)!.document).toEqual(mine);
   expect(keptOf(site, HEADER)).toEqual([["Before the new site", original]]);
+});
+
+test("a part's save that may land late, its answer lost and its draft not to be read back: put back at the revision read, though the draft is the document already, the late save is refused when it comes", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.loseAnswer = "late and read";
+  let first: PartReplaced | null = null;
+  await act(async () => {
+    first = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(first).toMatchObject({ ok: false, unknown: true, replaced: original, revision: 0 });
+  // Not kept yet: the draft is the original still, at the revision the save was sent at.
+  expect(site.drafts.get(HEADER)).toMatchObject({ revision: 0, document: original });
+  let back: PartReplaced | null = null;
+  await act(async () => {
+    back = await grab.session!.replacePart("header", original, "Before the new site", mine, 0);
+  });
+  expect(back).toEqual({ ok: true, replaced: original });
+  // Saved again at revision 0, and nothing kept for it: nothing was lost.
+  expect(site.drafts.get(HEADER)).toMatchObject({ revision: 1, document: original });
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original]]);
+  // The late save lands: refused, the draft moved on.
+  expect(site.lateSaves.map((late) => late())).toEqual(["refused"]);
+  expect(site.drafts.get(HEADER)).toMatchObject({ revision: 1, document: original });
+});
+
+test("the save that fences a doubtful one, its own answer lost too: the draft read back, the document but not moved on, tells nothing, and it is sent again", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.loseAnswer = "late and read";
+  await act(async () => {
+    await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  site.loseAnswer = "late";
+  let back: PartReplaced | null = null;
+  await act(async () => {
+    back = await grab.session!.replacePart("header", original, "Before the new site", mine, 0);
+  });
+  expect(back).toEqual({ ok: true, replaced: original });
+  expect(site.drafts.get(HEADER)).toMatchObject({ revision: 1, document: original });
+  // Both saves sent at revision 0 come late, and are refused.
+  expect(site.lateSaves.map((late) => late())).toEqual(["refused", "refused"]);
+  expect(site.drafts.get(HEADER)).toMatchObject({ revision: 1, document: original });
+});
+
+test("a part found saved already once the doubt about its save is cleared: the canvas draws the part as stored", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site, env } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.loseAnswer = "save and read";
+  let first: PartReplaced | null = null;
+  await act(async () => {
+    first = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(first).toMatchObject({ ok: false, unknown: true, revision: 0 });
+  // Kept by the CMS, unknown to the editor: the canvas draws the old header still.
+  expect(site.drafts.get(HEADER)).toMatchObject({ revision: 1, document: mine });
+  expect(env.ui.getState().parts.header).not.toEqual(mine);
+  let again: PartReplaced | null = null;
+  await act(async () => {
+    again = await grab.session!.replacePart("header", mine, "Before the new site", mine, 0);
+  });
+  // Moved past the revision the doubtful save was sent at: nothing to save, the canvas told.
+  expect(again).toEqual({ ok: true, replaced: mine });
+  expect(site.drafts.get(HEADER)!.revision).toBe(1);
+  expect(env.ui.getState().parts.header).toEqual(mine);
+});
+
+test("a part open in the editor at the revision a doubtful save was sent at, holding the document already: what became of that save is still unknown, said so", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site, env } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  fireEvent.click(screen.getByRole("button", { name: "Header" }));
+  await screen.findByRole("button", { name: "Switch page. Open: Header" });
+  const held = env.store.getState().document;
+  let outcome: PartReplaced | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", held, "Before the new site", null, 0);
+  });
+  expect(outcome).toEqual({ ok: false, unknown: true, why: "what became of the header's earlier save cannot be told yet: the editor holds the header at the revision it was sent at, with nothing to save that would settle it.", replaced: held, revision: 0 });
+  // With no save in doubt, the same is so already.
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", held, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: true, replaced: held });
+  expect(site.saves).toEqual([]);
 });
 
 test("replaced again over its own draft, a part keeps no version of it; a draft saved elsewhere since is kept first", async () => {

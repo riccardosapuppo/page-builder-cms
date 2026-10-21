@@ -65,11 +65,13 @@ export const NO_VERSIONS: VersionList = { phase: "idle", items: [], message: nul
 
 // What replacing a part answers: the draft it replaced; why not, for sure;
 // or, the answer to its save lost and the draft not to be read back to
-// tell, that it may be saved over `replaced`, which a version holds.
+// tell, that it may be saved over `replaced`, which a version holds, by a
+// save sent at `revision`: one that may still land, until a save at that
+// revision or after it moves the draft on.
 export type PartReplaced =
   | { ok: true; replaced: PageDocument }
   | { ok: false; why: string; unknown?: undefined }
-  | { ok: false; why: string; unknown: true; replaced: PageDocument };
+  | { ok: false; why: string; unknown: true; replaced: PageDocument; revision: number };
 
 export interface Session {
   pages: readonly PageSummary[];
@@ -137,9 +139,12 @@ export interface Session {
   // elsewhere in between is kept in turn. The canvas draws the new one at
   // once. A part open in the editor takes it as a step of the Assistant's,
   // its edits saved and kept first. A save whose answer is lost is told
-  // from the draft read back. Resolves with the document it replaced, why
-  // not, or that it may be saved (PartReplaced).
-  replacePart(kind: PartKind, document: PageDocument, keep: string, ours?: PageDocument | null): Promise<PartReplaced>;
+  // from the draft read back. Where an earlier save may still land, sent
+  // at `fence`, the part is saved again at the revision read while the
+  // draft has not moved past it, the document already there or not, which
+  // fences that save. Resolves with the document it replaced, why not, or
+  // that it may be saved (PartReplaced).
+  replacePart(kind: PartKind, document: PageDocument, keep: string, ours?: PageDocument | null, fence?: number | null): Promise<PartReplaced>;
   // A page's draft changed by `change`, given the page as it is (null:
   // nothing to change): while it is open, as one step of the Assistant's
   // named by `label`; else read and saved at the revision read, a save from
