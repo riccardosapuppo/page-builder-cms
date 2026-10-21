@@ -17,7 +17,9 @@
 // and published as pages are; their drafts are what the canvas draws
 // around every page. The Assistant's new site replaces a part keeping
 // every draft it saves over as a version, another tab's save in between
-// too, and changes a page's draft without losing a save from elsewhere.
+// too, tells a save whose answer is lost from its draft read back (or
+// says it cannot), and changes a page's draft without losing a save from
+// elsewhere.
 // An editor that cannot start says why, with the one button that can help.
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -37,7 +39,7 @@ import { StorageError, type DraftSave, type FieldError, type Page, type PageKind
 import { createEditorStore } from "../store/editor-store.ts";
 import { App, NO_PAGE, type PageAddress, type TabOpener } from "./App.tsx";
 import { thisTab } from "./SaveStatus.tsx";
-import { useSession, type Session } from "./session.tsx";
+import { useSession, type PartReplaced, type Session } from "./session.tsx";
 import { createUiStore } from "./ui-store.ts";
 
 // The session the shell gives what it draws, handed to a test to call.
@@ -84,7 +86,11 @@ function tokenStyle(palette: Record<string, string> = {}): SiteStyle {
 // makes the next one a conflict), publishing at a revision, the site style,
 // and a 422 when the test asks for one.
 class FakeSite {
-  readonly drafts = new Map<number, { kind: PageKind; title: string; slug: string | null; home: boolean; revision: number; document: PageDocument; published: Published | null; scheduled?: Schedule | null }>();
+  readonly drafts = new Map<number, { kind: PageKind; title: string; slug: string | null; home: boolean; revision: number; document: PageDocument; published: Published | null; scheduled?: Schedule | null; lastSaveId?: string }>();
+  // The next save is kept, but no answer comes back: and, for "save and
+  // read", no answer to the draft's next read either.
+  loseAnswer: "save" | "save and read" | null = null;
+  private loseRead = false;
   readonly saves: DraftSave[] = [];
   readonly publishes: Array<{ id: number; revision: number | undefined }> = [];
   // Scheduling, when a test turns it on: what was asked, and how many
@@ -152,7 +158,7 @@ class FakeSite {
 
   page(id: number): Page {
     const d = this.drafts.get(id)!;
-    return { page: { id, kind: d.kind, title: d.title, slug: d.slug, home: d.home, createdAt: T }, draft: { revision: d.revision, lastSaveId: null, updatedAt: T, document: structuredClone(d.document) }, published: d.published, scheduled: d.scheduled ?? null, links: this.links(id) };
+    return { page: { id, kind: d.kind, title: d.title, slug: d.slug, home: d.home, createdAt: T }, draft: { revision: d.revision, lastSaveId: d.lastSaveId ?? null, updatedAt: T, document: structuredClone(d.document) }, published: d.published, scheduled: d.scheduled ?? null, links: this.links(id) };
   }
 
   ids(kind: "page" | "part"): number[] {
@@ -213,6 +219,10 @@ class FakeSite {
         return this.page(id);
       },
       getDraft: async (id) => {
+        if (this.loseRead) {
+          this.loseRead = false;
+          throw new StorageError({ kind: "unknown", cause: "network", status: null, message: "The network failed." });
+        }
         const draft = this.page(id).draft;
         const elsewhere = this.onDraft;
         this.onDraft = null;
@@ -260,6 +270,12 @@ class FakeSite {
         if (save.revision !== d.revision) return { ok: false, problem: { kind: "conflict", message: "moved", currentRevision: d.revision, lastSaveId: null } };
         d.revision += 1;
         d.document = save.document;
+        d.lastSaveId = save.saveId;
+        if (this.loseAnswer) {
+          this.loseRead = this.loseAnswer === "save and read";
+          this.loseAnswer = null;
+          throw new StorageError({ kind: "unknown", cause: "timeout", status: null, message: "The save got no answer within 15 s." });
+        }
         return { ok: true, value: { revision: d.revision, lastSaveId: save.saveId, updatedAt: T } };
       },
       schedulePublish: async (id, request) => {
@@ -743,6 +759,41 @@ test("the Assistant's new site replaces a part keeping every draft it saves over
   expect(site.drafts.get(HEADER)!.document).toEqual(mine);
   // History holds both: the draft first read, and the other tab's, read after the conflict.
   expect(keptOf(site, HEADER)).toEqual([["Before the new site", original], ["Before the new site", theirs]]);
+});
+
+test("a part's save kept by the CMS but its answer lost is told by its draft read back: its saveId there, it counts as saved", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.loseAnswer = "save";
+  let outcome: PartReplaced | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: true, replaced: original });
+  expect(site.drafts.get(HEADER)!.document).toEqual(mine);
+  // Sent once, the draft it replaced kept once.
+  expect(site.saves.filter((save) => save.document === mine)).toHaveLength(1);
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original]]);
+});
+
+test("a part's save whose answer is lost, its draft not to be read back either: the outcome is unknown, said so, with the draft it may have replaced", async () => {
+  const grab: { session: Session | null } = { session: null };
+  const { site } = start(1, { foot: <Grab onSession={(session) => (grab.session = session)} /> });
+  await opened();
+  const original = structuredClone(site.drafts.get(HEADER)!.document);
+  const mine: PageDocument = { schemaVersion: 1, title: "Header", sections: [] };
+  site.loseAnswer = "save and read";
+  let outcome: PartReplaced | null = null;
+  await act(async () => {
+    outcome = await grab.session!.replacePart("header", mine, "Before the new site");
+  });
+  expect(outcome).toEqual({ ok: false, unknown: true, why: "no answer came about the header's save (The save got no answer within 15 s.), and its draft could not be read back to tell whether it was kept.", replaced: original });
+  // The CMS kept it all the same: what the caller is to make sure of.
+  expect(site.drafts.get(HEADER)!.document).toEqual(mine);
+  expect(keptOf(site, HEADER)).toEqual([["Before the new site", original]]);
 });
 
 test("replaced again over its own draft, a part keeps no version of it; a draft saved elsewhere since is kept first", async () => {

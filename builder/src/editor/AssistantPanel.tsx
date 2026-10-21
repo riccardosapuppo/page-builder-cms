@@ -790,6 +790,14 @@ function siteLine(site: ShownSite): string {
   }
 }
 
+// Where a new site's header or footer stands, beside its step: a draft;
+// put back as it was; or one to check, which may lead to a page not made.
+function partWords(site: ShownSite, kind: "header" | "footer"): string {
+  if (site.frame[kind] === "back") return "put back";
+  if (site.frame[kind] === "stale") return "to check";
+  return site.steps[kind] === "done" ? "draft" : "";
+}
+
 // What a new site's steps have cost so far, as the person waits.
 function soFarWords(tally: Tally): string | null {
   if (tally.length === 0) return null;
@@ -847,8 +855,8 @@ function SiteProgress({ site }: { site: ShownSite }) {
               )}
               <span className="as-picture-state"><span className="visually-hidden">, </span>{site.steps.style === "done" ? "applied" : STEP_WORDS[site.steps.style]}</span>
             </li>
-            {step("Header", site.steps.header, site.frame.header === "back" ? "put back" : site.steps.header === "done" ? "draft" : "")}
-            {step("Footer", site.steps.footer, site.frame.footer === "back" ? "put back" : site.steps.footer === "done" ? "draft" : "")}
+            {step("Header", site.steps.header, partWords(site, "header"))}
+            {step("Footer", site.steps.footer, partWords(site, "footer"))}
           </ol>
         </li>
         {site.pages.map((page) => (
@@ -921,8 +929,9 @@ function SiteOffer({ site }: { site: ShownSite }) {
     const part = session.parts.find((one) => one.kind === kind);
     return part ? [{ kind, id: part.id }] : [];
   });
-  // What still leads to a page not made, its clean-up not saved: while
-  // anything does, Publish all is not offered.
+  // What may still lead to a page not made, its clean-up not saved or its
+  // save's outcome not to be told: while anything may, Publish all is not
+  // offered.
   const dangling = [
     ...made.filter((page) => page.dangling).map((page) => `“${page.title}”`),
     ...(["header", "footer"] as const).filter((kind) => site.frame[kind] === "stale").map((kind) => `the ${kind}`),
@@ -999,7 +1008,7 @@ function SiteOffer({ site }: { site: ShownSite }) {
           : <button ref={startKey} className="btn btn-small btn-secondary" type="button" aria-disabled={busy ? true : undefined} onClick={() => !busy && setAsking("start")}>Start over with the example site</button>)}
       </div>
       {session.capabilities.publish && dangling.length > 0 && (
-        <p className="hint as-offer-held">Publish all is not offered: {and(dangling)} still {dangling.length === 1 ? "leads" : "lead"} to a page that was not made, as the things to know say.</p>
+        <p className="hint as-offer-held">Publish all is not offered: {and(dangling)} may still lead to a page that was not made, as the things to know say.</p>
       )}
       <p ref={said} className="hint as-offer-said" role="status" tabIndex={-1}>{outcome.said ?? ""}</p>
     </div>

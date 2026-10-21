@@ -7,8 +7,10 @@
 // one queue, two at a time, within one budget shared among the pages; the
 // frame settled at the end on the pages made, its call to action leading
 // to the home page's form, however the run ends: put back as it was where
-// no page was made, a Stop during its first save included; the buttons of
-// the pages made that lead to a page not made losing their links. A stop,
+// no page was made, a Stop during its first save included, and a first
+// save whose answer was lost counted as saved, made sure of or marked to
+// check; the buttons of the pages made that lead to a page not made
+// losing their links. A stop,
 // another page opened, a refused key end it; a page the model refused is
 // said and the next written; a direction that is none, or a style the
 // storage refuses, change nothing more.
@@ -107,11 +109,14 @@ const ORIGINAL: Record<PartKind, PageDocument> = {
 // The editor and the storage, faked: pages made at an address, opened one
 // at a time, the person on a page of their own (id 1) to begin with; the
 // parts' drafts, each one saved over kept as a version unless it is the
-// run's own; a page's draft changed as the editor changes it.
-function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: string | null; onSave?: (kind: PartKind) => void; refuseChange?: string } = {}) {
+// run's own; a page's draft changed as the editor changes it. The parts'
+// saves are counted from 1: those `losing` names are kept but answer that
+// what became of them cannot be told; those `failing` names are not kept.
+function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: string | null; onSave?: (kind: PartKind) => void; refuseChange?: string; losing?: number[]; failing?: number[] } = {}) {
   const pages = new Map<number, { slug: string; store: EditorStore }>();
   let open = 1;
   let next = 100;
+  let partSaves = 0;
   const calls: string[] = [];
   const parts: Record<PartKind, PageDocument[]> = { header: [], footer: [] };
   const drafts: Record<PartKind, PageDocument> = structuredClone(ORIGINAL);
@@ -125,13 +130,19 @@ function fakeSite(options: { taken?: string[]; madeElsewhere?: string; style?: s
     },
     async savePart(kind, document, keep, ours) {
       options.onSave?.(kind);
+      const call = ++partSaves;
       await Promise.resolve();
+      if (options.failing?.includes(call)) {
+        calls.push(`${kind}, not saved`);
+        return { ok: false, why: "the storage did not answer." };
+      }
       const was = drafts[kind];
       const mine = ours !== null && sameJson(was, ours);
       if (!mine) versions[kind].push(was);
       calls.push(mine ? kind : `${kind}, “${keep}” kept`);
       drafts[kind] = document;
       parts[kind].push(document);
+      if (options.losing?.includes(call)) return { ok: false, unknown: true, why: `no answer came about the ${kind}'s save, and its draft could not be read back to tell whether it was kept.`, replaced: was };
       return { ok: true, replaced: was };
     },
     async changePage(id, change) {
@@ -400,6 +411,73 @@ test("Stop while the header's first save is on its way: that save lands, then th
   expect(result.frame).toEqual({ header: "back", footer: null });
   expect(result.pages.map((page) => [page.state, page.id])).toEqual([["stopped", null], ["stopped", null], ["stopped", null]]);
   expect(result.notes).toContain("Put the header back as it was: no page of the new site was made.");
+});
+
+test("the header's first save kept but its answer lost, not to be told, then Stop: counted as saved all the same, it is put back as it was, said", async () => {
+  const stop = new AbortController();
+  const site = fakeSite({ onSave: (kind) => kind === "header" && stop.abort(), losing: [1] });
+  const result = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: (page) => answered(linkedPlan(page)),
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: site.hooks,
+    newId,
+    tell: () => undefined,
+    signal: stop.signal,
+  });
+  expect(result.phase).toBe("stopped");
+  // Saved (unknown to the run), then put back over the run's own header.
+  expect(site.calls).toEqual(["style", `header, “${BEFORE_NEW_SITE}” kept`, "header"]);
+  expect(site.drafts).toEqual(ORIGINAL);
+  expect(result.frame).toEqual({ header: "back", footer: null });
+  expect(result.steps).toMatchObject({ header: "done", footer: "stopped" });
+  expect(result.notes).toEqual([
+    "The new header may have been saved: no answer came about the header's save, and its draft could not be read back to tell whether it was kept.",
+    "Put the header back as it was: no page of the new site was made.",
+  ]);
+});
+
+test("the header's first save kept but its answer lost, then Stop, and putting it back fails too: the header is one to check, said, which the drawer offers no Publish all for", async () => {
+  const stop = new AbortController();
+  const site = fakeSite({ onSave: (kind) => kind === "header" && stop.abort(), losing: [1], failing: [2] });
+  const result = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: (page) => answered(linkedPlan(page)),
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: site.hooks,
+    newId,
+    tell: () => undefined,
+    signal: stop.signal,
+  });
+  expect(site.calls).toEqual(["style", `header, “${BEFORE_NEW_SITE}” kept`, "header, not saved"]);
+  // The new header is there still, leading to pages never made: marked, and said.
+  expect(menuOf(site.drafts.header)).toEqual(["/iron-forge", "/classes", "/membership"]);
+  expect(result.frame).toEqual({ header: "stale", footer: null });
+  expect(result.steps.header).toBe("failed");
+  expect(result.notes).toContain(`The new header was not put back as it was: the storage did not answer. It may lead to pages that were not made; its versions hold the one it replaced, as “${BEFORE_NEW_SITE}”.`);
+});
+
+test("the header's first save kept but its answer lost, the pages then made: the clean-up saves it again, though nothing in it changed, made sure of, said", async () => {
+  const site = fakeSite({ losing: [1] });
+  // Pages with no form: the header the pages settle on is the one first saved.
+  const plain = (page: SitePagePlan) => answered(JSON.stringify({ title: page.title, description: "", sections: [band("Opening", "", [{ kind: "heading", level: 1, text: page.title, display: true }])] }));
+  const result = await writeSite({
+    askDirection: () => answered(JSON.stringify(DIRECTION))(() => undefined),
+    askPage: plain,
+    style: STYLE,
+    facts: { media: [], brief: "A gym." },
+    hooks: site.hooks,
+    newId,
+    tell: () => undefined,
+  });
+  expect(result.phase).toBe("done");
+  expect(site.calls.filter((call) => call.startsWith("header"))).toEqual([`header, “${BEFORE_NEW_SITE}” kept`, "header"]);
+  expect(site.parts.header[1]).toEqual(site.parts.header[0]);
+  expect(result.frame).toEqual({ header: "new", footer: "new" });
+  expect(result.steps.header).toBe("done");
+  expect(result.notes).toContain("Made sure of the new header once the pages were made: it is saved.");
 });
 
 test("Stop between two pages: the frame leads only to the page made, and that page's buttons to the pages never made lose their links, a plan's too, each said", async () => {

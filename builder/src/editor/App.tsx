@@ -77,7 +77,7 @@ import { Palette } from "./Palette.tsx";
 import { shownAddress } from "./Publish.tsx";
 import { afterRender } from "./act.ts";
 import { ConflictBanner, onlyAReloadHelps, SaveToast, thisTab } from "./SaveStatus.tsx";
-import { keptWords, NO_VERSIONS, publishWords, SessionProvider, templateOf, type OpenPage, type Session, type StyleSave, type TemplateOf, type VersionList } from "./session.tsx";
+import { keptWords, NO_VERSIONS, publishWords, SessionProvider, templateOf, type OpenPage, type PartReplaced, type Session, type StyleSave, type TemplateOf, type VersionList } from "./session.tsx";
 import { STILL_HELD } from "./pending.ts";
 import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
 import { siteWhen } from "./site-time.ts";
@@ -1058,8 +1058,13 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
   // own edits saved and kept first, its autosave then saves the new one at
   // the revision it holds, and a save from elsewhere meets the editor's own
   // conflict, Reload or Keep mine (which keeps the other one as a version).
-  // Resolves with the document it replaced, or why not.
-  const replacePart = useCallback(async (kind: PartKind, document: PageDocument, keep: string, ours: PageDocument | null = null): Promise<{ ok: true; replaced: PageDocument } | { ok: false; why: string }> => {
+  // A save whose answer is lost (no answer, no network, the time ran out)
+  // is told by the draft read back: saved where its saveId is the draft's
+  // last or the draft is the document sent, else tried again; where the
+  // draft cannot be read either, the outcome is unknown, and said so, with
+  // the draft it may have replaced. A draft that is the document already
+  // needs nothing. Resolves with the document it replaced, or why not.
+  const replacePart = useCallback(async (kind: PartKind, document: PageDocument, keep: string, ours: PageDocument | null = null): Promise<PartReplaced> => {
     const said = problemWords;
     const failed = (why: string) => ({ ok: false as const, why });
     try {
@@ -1078,6 +1083,7 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
         const settled = await saving.flush();
         if (settled.phase !== "saved") return failed(unsavedWhy(settled.phase, words.server));
         const was = store.getState().document;
+        if (sameJson(was, document)) return { ok: true, replaced: was };
         const why = await keepFirst(was);
         if (why !== null) return failed(why);
         // Closed meanwhile: replaced as a draft, below. Edited while it was
@@ -1090,6 +1096,8 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
         if (!outcome.ok) return failed(outcome.error.message);
         const after = await saving.flush();
         if (after.phase === "saved") return { ok: true, replaced: was };
+        // The autosave sends the very same save again until an answer comes.
+        if (after.phase === "retrying") return { ok: false, unknown: true, why: `no answer came about the ${kind}'s save, and the editor is sending it again: it may be saved.`, replaced: was };
         return failed(after.phase === "conflict"
           ? `the ${kind} was saved in another tab meanwhile: Reload takes that one, Keep mine saves the Assistant's over it, keeping that one as a version.`
           : unsavedWhy(after.phase, words.server));
@@ -1097,14 +1105,31 @@ export function App({ env, adapter, address = locationAddress, cmsOrigin, publis
       if (saving && live.current.autosave === saving) return failed(`the ${kind} was edited each time the Assistant went to replace it: it is left as it is.`);
       for (let attempt = 0; attempt < REPLACE_TRIES; attempt += 1) {
         const draft = await adapter.getDraft(part.id);
+        if (sameJson(draft.document, document)) return { ok: true, replaced: draft.document };
         const why = await keepFirst(draft.document);
         if (why !== null) return failed(why);
-        const saved = await adapter.saveDraft(part.id, { revision: draft.revision, saveId: `assistant-${kind}-${clock.now().toString(36)}-${attempt}`, document });
-        if (saved.ok) {
+        const save = { revision: draft.revision, saveId: `assistant-${kind}-${clock.now().toString(36)}-${attempt}`, document };
+        const done = () => {
           ui.getState().setParts({ [kind]: document });
-          await refreshPages().catch(() => undefined);
-          return { ok: true, replaced: draft.document };
+          return refreshPages().catch(() => undefined).then(() => ({ ok: true as const, replaced: draft.document }));
+        };
+        let saved;
+        try {
+          saved = await adapter.saveDraft(part.id, save);
+        } catch (error) {
+          if (isStorageError(error) && error.failure.kind !== "unknown") throw error;
+          // No answer: the draft read back tells what became of the save.
+          let back;
+          try {
+            back = await adapter.getDraft(part.id);
+          } catch {
+            return { ok: false, unknown: true, why: `no answer came about the ${kind}'s save (${describe(error)}), and its draft could not be read back to tell whether it was kept.`, replaced: draft.document };
+          }
+          if (back.lastSaveId === save.saveId || sameJson(back.document, document)) return done();
+          // Not kept, or saved over since: read again, kept again, tried again.
+          continue;
         }
+        if (saved.ok) return done();
         if (saved.problem.kind !== "conflict") return failed(said(saved.problem));
       }
       return failed(`the ${kind} was saved somewhere else each time the Assistant went to replace it: it is left as it is there, each draft it met kept as a version, “${keep}”.`);

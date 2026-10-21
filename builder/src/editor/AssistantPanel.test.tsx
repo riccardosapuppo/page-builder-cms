@@ -290,8 +290,10 @@ function siteWriter(models: ModelChoice[] = [{ id: "claude-opus-5-5", name: "Cla
 // The editor's session for a new site: pages made one after the other,
 // the style and the parts kept (a part's draft kept first unless it is the
 // run's own), a page's change answered `changed`, what the person chooses
-// after recorded.
-function siteSession(kit: () => ReturnType<typeof editorKit>, calls: string[], changed: string | null = null) {
+// after recorded. `parts` answers the parts' saves in turn: "lost", its
+// answer lost and not to be told; "failed"; "saved", as every save is once
+// it says no more.
+function siteSession(kit: () => ReturnType<typeof editorKit>, calls: string[], changed: string | null = null, parts: Array<"lost" | "failed" | "saved"> = []) {
   let next = 10;
   let open = 1;
   return {
@@ -313,7 +315,11 @@ function siteSession(kit: () => ReturnType<typeof editorKit>, calls: string[], c
     },
     replacePart: async (kind: string, _document: unknown, keep: string, ours?: unknown) => {
       calls.push(`${kind}${ours ? "" : ` (${keep})`}`);
-      return { ok: true as const, replaced: { schemaVersion: 1 as const, title: kind, sections: [] } };
+      const replaced = { schemaVersion: 1 as const, title: kind, sections: [] };
+      const answer = parts.shift();
+      if (answer === "lost") return { ok: false as const, unknown: true as const, why: `no answer came about the ${kind}'s save, and its draft could not be read back to tell whether it was kept.`, replaced };
+      if (answer === "failed") return { ok: false as const, why: "the storage did not answer." };
+      return { ok: true as const, replaced };
     },
     changeDraft: async (id: number) => {
       calls.push(`change ${id}`);
@@ -447,10 +453,10 @@ test("Write the new site asks twice: Cancel asks nothing and gives the focus bac
 });
 
 // A new site written from the drawer, asked and answered yes, with no pictures.
-async function writeNewSite(plan: (title: string) => string, changed: string | null = null) {
+async function writeNewSite(plan: (title: string) => string, changed: string | null = null, parts: Array<"lost" | "failed" | "saved"> = []) {
   const calls: string[] = [];
   let kitRef: ReturnType<typeof editorKit> | null = null;
-  const kit = editorKit({ document: KIT_DOC, session: siteSession(() => kitRef!, calls, changed), providers: async () => siteWriter(undefined, [], plan) });
+  const kit = editorKit({ document: KIT_DOC, session: siteSession(() => kitRef!, calls, changed, parts), providers: async () => siteWriter(undefined, [], plan) });
   kitRef = kit;
   kit.ui.getState().setSiteStyle(STYLE_NOW);
   kit.render(<AssistantPanel />);
@@ -488,11 +494,23 @@ test("a page made whose buttons to a page not made could not be changed: Publish
   const calls = await writeNewSite((title) => (title === "Classes" ? refused() : pagePlan(title, [{ kind: "button", label: "Classes", target: "/classes" }])), "the storage did not answer.");
   expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "make /iron-forge", "make /join", "header", "footer", "change 10", "change 11"]);
   expect(screen.queryByRole("button", { name: "Publish all" })).toBeNull();
-  expect(document.querySelector(".as-offer-held")?.textContent).toBe("Publish all is not offered: “Home” and “Join” still lead to a page that was not made, as the things to know say.");
+  expect(document.querySelector(".as-offer-held")?.textContent).toBe("Publish all is not offered: “Home” and “Join” may still lead to a page that was not made, as the things to know say.");
   fireEvent.click(screen.getByText(/things to know$/));
   expect(document.querySelector(".as-notes")?.textContent).toContain("“Home”: Its buttons that lead to pages not made keep their links, as the change was not saved: the storage did not answer.");
   // What else becomes of it is offered as ever.
   expect(screen.getByRole("button", { name: "Make “Home” the home page" })).toBeTruthy();
+});
+
+test("a header whose save had its answer lost, and could not be put back either: its step says to check it, and the drawer says why Publish all is not offered", async () => {
+  // Every page refused. The header's save: its answer lost; putting it back: failed. The footer: saved, then put back.
+  const calls = await writeNewSite(refused, null, ["lost", "saved", "failed", "saved"]);
+  expect(calls).toEqual(["style now #b3361b", "header (Before the new site)", "footer (Before the new site)", "header", "footer"]);
+  expect([...document.querySelectorAll(".as-group:first-child .as-sections > li")].map((li) => li.textContent)).toEqual(["Direction, 3 pages", "Style, applied", "Header, to check", "Footer, put back"]);
+  expect(document.querySelector(".as-offer-held")?.textContent).toBe("Publish all is not offered: the header may still lead to a page that was not made, as the things to know say.");
+  fireEvent.click(screen.getByText(/things to know$/));
+  const notes = document.querySelector(".as-notes")?.textContent ?? "";
+  expect(notes).toContain("The new header may have been saved: no answer came about the header's save, and its draft could not be read back to tell whether it was kept.");
+  expect(notes).toContain("The new header was not put back as it was: the storage did not answer. It may lead to pages that were not made; its versions hold the one it replaced, as “Before the new site”.");
 });
 
 test("the sample written by hand says no model was asked, and adds nothing to any total", async () => {

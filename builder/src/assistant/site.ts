@@ -29,9 +29,11 @@
 //    as it was, said. A button of a page made that leads to a page of the
 //    site not made loses its link (it leads to the top of its own page, as
 //    a plan's button whose section never came), and one that leads to a
-//    page made at another address leads there, each said. A part or a page
-//    left leading to a page not made, its clean-up not saved, is said, and
-//    the drawer then offers no Publish all.
+//    page made at another address leads there, each said. A part whose save
+//    had its answer lost, its draft not to be read back to tell, counts as
+//    saved: the clean-up makes sure of it. A part or a page left that may
+//    lead to a page not made, its clean-up not saved, is said, and the
+//    drawer then offers no Publish all.
 //
 // Nothing is published, and the home page stays the site's: the person
 // says what becomes of them once the run is over. The run is bound to the
@@ -85,12 +87,18 @@ export interface SitePage {
 
 // What became of a part once the run ended: the new one, leading only to
 // pages that are there ("new"); put back as it was, no page of the site
-// having been made ("back"); or the new one left leading to a page not
-// made, its clean-up not saved ("stale"). Null for a part not saved.
+// having been made ("back"); or one that may lead to a page not made: its
+// clean-up not saved, or what became of its save not to be told ("stale").
+// Null for a part not saved.
 export type FrameState = "new" | "back" | "stale";
 
-// What saving a part answers: the draft it replaced, or why it was not saved.
-export type PartSaved = { ok: true; replaced: PageDocument } | { ok: false; why: string };
+// What saving a part answers: the draft it replaced; or why it was not
+// saved, for sure; or, its answer lost and its draft not to be read back,
+// that it may have been saved over `replaced`, kept as a version first.
+export type PartSaved =
+  | { ok: true; replaced: PageDocument }
+  | { ok: false; why: string; unknown?: undefined }
+  | { ok: false; why: string; unknown: true; replaced: PageDocument };
 
 // A button of a page made that led to a page of the site not made, or made
 // at another address: its words, its plan's name in a pricing block, the
@@ -149,7 +157,8 @@ export interface SiteHooks {
   // A part's draft replaced by `document`, the draft it replaces kept first
   // as a version named `keep`, unless it is `ours`, the document the run
   // saved there itself: no draft saved over that a version does not hold.
-  // What it replaced, once saved, or why not.
+  // What it replaced, once saved; why not; or that it may have been saved,
+  // where no answer said and its draft could not be read back to tell.
   savePart(kind: PartKind, document: PageDocument, keep: string, ours: PageDocument | null): Promise<PartSaved>;
   // The draft of the page of `id` changed by `change`, given the page as it
   // is (null: nothing to change), as a step named by `label` while it is
@@ -260,9 +269,11 @@ export async function writeSite(options: {
   });
   update({ phase: "frame", pages: planned.map((page) => ({ title: page.title, path: `/${page.slug}`, state: "waiting", id: null, writing: null, dangling: false })) });
   const sticky = hooks.header()?.sticky === true;
-  // Each part's draft as it was before the new site, and as the run saved it last.
+  // Each part's draft as it was before the new site, and as the run saved it
+  // last; and whether that save is only maybe so, its answer lost.
   const was: Record<PartKind, PageDocument | null> = { header: null, footer: null };
   const saved: Record<PartKind, PageDocument | null> = { header: null, footer: null };
+  const unsure: Record<PartKind, boolean> = { header: false, footer: false };
   const frameOf = (pages: readonly FramePage[], href: string): Record<PartKind, PageDocument> => ({
     header: headerOf({ name: direction.name, action: { label: direction.action, href }, pages, sticky }),
     footer: footerOf({ name: direction.name, tagline: direction.tagline, pages }),
@@ -353,27 +364,39 @@ export async function writeSite(options: {
     for (const kind of PARTS) {
       const ours = saved[kind];
       if (ours === null) continue;
+      // A save only maybe made, its answer lost, is made sure of here: its
+      // part saved again, or put back, whatever its draft holds now.
+      const maybe = unsure[kind];
       if (made.length === 0) {
         const back = await savePart(kind, was[kind]!, ours);
         if (back.ok) {
           saved[kind] = was[kind];
+          unsure[kind] = false;
+          step(kind, "done");
           setFrame(kind, "back");
           note(`Put the ${kind} back as it was: no page of the new site was made.`);
         } else {
           setFrame(kind, "stale");
-          note(`The new ${kind} was not put back as it was: ${back.why} It leads to pages that were not made; its versions hold the one it replaced, as “${BEFORE_NEW_SITE}”.`);
+          note(`The new ${kind} was not put back as it was: ${back.why} It ${maybe ? "may lead" : "leads"} to pages that were not made; its versions hold the one it replaced, as “${BEFORE_NEW_SITE}”.`);
         }
         continue;
       }
       const first = site.pages[0]!;
       const href = first.id !== null ? actionOf(first.path, home) : made[0]!.path;
       const settled = frameOf(made.map(({ title, path }) => ({ title, path })), href)[kind];
-      if (sameJson(ours, settled)) continue;
+      if (!maybe && sameJson(ours, settled)) continue;
       const outcome = await savePart(kind, settled, ours);
-      if (outcome.ok) saved[kind] = settled;
-      else {
+      if (outcome.ok) {
+        saved[kind] = settled;
+        unsure[kind] = false;
+        if (maybe) {
+          step(kind, "done");
+          setFrame(kind, "new");
+          note(`Made sure of the new ${kind} once the pages were made: it is saved.`);
+        }
+      } else {
         setFrame(kind, "stale");
-        note(`The new ${kind} was not brought up to date with the pages made: ${outcome.why} It still leads to pages that were not made.`);
+        note(`The new ${kind} was not brought up to date with the pages made: ${outcome.why} It ${maybe ? "may still lead" : "still leads"} to pages that were not made.`);
       }
     }
     // Where each page the others were told of is now, where that changed:
@@ -423,6 +446,14 @@ export async function writeSite(options: {
         was[kind] = outcome.replaced;
         saved[kind] = first[kind];
         setFrame(kind, "new");
+      } else if (outcome.unknown) {
+        // Maybe saved: counted as saved, so that the clean-up makes sure of
+        // it, and one to check until it has.
+        was[kind] = outcome.replaced;
+        saved[kind] = first[kind];
+        unsure[kind] = true;
+        setFrame(kind, "stale");
+        note(`The new ${kind} may have been saved: ${outcome.why}`);
       } else note(`The new ${kind} was not saved: ${outcome.why}`);
       step(kind, outcome.ok ? "done" : "failed");
     }

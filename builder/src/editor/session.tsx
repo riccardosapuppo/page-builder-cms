@@ -63,6 +63,14 @@ export interface VersionList {
 
 export const NO_VERSIONS: VersionList = { phase: "idle", items: [], message: null };
 
+// What replacing a part answers: the draft it replaced; why not, for sure;
+// or, the answer to its save lost and the draft not to be read back to
+// tell, that it may be saved over `replaced`, which a version holds.
+export type PartReplaced =
+  | { ok: true; replaced: PageDocument }
+  | { ok: false; why: string; unknown?: undefined }
+  | { ok: false; why: string; unknown: true; replaced: PageDocument };
+
 export interface Session {
   pages: readonly PageSummary[];
   // The site's header then its footer, opened by their ids as pages are.
@@ -128,9 +136,10 @@ export interface Session {
   // read, kept, then saved over at the revision read, and a save from
   // elsewhere in between is kept in turn. The canvas draws the new one at
   // once. A part open in the editor takes it as a step of the Assistant's,
-  // its edits saved and kept first. Resolves with the document it replaced,
-  // or with why not.
-  replacePart(kind: PartKind, document: PageDocument, keep: string, ours?: PageDocument | null): Promise<{ ok: true; replaced: PageDocument } | { ok: false; why: string }>;
+  // its edits saved and kept first. A save whose answer is lost is told
+  // from the draft read back. Resolves with the document it replaced, why
+  // not, or that it may be saved (PartReplaced).
+  replacePart(kind: PartKind, document: PageDocument, keep: string, ours?: PageDocument | null): Promise<PartReplaced>;
   // A page's draft changed by `change`, given the page as it is (null:
   // nothing to change): while it is open, as one step of the Assistant's
   // named by `label`; else read and saved at the revision read, a save from

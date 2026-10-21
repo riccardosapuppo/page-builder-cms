@@ -271,7 +271,11 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
    it at the revision it read; a save from another tab in between meets a
    conflict, and that draft is read and kept in turn before it is
    replaced (`replacePart`, [`../editor/App.tsx`](../editor/App.tsx)). A
-   header that stayed at the top of the window keeps doing so.
+   save whose answer is lost is told from the draft read back: saved where
+   the draft's last save is this one, or the draft is the document sent;
+   where the draft cannot be read either, what became of it is unknown,
+   and the run counts the part as saved, for its clean-up to make sure of
+   (5). A header that stayed at the top of the window keeps doing so.
 4. **The pages**, one after the other, each written as a page is (above),
    with the direction in its question (`pageQuestion` with a
    `PageDirection`): the site's name and voice, its colours with their
@@ -293,17 +297,18 @@ with most models, said exactly after. Its Write asks twice, as Delete does.
    again from the pages made, at the addresses they were made at, and the
    header's call to action leads to the home page's form, by the anchor of
    its section, or else to its first section; each is saved again where it
-   changed. Where no page was made, each is put back as it was, said, and
-   its step says so.
+   changed, and saved again all the same where its first save is only
+   maybe made, which makes sure of it. Where no page was made, each is put
+   back as it was, said, and its step says so.
    - **The pages' links.** A button of a page made that leads to a page of
      the site not made loses its link: it leads to the top of its own page
      (`#`), as a plan's button whose section never came; one that leads to
      a page made at another address leads there. Each is said. A page not
      open is changed on its draft, read again and changed again where
      another tab saved it meanwhile (`changeDraft`).
-   - **Never a link to nowhere.** A part or a page left leading to a page
-     not made, its clean-up not saved, is said, and the drawer then offers
-     no Publish all.
+   - **Never a link to nowhere.** A part or a page that may still lead to
+     a page not made, its clean-up not saved, is said, the part's step says
+     to check it, and the drawer then offers no Publish all.
 
 - **The home page** becomes the site's home only when the person says so,
   once the site is written: nothing takes it from the site behind their
